@@ -1,4 +1,4 @@
- 🚀 Guía Git & GitHub para el Equipo | VetLink
+# 🚀 Guía Git & GitHub para el Equipo | VetLink
 
 ¡Hola a todos! 👋 Esta guía está diseñada para que trabajemos en equipo de forma ordenada, evitemos enredos con el código y todos sepamos exactamente cómo subir nuestros avances. 
 
