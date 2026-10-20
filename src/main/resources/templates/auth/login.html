@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/color_global.css}">
+    <link rel="stylesheet" th:href="@{/css/formstyle.css}">
+</head>
+<body class="login-body">
+    <nav th:replace="~{layout/navbar :: navbar}"></nav>
+
+    <main class="login-main">
+        <div class="form-card" data-aos="zoom-in" data-aos-duration="800">
+            <div class="form-header">
+                <div class="login-icon-circle">
+                    <i class="fas fa-fingerprint"></i>
+                </div>
+                <h2 class="form-title">Bienvenido</h2>
+                <p>Ingresa a tu cuenta de VetLink</p>
+            </div>
+
+            <form th:action="@{/login}" method="post" id="formLogin">
+                <div class="input-group">
+                    <label for="correoLogin"><i class="far fa-envelope"></i> Correo electrónico</label>
+                    <input type="email" id="correoLogin" name="correo" placeholder="tu@correo.com" required autofocus>
+                </div>
+
+                <div class="input-group">
+                    <div class="label-row">
+                        <label for="passwordLogin">
+                            <i class="fas fa-key"></i> Contraseña
+                        </label>
+                        <a href="#" class="forgot-link">¿La olvidaste?</a>
+                    </div>
+                    <div class="password-wrapper">
+                        <input type="password" id="passwordLogin" name="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-register btn-block" style="border:none; cursor:pointer; width:100%">
+                    <span>Entrar</span> <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <p class="form-message alert-success" th:if="${param.registrado}">Cuenta creada. Ya puedes iniciar sesión.</p>
+            <p class="form-message alert-success" th:if="${param.registradoVet}">¡Veterinaria registrada! Ya puedes iniciar sesión como su recepcionista administradora.</p>
+            <p class="form-message alert-success" th:if="${param.logout}">Sesión cerrada correctamente.</p>
+            <p class="form-message alert-error" th:if="${param.error}">Correo o contraseña incorrectos.</p>
+
+            <div class="form-footer">
+                ¿No tienes una cuenta? <a th:href="@{/registro}">Regístrate aquí</a>
+            </div>
+
+            <div class="demo-accounts">
+                <p class="demo-title"><i class="fas fa-circle-info"></i> Cuentas de demostración</p>
+                <div class="demo-grid">
+                    <button type="button" class="demo-chip" data-demo="maria@gmail.com">Dueño</button>
+                    <button type="button" class="demo-chip" data-demo="juan@gmail.com">Veterinario</button>
+                    <button type="button" class="demo-chip" data-demo="laura@gmail.com">Recepcionista</button>
+                </div>
+                <small>Contraseña para las tres: <strong>123456</strong>.</small>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init();
+        document.querySelectorAll('.demo-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.getElementById('correoLogin').value = chip.dataset.demo;
+                document.getElementById('passwordLogin').focus();
+            });
+        });
+    </script>
+</body>
+</html>

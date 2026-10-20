@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/color_global.css}">
+    <link rel="stylesheet" th:href="@{/css/registro_style.css}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+</head>
+<body class="reg-body" th:object="${form}">
+    <nav th:replace="~{layout/navbar :: navbar}"></nav>
+
+    <div class="reg-container">
+        <div class="reg-card">
+
+            <div class="reg-progress-container">
+                <div class="reg-progress-bar" id="progress-line"></div>
+                <div class="reg-step active" data-step="1"><span>1</span></div>
+                <div class="reg-step" data-step="2"><span>2</span></div>
+                <div class="reg-step" data-step="3"><span>3</span></div>
+            </div>
+
+            <div class="reg-header">
+                <h2 id="reg-title">Únete a VetLink</h2>
+                <p id="reg-subtitle">Selecciona tu perfil de usuario</p>
+            </div>
+
+            <p class="form-message alert-error" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+            <p class="form-message alert-error" th:if="${#fields.hasErrors('*')}">
+                Revisa los datos marcados: hay campos invalidos en el formulario.
+            </p>
+
+            <form id="regForm" th:action="@{/registro}" method="post">
+
+                <div id="step-1" class="reg-content animate-in">
+                    <div class="role-selection">
+                        <div class="role-card" onclick="seleccionarRol('DUEÑO')">
+                            <div class="role-icon"><i class="fas fa-paw"></i></div>
+                            <h3>Soy Dueño</h3>
+                            <p>Para gestionar mis mascotas y citas.</p>
+                        </div>
+                        <div class="role-card" onclick="seleccionarRol('VETERINARIA')">
+                            <div class="role-icon"><i class="fas fa-building"></i></div>
+                            <h3>Soy Veterinaria</h3>
+                            <p>Registro de la clínica y su recepcionista administradora.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-2" class="reg-content hidden animate-in">
+                    <input type="hidden" id="user-role" th:field="*{rol}">
+                    <div class="form-grid">
+                        <div class="input-box">
+                            <label>Tipo Documento</label>
+                            <select id="reg-tipo-doc" th:field="*{idTipoDocumento}">
+                                <option th:each="t : ${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option>
+                            </select>
+                        </div>
+                        <div class="input-box">
+                            <label>Número de Documento</label>
+                            <input type="text" id="reg-num-doc" th:field="*{numeroDocumento}" placeholder="Ej: 10203040">
+                            <small class="error-text" th:if="${#fields.hasErrors('numeroDocumento')}" th:errors="*{numeroDocumento}"></small>
+                        </div>
+                        <div class="input-box">
+                            <label>Nombres</label>
+                            <input type="text" id="reg-nombre" th:field="*{nombre}" placeholder="Ingresa tus nombres">
+                            <small class="error-text" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
+                        </div>
+                        <div class="input-box">
+                            <label>Apellidos</label>
+                            <input type="text" id="reg-apellido" th:field="*{apellido}" placeholder="Ingresa tus apellidos">
+                            <small class="error-text" th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
+                        </div>
+                        <div class="input-box full-width">
+                            <label>Correo Electrónico Personal</label>
+                            <input type="email" id="reg-correo" th:field="*{correo}" placeholder="ejemplo@correo.com">
+                            <small class="error-text" th:if="${#fields.hasErrors('correo')}" th:errors="*{correo}"></small>
+                        </div>
+                        <div class="input-box">
+                            <label>Teléfono de Contacto</label>
+                            <input type="text" id="reg-tel" th:field="*{telefono}" placeholder="3001234567">
+                            <small class="error-text" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></small>
+                        </div>
+                        <div class="input-box">
+                            <label>Contraseña</label>
+                            <input type="password" id="reg-pass" th:field="*{password}" placeholder="Mínimo 6 caracteres">
+                            <small class="error-text" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></small>
+                        </div>
+                        <div class="input-box">
+                            <label>Confirmar contraseña</label>
+                            <input type="password" id="reg-confirmar-pass" th:field="*{confirmarPassword}" placeholder="Repite tu contraseña">
+                            <small class="error-text" th:if="${#fields.hasErrors('confirmarPassword')}" th:errors="*{confirmarPassword}"></small>
+                        </div>
+                        <div class="input-box" id="box-direccion">
+                            <label>Dirección de Residencia</label>
+                            <input type="text" id="reg-direccion" th:field="*{direccion}" placeholder="Ej: Calle 10 # 25-30">
+                            <small class="error-text" th:if="${#fields.hasErrors('direccion')}" th:errors="*{direccion}"></small>
+                        </div>
+                    </div>
+                    <div class="nav-buttons">
+                        <button type="button" class="btn-prev" onclick="prevStep(1)">Atrás</button>
+                        <button type="button" class="btn-next" onclick="validateStep2()">Siguiente Paso <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="step-3" class="reg-content hidden animate-in">
+
+                    <div id="section-vet" class="hidden">
+                        <div class="form-grid">
+                            <div class="input-box">
+                                <label>NIT de la Empresa</label>
+                                <input type="text" id="vet-nit" th:field="*{nuevaVeterinaria.nit}" placeholder="900123456">
+                                <small class="error-text" th:if="${#fields.hasErrors('nuevaVeterinaria.nit')}" th:errors="*{nuevaVeterinaria.nit}"></small>
+                            </div>
+                            <div class="input-box">
+                                <label>Nombre Comercial</label>
+                                <input type="text" id="vet-nombre" th:field="*{nuevaVeterinaria.nombre}" placeholder="Nombre de la clínica">
+                                <small class="error-text" th:if="${#fields.hasErrors('nuevaVeterinaria.nombre')}" th:errors="*{nuevaVeterinaria.nombre}"></small>
+                            </div>
+                            <div class="input-box">
+                                <label>Teléfono Corporativo</label>
+                                <input type="text" id="vet-tel" th:field="*{nuevaVeterinaria.telefono}" placeholder="Teléfono fijo o celular">
+                                <small class="error-text" th:if="${#fields.hasErrors('nuevaVeterinaria.telefono')}" th:errors="*{nuevaVeterinaria.telefono}"></small>
+                            </div>
+                            <div class="input-box">
+                                <label>Correo de la Empresa</label>
+                                <input type="email" id="vet-correo" th:field="*{nuevaVeterinaria.correo}" placeholder="correo@veterinaria.com">
+                                <small class="error-text" th:if="${#fields.hasErrors('nuevaVeterinaria.correo')}" th:errors="*{nuevaVeterinaria.correo}"></small>
+                            </div>
+                            <div class="input-box full-width">
+                                <label>Página Web (Opcional)</label>
+                                <input type="url" id="vet-web" th:field="*{nuevaVeterinaria.paginaWeb}" placeholder="https://www.tuweb.com">
+                            </div>
+                            <div class="input-box full-width">
+                                <label>Descripción de la Veterinaria</label>
+                                <textarea id="vet-desc" th:field="*{nuevaVeterinaria.descripcion}" rows="3" placeholder="Describe brevemente tus servicios..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="section-pet" class="hidden">
+                        <div class="form-grid">
+                            <div class="input-box">
+                                <label>Nombre de la Mascota</label>
+                                <input type="text" id="pet-nombre" th:field="*{mascotaNombre}" placeholder="Ej: Toby">
+                            </div>
+                            <div class="input-box">
+                                <label>Especie</label>
+                                <select id="pet-especie" th:field="*{mascotaIdEspecie}" onchange="cargarRazas()">
+                                    <option value="">Selecciona</option>
+                                    <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
+                                </select>
+                            </div>
+                            <div class="input-box">
+                                <label>Raza</label>
+                                <select id="pet-raza" th:field="*{mascotaIdRaza}">
+                                    <option value="">Selecciona especie primero</option>
+                                </select>
+                            </div>
+                            <div class="input-box">
+                                <label>Género</label>
+                                <select id="pet-genero" th:field="*{mascotaGenero}">
+                                    <option value="M">Macho</option>
+                                    <option value="H">Hembra</option>
+                                </select>
+                            </div>
+                            <div class="input-box">
+                                <label>Fecha de Nacimiento</label>
+                                <input type="date" id="pet-fecha" th:field="*{mascotaFechaNacimiento}">
+                            </div>
+                            <div class="input-box">
+                                <label>Peso Actual (Kg)</label>
+                                <input type="number" id="pet-peso" th:field="*{mascotaPeso}" step="0.1" placeholder="0.0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="nav-buttons-vertical">
+                        <button type="button" class="btn-submit" onclick="validateStep3()">Siguiente</button>
+                        <button type="button" class="btn-prev-text" id="btn-omitir-mascota" onclick="omitirMascota()">Omitir registro de mascota</button>
+                        <button type="button" class="btn-prev-text" onclick="prevStep(2)">Regresar a mis datos personales</button>
+                    </div>
+                </div>
+
+                <!-- STEP 4 SOLO VETERINARIA -->
+                <div id="step-4" class="reg-content hidden animate-in">
+                    <div id="section-services">
+                        <h3 style="margin-bottom:20px;">Servicios y Horarios</h3>
+
+                        <div class="input-box full-width">
+                            <label>Servicios que ofrece</label>
+                            <div id="services-container">
+                                <div class="service-item" th:each="s, sStat : *{nuevaVeterinaria.servicios}">
+                                    <select th:field="*{nuevaVeterinaria.servicios[__${sStat.index}__].idServicio}" class="service-nombre">
+                                        <option value="">Selecciona</option>
+                                        <option th:each="cat : ${servicios}" th:value="${cat.idServicio}" th:text="${cat.nombreServicio}"></option>
+                                    </select>
+                                    <input type="number" th:field="*{nuevaVeterinaria.servicios[__${sStat.index}__].precio}" class="service-precio" placeholder="Precio" min="0">
+                                    <button type="button" class="btn-remove" onclick="quitarServicio(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-add" onclick="addService()">
+                                <i class="fas fa-plus"></i> Agregar servicio
+                            </button>
+                            <small class="error-text" id="err-services"></small>
+                        </div>
+
+                        <div class="input-box full-width">
+                            <label>Horario por día</label>
+                            <div class="schedule-container">
+                                <h4 class="section-title"><i class="fas fa-clock"></i> Horarios de Atención</h4>
+                                <div class="days-grid" id="days-grid">
+                                    <div class="day-card" th:each="dia, dStat : ${diasSemana}" th:attr="data-dia=${dia.diaSemana}">
+                                        <div class="day-header">
+                                            <label class="day-toggle">
+                                                <input type="checkbox" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].abierto}" onchange="toggleDay(this)">
+                                                <span class="checkmark"></span>
+                                                <span th:text="${dia.diaSemana}"></span>
+                                            </label>
+                                            <span class="day-status">Cerrado</span>
+                                        </div>
+                                        <input type="hidden" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].idDiaSemana}">
+                                        <div class="hours hidden">
+                                            <div class="time-group"><small>Apertura</small><input type="time" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].horaApertura}" class="open"></div>
+                                            <div class="time-group"><small>Cierre</small><input type="time" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].horaCierre}" class="close"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button type="button" class="btn-prev" onclick="prevStep(3)">Atrás</button>
+                        <button type="button" class="btn-next" onclick="validateStep4()">Siguiente Paso <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 5 UBICACIÓN -->
+                <div id="step-5" class="reg-content hidden animate-in">
+
+                    <h3 style="margin-bottom:20px;">Ubicación de la Veterinaria</h3>
+
+                    <div class="form-grid">
+                        <div class="input-box full-width">
+                            <label>Dirección</label>
+                            <input type="text" id="vet-direccion" th:field="*{nuevaVeterinaria.direccion}" placeholder="Ej: Calle 10 # 25-30">
+                            <small class="error-text" th:if="${#fields.hasErrors('nuevaVeterinaria.direccion')}" th:errors="*{nuevaVeterinaria.direccion}"></small>
+                            <input type="hidden" id="vet-lat" th:field="*{nuevaVeterinaria.latitud}">
+                            <input type="hidden" id="vet-lng" th:field="*{nuevaVeterinaria.longitud}">
+                        </div>
+                        <div class="input-box">
+                            <label>Ciudad</label>
+                            <select id="vet-ciudad" th:field="*{nuevaVeterinaria.idCiudad}">
+                                <option value="">Selecciona</option>
+                                <option th:each="c : ${ciudades}" th:value="${c.idCiudad}" th:text="${c.nombre}"></option>
+                            </select>
+                        </div>
+                        <div class="input-box">
+                            <label>Barrio</label>
+                            <input type="text" id="vet-barrio" th:field="*{nuevaVeterinaria.barrio}" placeholder="Ej: El Poblado">
+                        </div>
+                        <div class="input-box full-width">
+                            <label>Ubicación en mapa (haz clic para marcar)</label>
+                            <div class="map-card">
+                                <div id="map" style="height: 250px; border-radius: 12px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nav-buttons-vertical">
+                        <button type="button" class="btn-submit" onclick="validateStep5()">Finalizar Registro</button>
+                        <button type="button" class="btn-prev-text" onclick="prevStep(4)">Regresar</button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        var VL_FORM_TIENE_ERRORES = /*[[${#fields.hasErrors('*')}]]*/ false;
+        var VL_ROL_ENVIADO = /*[[*{rol}]]*/ '';
+        /*]]>*/
+    </script>
+    <script th:src="@{/js/registro.js}"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</body>
+</html>

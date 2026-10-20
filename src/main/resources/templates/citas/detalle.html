@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalle de cita - VetLink</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+<section class="container"><div class="vl-section vl-section-active">
+  <div class="vl-section-head"><div><h1>Detalle de cita</h1><p>Información completa de tu atención programada.</p></div>
+    <a th:href="@{/citas/mias}" class="vl-btn vl-btn-ghost">Volver a mis citas</a></div>
+  <div class="vl-medrecord-grid">
+    <article class="vl-medcard"><strong>Fecha y hora</strong><span th:text="${cita.fecha} + ' · ' + ${cita.hora}"></span></article>
+    <article class="vl-medcard"><strong>Estado</strong><span class="vl-badge" th:text="${cita.estado}"></span></article>
+    <article class="vl-medcard"><strong>Servicio</strong><span th:text="${cita.servicio.nombreServicio}"></span></article>
+    <article class="vl-medcard"><strong>Mascota</strong><span th:text="${cita.mascota.nombre}"></span></article>
+    <article class="vl-medcard"><strong>Veterinaria</strong><span th:text="${cita.veterinaria.nombre}"></span></article>
+    <article class="vl-medcard"><strong>Veterinario</strong><span th:text="${cita.veterinario.nombre + ' ' + cita.veterinario.apellido}"></span></article>
+    <article class="vl-medcard"><strong>Dueño</strong><span th:text="${usuario.nombre + ' ' + usuario.apellido}"></span></article>
+  </div>
+</div></section></main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>

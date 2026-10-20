@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Panel - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbarNotificaciones(${usuario}, 'Buscar mascotas, citas...', ${notificaciones})}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active" id="section-home">
+            <div class="welcome-header reveal active">
+                <h1 th:text="'Hola, ' + ${usuario.nombre} + ' 👋'">Hola</h1>
+                <p>¿Qué está pasando con tus mascotas hoy?</p>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card reveal active">
+                    <div class="stat-info"><span class="stat-label">Mis Mascotas</span><span class="stat-number" th:text="${statMascotas}">0</span></div>
+                    <div class="stat-icon blue"><i class="fas fa-paw"></i></div>
+                </div>
+                <div class="stat-card reveal active">
+                    <div class="stat-info">
+                        <span class="stat-label">Próxima cita</span>
+                        <span class="stat-number" style="font-size:1.1rem;"
+                              th:text="${proximaCita != null ? (proximaCita.fecha + ' · ' + proximaCita.hora) : 'Sin citas'}">—</span>
+                    </div>
+                    <div class="stat-icon purple"><i class="fas fa-calendar-check"></i></div>
+                </div>
+                <div class="stat-card reveal active">
+                    <div class="stat-info"><span class="stat-label">Vacunas pendientes</span><span class="stat-number" th:text="${statVacunas}">0</span></div>
+                    <div class="stat-icon green"><i class="fas fa-syringe"></i></div>
+                </div>
+            </div>
+
+            <div class="panels-grid">
+                <div class="panel reveal active">
+                    <div class="panel-header">
+                        <h3>Calendario</h3>
+                        <a th:href="@{/citas/mias}" class="view-all">Ver todas mis citas</a>
+                    </div>
+                    <div id="mini-calendar"></div>
+                    <div id="mini-agenda" style="margin-top:14px;"></div>
+                </div>
+
+                <div class="panel reveal active">
+                    <div class="panel-header">
+                        <h3>Mis Mascotas</h3>
+                        <a th:href="@{/mascotas/nueva}" class="btn-add-modern"><div class="icon-circle"><i class="fas fa-plus"></i></div><span>Agregar</span></a>
+                    </div>
+                    <div id="home-mascotas-list">
+                        <a th:each="m : ${mascotas}" th:href="@{'/mascotas/' + ${m.idMascota}}" class="list-item" style="text-decoration:none; color:inherit;">
+                            <div class="pet-avatar"><i class="fas fa-paw"></i></div>
+                            <div class="item-details"><strong th:text="${m.nombre}">Nombre</strong><span th:text="${m.especie.nombreEspecie} + ' • ' + ${m.raza.nombreRaza}">Especie</span></div>
+                            <div class="item-action"><i class="fas fa-chevron-right"></i></div>
+                        </a>
+                        <p th:if="${#lists.isEmpty(mascotas)}" style="color:#94a3b8; font-size:0.88rem; padding:10px 0;">Aún no tienes mascotas registradas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions-section">
+                <h3>Accesos rápidos</h3>
+                <div class="actions-grid">
+                    <a th:href="@{/mascotas}" class="action-btn" style="text-decoration:none;"><i class="fas fa-dog"></i> Mis mascotas</a>
+                    <a th:href="@{/citas/mias}" class="action-btn" style="text-decoration:none;"><i class="fas fa-calendar-plus"></i> Mis citas</a>
+                    <a th:href="@{/directorio}" class="action-btn" style="text-decoration:none;"><i class="fas fa-hospital-user"></i> Buscar veterinaria</a>
+                    <a th:href="@{/emergencias}" class="action-btn emergency" style="text-decoration:none;"><i class="fas fa-exclamation-triangle"></i> Emergencia</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div th:if="${param.proximamente}" style="position:fixed; bottom:20px; right:20px; background:#1e293b; color:#fff; padding:14px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.2); z-index:999;">
+    <i class="fas fa-circle-info"></i> Este módulo estará disponible próximamente.
+</div>
+
+<!-- Datos de citas serializados para el calendario (sin exponer nada sensible: solo fecha/hora/mascota/servicio/estado) -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var VL_CITAS_TUTOR = /*[[${todasCitas}]]*/ [];
+    /*]]>*/
+</script>
+<script th:src="@{/js/vl-calendar-lite.js}"></script>
+<script th:src="@{/js/dashboard-tutor.js}"></script>
+
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

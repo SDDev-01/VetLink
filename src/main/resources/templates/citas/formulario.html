@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar cita - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="${mascota != null ? 'Agendar cita para ' + mascota.nombre : 'Agendar una cita'}">Agendar</h1></div>
+            </div>
+
+            <div class="vl-table-wrap" style="padding:28px; max-width:600px;">
+                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+
+                <div class="vl-wizard-steps">
+                    <div class="vl-wizard-step active" id="wz-bar-1"></div>
+                    <div class="vl-wizard-step" id="wz-bar-2"></div>
+                    <div class="vl-wizard-step" id="wz-bar-3"></div>
+                </div>
+
+                <form th:action="@{/citas/agendar}" th:object="${form}" method="post" id="form-agendar">
+                    <input type="hidden" th:field="*{idMascota}">
+
+                    <!-- PASO 1: veterinaria + servicio -->
+                    <div class="wz-step" id="wz-step-1">
+                        <h4 style="margin-bottom:14px;">¿En qué veterinaria y qué servicio?</h4>
+                        <div class="vl-form-grid">
+                            <div class="vl-field vl-full" th:if="${mascotas != null}">
+                                <label>Mascota</label>
+                                <select th:field="*{idMascota}" required>
+                                    <option value="">Selecciona tu mascota</option>
+                                    <option th:each="m : ${mascotas}" th:value="${m.idMascota}" th:text="${m.nombre}"></option>
+                                </select>
+                            </div>
+                            <div class="vl-field vl-full">
+                                <label>Veterinaria</label>
+                                <select th:field="*{idVeterinaria}" id="selectVeterinaria" onchange="cargarVeterinarios()">
+                                    <option value="">Selecciona</option>
+                                    <option th:each="v : ${veterinarias}" th:value="${v.idVeterinaria}" th:text="${v.nombre}"></option>
+                                </select>
+                                <small class="vl-error" th:if="${#fields.hasErrors('idVeterinaria')}" th:errors="*{idVeterinaria}"></small>
+                            </div>
+                            <div class="vl-field vl-full">
+                                <label>Veterinario</label>
+                                <select th:field="*{idVeterinario}" id="selectVeterinario">
+                                    <option value="">Selecciona primero una veterinaria</option>
+                                </select>
+                                <small class="vl-error" th:if="${#fields.hasErrors('idVeterinario')}" th:errors="*{idVeterinario}"></small>
+                            </div>
+                            <div class="vl-field vl-full">
+                                <label>Servicio</label>
+                                <select th:field="*{idServicio}">
+                                    <option value="">Selecciona</option>
+                                    <option th:each="s : ${servicios}" th:value="${s.idServicio}" th:text="${s.nombreServicio}"></option>
+                                </select>
+                                <small class="vl-error" th:if="${#fields.hasErrors('idServicio')}" th:errors="*{idServicio}"></small>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+                            <button type="button" class="vl-btn vl-btn-primary" onclick="wzIrPaso(2)">Siguiente <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- PASO 2: fecha + hora -->
+                    <div class="wz-step" id="wz-step-2" style="display:none;">
+                        <h4 style="margin-bottom:14px;">Elige fecha y hora</h4>
+                        <div class="vl-field">
+                            <label>Fecha</label>
+                            <input type="date" th:field="*{fecha}" id="inputFecha" onchange="cargarHorarios()">
+                            <small class="vl-error" th:if="${#fields.hasErrors('fecha')}" th:errors="*{fecha}"></small>
+                        </div>
+
+                        <div id="slotsContainer" style="margin:10px 0;"></div>
+
+                        <div class="vl-field">
+                            <label>Hora (o elige un horario disponible arriba)</label>
+                            <input type="time" th:field="*{hora}" id="inputHora">
+                            <small class="vl-error" th:if="${#fields.hasErrors('hora')}" th:errors="*{hora}"></small>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; margin-top:16px;">
+                            <button type="button" class="vl-btn vl-btn-ghost" onclick="wzIrPaso(1)"><i class="fas fa-arrow-left"></i> Atrás</button>
+                            <button type="button" class="vl-btn vl-btn-primary" onclick="wzIrPaso(3)">Siguiente <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: confirmar -->
+                    <div class="wz-step" id="wz-step-3" style="display:none;">
+                        <h4 style="margin-bottom:14px;">Confirma tu cita</h4>
+                        <div class="vl-medrecord-grid" id="wz-resumen"></div>
+                        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                            <button type="button" class="vl-btn vl-btn-ghost" onclick="wzIrPaso(2)"><i class="fas fa-arrow-left"></i> Atrás</button>
+                            <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Confirmar cita</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/js/vl-calendar-lite.js}"></script>
+<script th:inline="javascript">
+    function cargarVeterinarios() {
+        var idVeterinaria = document.getElementById('selectVeterinaria').value;
+        var select = document.getElementById('selectVeterinario');
+        select.innerHTML = '<option value="">Cargando...</option>';
+        if (!idVeterinaria) { select.innerHTML = '<option value="">Selecciona primero una veterinaria</option>'; return; }
+        fetch('/citas/veterinarios/' + idVeterinaria)
+            .then(r => r.json())
+            .then(data => {
+                select.innerHTML = '<option value="">Selecciona</option>';
+                data.forEach(function (v) {
+                    var opt = document.createElement('option');
+                    opt.value = v.id;
+                    opt.textContent = v.nombre;
+                    select.appendChild(opt);
+                });
+            });
+    }
+
+    function wzIrPaso(n) {
+        for (var i = 1; i <= 3; i++) {
+            document.getElementById('wz-step-' + i).style.display = (i === n) ? 'block' : 'none';
+            document.getElementById('wz-bar-' + i).classList.toggle('active', i <= n);
+        }
+        if (n === 2) cargarHorarios();
+        if (n === 3) pintarResumen();
+    }
+
+    function cargarHorarios() {
+        var idVeterinaria = document.getElementById('selectVeterinaria').value;
+        var idVeterinario = document.getElementById('selectVeterinario').value;
+        var idServicio = document.getElementById('idServicio').value;
+        var fecha = document.getElementById('inputFecha').value;
+        var cont = document.getElementById('slotsContainer');
+        if (!idVeterinaria || !idVeterinario || !idServicio || !fecha) { cont.innerHTML = ''; return; }
+
+        var url = '/citas/horarios-disponibles?idVeterinaria=' + idVeterinaria + '&fecha=' + fecha
+            + '&idVeterinario=' + idVeterinario + '&idServicio=' + idServicio;
+
+        fetch(url).then(r => r.json()).then(function (data) {
+            if (data.cerrado || !data.ocupadas.length) {
+                cont.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No hay cupos ofertados para esa combinación.</p>';
+                return;
+            }
+            var slots = data.ocupadas;
+            cont.innerHTML = '<label style="font-size:0.8rem; font-weight:700; color:#334155;">Horarios disponibles</label>'
+                + '<div class="vl-slots-grid">' + slots.map(function (h) {
+                    return '<button type="button" class="vl-slot-btn" data-hora="' + h + '">' + h + '</button>';
+                }).join('') + '</div>';
+
+            cont.querySelectorAll('.vl-slot-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    cont.querySelectorAll('.vl-slot-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    document.getElementById('inputHora').value = btn.dataset.hora;
+                });
+            });
+        });
+    }
+
+    function horaAMinutos(hhmm) {
+        var partes = hhmm.split(':');
+        return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
+    }
+
+    function pintarResumen() {
+        var vetTxt = document.getElementById('selectVeterinaria').selectedOptions[0].text;
+        var servSelect = document.getElementById('idServicio');
+        var servTxt = servSelect && servSelect.selectedOptions[0] ? servSelect.selectedOptions[0].text : '—';
+        var fecha = document.getElementById('inputFecha').value;
+        var hora = document.getElementById('inputHora').value;
+
+        document.getElementById('wz-resumen').innerHTML =
+            '<div class="vl-medcard"><strong>Veterinaria</strong><span>' + vetTxt + '</span></div>' +
+            '<div class="vl-medcard"><strong>Servicio</strong><span>' + servTxt + '</span></div>' +
+            '<div class="vl-medcard"><strong>Fecha</strong><span>' + (fecha || '—') + '</span></div>' +
+            '<div class="vl-medcard"><strong>Hora</strong><span>' + (hora || '—') + '</span></div>';
+    }
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

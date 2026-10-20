@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${mascota.nombre} + ' - VetLink'">Mascota</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+
+            <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
+                <div class="vl-profile-avatar-lg">
+                    <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
+                    <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                </div>
+                <div>
+                    <h2 th:text="${mascota.nombre}">Nombre</h2>
+                    <div class="sub" th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · ' + (${mascota.genero == 'M'} ? 'Macho' : 'Hembra') + ' · ' + ${mascota.edad} + ' años'">Detalle</div>
+                </div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.creado}">Consulta registrada.</p>
+
+            <!-- Pestañas (reutiliza las mismas clases del panel deslizante, sin overlay) -->
+            <div class="vl-drawer-tabs" style="border-radius:16px 16px 0 0; border:1px solid #f1f5f9; border-bottom:none;">
+                <button type="button" class="vl-drawer-tab active" data-tab="resumen"><i class="fas fa-circle-info"></i> Resumen</button>
+                <button type="button" class="vl-drawer-tab" data-tab="carnet"><i class="fas fa-syringe"></i> Carnet de vacunación</button>
+                <button type="button" class="vl-drawer-tab" data-tab="historial"><i class="fas fa-file-medical"></i> Historial clínico</button>
+                <button type="button" class="vl-drawer-tab" data-tab="citas"><i class="fas fa-calendar-alt"></i> Citas</button>
+            </div>
+
+            <div style="background:#fff; border:1px solid #f1f5f9; border-top:none; border-radius:0 0 16px 16px; padding:24px;">
+
+                <!-- RESUMEN -->
+                <div class="vl-drawer-pane active" data-pane="resumen">
+                    <div class="vl-medrecord-grid" style="margin-bottom:20px;">
+                        <div class="vl-medcard"><strong>Peso</strong><span th:text="${mascota.peso} + ' kg'"></span></div>
+                        <div class="vl-medcard"><strong>Fecha de nacimiento</strong><span th:text="${mascota.fechaNacimiento}"></span></div>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <a th:href="@{'/mascotas/' + ${mascota.idMascota} + '/editar'}" class="vl-btn vl-btn-ghost"><i class="fas fa-pen"></i> Editar mascota</a>
+                        <a th:href="@{'/citas/agendar/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary" sec:authorize="hasRole('TUTOR')"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                    </div>
+
+                    <div class="vl-form-section-title" style="margin-top:22px;"><i class="fas fa-calendar-check"></i> Próximas citas</div>
+                    <div th:each="c : ${proximasCitas}" class="vl-dyn-row" style="justify-content:space-between;">
+                        <span th:text="${c.fecha} + ' · ' + ${c.hora} + ' — ' + ${c.servicio.nombreServicio}"></span>
+                        <span class="vl-badge vl-badge-info" th:text="${c.estado}"></span>
+                    </div>
+                    <p th:if="${#lists.isEmpty(proximasCitas)}" style="color:#94a3b8; font-size:0.85rem;">Sin citas próximas.</p>
+                </div>
+
+                <!-- CARNET DE VACUNACIÓN -->
+                <div class="vl-drawer-pane" data-pane="carnet">
+                    <div class="vl-carnet">
+                        <div class="vl-carnet-top">
+                            <div class="vl-carnet-photo">
+                                <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
+                                <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                            </div>
+                            <div>
+                                <div class="vl-carnet-label">Carnet de vacunación</div>
+                                <div class="vl-carnet-name" th:text="${mascota.nombre}">Nombre</div>
+                                <div class="vl-carnet-meta" th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · Nac. ' + ${mascota.fechaNacimiento}"></div>
+                            </div>
+                        </div>
+                        <div class="vl-carnet-rows">
+                            <div class="vl-carnet-row" th:each="c : ${carnet}">
+                                <div>
+                                    <div class="name"><i class="fas fa-syringe"></i> <span th:text="${c.vacuna.nombreVacuna}"></span></div>
+                                    <div class="dates" th:text="'Aplicada: ' + ${c.fechaAplicacion} + ' · Dosis ' + ${c.dosis} + ' · Próxima: ' + ${c.proximaDosis}"></div>
+                                </div>
+                                <span class="vl-badge" th:classappend="${c.estadoBadgeClase}" th:text="${c.estadoBadgeTexto}"></span>
+                            </div>
+                            <div th:if="${#lists.isEmpty(carnet)}" class="vl-carnet-row"><span>Aún no hay vacunas registradas.</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HISTORIAL CLÍNICO -->
+                <div class="vl-drawer-pane" data-pane="historial">
+                    <div class="vl-timeline">
+                        <div class="vl-timeline-item" th:each="h : ${historial}">
+                            <div class="vl-timeline-dot"></div>
+                            <div class="vl-timeline-content">
+                                <span class="vl-timeline-date" th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
+                                <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
+                                <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
+                                <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
+                                <p style="color:#94a3b8; font-size:0.78rem; margin-top:6px;">Próxima cita sugerida: <span th:text="${h.proximaCita}"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vl-empty" th:if="${#lists.isEmpty(historial)}">
+                        <i class="fas fa-file-medical"></i>
+                        <h4>Sin historial clínico</h4>
+                        <p>Esta mascota no tiene consultas registradas todavía.</p>
+                    </div>
+                </div>
+
+                <!-- CITAS -->
+                <div class="vl-drawer-pane" data-pane="citas">
+                    <div class="vl-table-wrap" th:if="${not #lists.isEmpty(citas)}">
+                        <table class="vl-table">
+                            <thead><tr><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Estado</th><th></th></tr></thead>
+                            <tbody>
+                            <tr th:each="c : ${citas}">
+                                <td th:text="${c.fecha}"></td>
+                                <td th:text="${c.hora}"></td>
+                                <td th:text="${c.servicio.nombreServicio}"></td>
+                                <td><span class="vl-badge vl-badge-info" th:text="${c.estado}"></span></td>
+                                <td>
+                                    <form th:if="${c.estado.name() == 'AGENDADA'}" th:action="@{'/citas/' + ${c.idCita} + '/cancelar'}" method="post" style="display:inline;">
+                                        <input type="hidden" name="idMascota" th:value="${mascota.idMascota}">
+                                        <input type="hidden" name="origen" value="mascota">
+                                        <button type="submit" class="vl-btn-icon danger" title="Cancelar"><i class="fas fa-xmark"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="vl-empty" th:if="${#lists.isEmpty(citas)}">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h4>Sin citas registradas</h4>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</main>
+<script th:src="@{/js/mascota-ficha.js}"></script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

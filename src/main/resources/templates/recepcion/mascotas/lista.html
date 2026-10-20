@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mascotas - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar mascotas...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Mascotas</h1><p>Mascotas atendidas en tu veterinaria.</p></div>
+                <div class="vl-section-actions">
+                    <a th:href="@{/recepcion/mascotas/nueva}" class="vl-btn vl-btn-primary"><i class="fas fa-plus"></i> Registrar mascota</a>
+                </div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.creada}">Mascota registrada.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.actualizada}">Mascota actualizada.</p>
+
+            <form th:action="@{/recepcion/mascotas}" method="get" class="vl-field" style="max-width:320px; margin-bottom:18px;">
+                <input type="text" name="q" th:value="${q}" placeholder="Buscar por nombre..." onchange="this.form.submit()">
+            </form>
+
+            <div class="vl-card-grid">
+                <div class="vl-entity-card" th:each="m : ${mascotas}">
+                    <div class="vl-entity-top">
+                        <div class="vl-entity-avatar"><i class="fas fa-paw"></i></div>
+                        <div>
+                            <div class="vl-entity-name" th:text="${m.nombre}">Nombre</div>
+                            <div class="vl-entity-sub" th:text="${m.especie.nombreEspecie} + ' · ' + ${m.raza.nombreRaza}">Especie</div>
+                        </div>
+                    </div>
+                    <div class="vl-entity-meta">
+                        <span><i class="fas fa-user"></i> <span th:text="${m.tutor.nombre} + ' ' + ${m.tutor.apellido}"></span></span>
+                    </div>
+                    <div class="vl-entity-actions">
+                        <a th:href="@{'/recepcion/mascotas/' + ${m.idMascota} + '/editar'}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-pen"></i> Ver / Editar</a>
+                    </div>
+                </div>
+            </div>
+            <div class="vl-empty" th:if="${#lists.isEmpty(mascotas)}">
+                <i class="fas fa-dog"></i>
+                <h4>Sin mascotas todavía</h4>
+                <p>Las mascotas aparecen aquí cuando tienen una cita registrada en tu veterinaria, o cuando las registras tú misma.</p>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VetLink | Plataforma Veterinaria Moderna</title>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/index_style.css}">
+    <link rel="stylesheet" th:href="@{/css/color_global.css}">
+</head>
+<body>
+    <nav th:replace="~{layout/navbar :: navbar}"></nav>
+
+    <header class="hero" id="inicio">
+        <div class="hero-container">
+            <div class="hero-text" data-aos="fade-right">
+                <span class="badge"><i class="fas fa-sparkles"></i> Plataforma Veterinaria Moderna</span>
+                <h1>El Cuidado Veterinario del <span>Futuro</span></h1>
+                <p>Conecta con veterinarios profesionales, gestiona el cuidado de tus mascotas y accede a servicios de emergencia las 24 horas. Todo en una sola plataforma intuitiva y moderna.</p>
+                <div class="hero-actions">
+                    <a th:href="@{/registro}" class="btn-primary">
+                        Comenzar Gratis <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <a th:href="@{/directorio}" class="btn-video">
+                        <i class="fas fa-map-location-dot"></i> Ver Veterinarias
+                    </a>
+                </div>
+                <div class="hero-checks">
+                    <span><i class="fas fa-check"></i> Sin tarjeta de crédito</span>
+                    <span><i class="fas fa-check"></i> Cancelación gratuita</span>
+                    <span><i class="fas fa-check"></i> Soporte 24/7</span>
+                </div>
+            </div>
+
+            <div class="hero-visual" data-aos="zoom-in">
+                <div class="window-mockup">
+                    <video autoplay muted loop playsinline class="video-preview">
+                        <source th:src="@{/resource/7469673-hd_1920_1080_25fps.mp4}" type="video/mp4">
+                    </video>
+                    <div class="floating-card">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>Salud al día</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="cachorro-container">
+        <img th:src="@{/resource/lindo-cachorro-silueta-caminando.png}" alt="cachorro" class="img-cachorro">
+    </div>
+
+    <section class="stats-bar">
+        <div class="stat-box"><i class="fa-solid fa-paw"></i><strong>10K+</strong><p>Mascotas Atendidas</p></div>
+        <div class="stat-box"><i class="fa-solid fa-user-doctor"></i><strong>500+</strong><p>Veterinarios</p></div>
+        <div class="stat-box"><i class="fa-solid fa-hospital"></i><strong>50+</strong><p>Clínicas Asociadas</p></div>
+        <div class="stat-box"><i class="fa-solid fa-star"></i><strong>4.9/5</strong><p>Calificación Promedio</p></div>
+    </section>
+
+    <section class="services" id="servicios">
+        <div class="section-head" data-aos="fade-up">
+            <span class="badge-blue">Funcionalidades</span>
+            <h2>Todo lo que Necesitas en un Solo Lugar</h2>
+            <p>Herramientas poderosas diseñadas para facilitar el cuidado integral de tus mascotas</p>
+        </div>
+
+        <div class="services-grid">
+            <div class="s-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="s-icon i-blue"><i class="fas fa-calendar-alt"></i></div>
+                <h3>Gestión de Citas</h3>
+                <p>Sistema inteligente de agendamiento con recordatorios automáticos y confirmaciones en tiempo real.</p>
+            </div>
+            <div class="s-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="s-icon i-blue"><i class="fas fa-file-medical"></i></div>
+                <h3>Historial Clínico Digital</h3>
+                <p>Acceso instantáneo al historial médico completo con diagnósticos, vacunas y tratamientos.</p>
+            </div>
+            <div class="s-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="s-icon i-blue"><i class="fas fa-paw"></i></div>
+                <h3>Perfiles de Mascotas</h3>
+                <p>Información completa de cada mascota con fotos, datos y recordatorios personalizados.</p>
+            </div>
+            <div class="s-card" data-aos="fade-up" data-aos-delay="400">
+                <div class="s-icon i-light-blue"><i class="fas fa-shield-alt"></i></div>
+                <h3>Emergencias 24/7</h3>
+                <p>Atención prioritaria con geolocalización para encontrar la veterinaria más cercana.</p>
+            </div>
+            <div class="s-card" data-aos="fade-up" data-aos-delay="500">
+                <div class="s-icon i-light-blue"><i class="fas fa-comments"></i></div>
+                <h3>Chat en Tiempo Real</h3>
+                <p>Comunicación directa con veterinarios para consultas rápidas y seguimiento post-consulta.</p>
+            </div>
+            <div class="s-card" data-aos="fade-up" data-aos-delay="600">
+                <div class="s-icon i-light-blue"><i class="fas fa-star"></i></div>
+                <h3>Sistema de Reseñas</h3>
+                <p>Calificaciones verificadas para ayudarte a elegir el mejor cuidado para tu mascota.</p>
+            </div>
+        </div>
+    </section>
+    <div class="contenedor-hamsters">
+        <img th:src="@{/resource/hamster-running-in-the-wheel-cartoon-illustration-vector-Photoroom.png}" alt="rueda" class="h-rueda">
+    </div>
+    <section class="benefits" id="beneficios">
+        <div class="benefits-container">
+            <div class="benefits-text">
+                <span class="badge-beneficios">
+                    <i class="far fa-heart"></i> Beneficios
+                </span>
+                <h2>¿Por qué Elegir VetLink?</h2>
+                <p class="descripcion-hero">Más que una plataforma, somos tu aliado en el cuidado de tus mascotas con tecnología de vanguardia y atención personalizada.</p>
+
+                <div class="benefit-item">
+                    <div class="b-icon i-verde"><i class="fas fa-check-circle"></i></div>
+                    <div class="b-content">
+                        <h4>Ahorra Tiempo y Dinero</h4>
+                        <p>Gestiona todo desde tu dispositivo sin desplazamientos innecesarios</p>
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="b-icon i-azul"><i class="fas fa-shield-alt"></i></div>
+                    <div class="b-content">
+                        <h4>Datos Seguros y Protegidos</h4>
+                        <p>Encriptación de nivel bancario para proteger tu información</p>
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="b-icon i-morado"><i class="fas fa-users"></i></div>
+                    <div class="b-content">
+                        <h4>Red de Profesionales</h4>
+                        <p>Acceso a veterinarios certificados y clínicas de confianza</p>
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="b-icon i-naranja"><i class="fas fa-bolt"></i></div>
+                    <div class="b-content">
+                        <h4>Respuesta Instantánea</h4>
+                        <p>Chat en tiempo real y notificaciones inmediatas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="benefits-visual">
+                <div class="cuadro-azul">
+                    <div class="cards-grid">
+                        <div class="mini-card">
+                            <i class="far fa-clock color-azul"></i>
+                            <p>Disponible 24/7</p>
+                        </div>
+                        <div class="mini-card">
+                            <i class="far fa-heart color-rojo"></i>
+                            <p>Cuidado Integral</p>
+                        </div>
+                        <div class="mini-card">
+                            <i class="far fa-star color-amarillo"></i>
+                            <p>Calidad Garantizada</p>
+                        </div>
+                        <div class="mini-card">
+                            <i class="far fa-shield-alt color-verde"></i>
+                            <p>100% Seguro</p>
+                        </div>
+                    </div>
+                    <img th:src="@{/resource/lindo-gatito-caminando.png}" alt="gato" class="gato-esquina">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials" id="testimonios">
+        <div class="section-head" data-aos="fade-up">
+            <span class="badge-blue">Testimonios</span>
+            <h2>Lo que Dicen Nuestros Usuarios</h2>
+        </div>
+        <div class="testimonials-grid">
+            <div class="t-card" data-aos="fade-up">
+                <div class="stars">★★★★★</div>
+                <p>"VetLink transformó el cuidado de mis mascotas. Gestiono todo desde mi teléfono."</p>
+                <div class="user">
+                    <img src="https://ui-avatars.com/api/?name=Maria+G&amp;background=2563eb&amp;color=fff" alt="">
+                    <div><strong>Maria González</strong><span>Dueña de Max</span></div>
+                </div>
+            </div>
+            <div class="t-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="stars">★★★★★</div>
+                <p>"La plataforma optimiza mi tiempo. El historial digital es una herramienta clave."</p>
+                <div class="user">
+                    <img src="https://ui-avatars.com/api/?name=Carlos+R&amp;background=2563eb&amp;color=fff" alt="">
+                    <div><strong>Dr. Carlos Ramírez</strong><span>Veterinario</span></div>
+                </div>
+            </div>
+            <div class="t-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="stars">★★★★★</div>
+                <p>"La función de emergencias me salvó en una urgencia nocturna. ¡Increíble!"</p>
+                <div class="user">
+                    <img src="https://ui-avatars.com/api/?name=Ana+M&amp;background=2563eb&amp;color=fff" alt="">
+                    <div><strong>Ana Martínez</strong><span>Dueña de Firulais</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="cta-content" data-aos="zoom-in">
+            <h2>Comienza a Cuidar Mejor de tus Mascotas Hoy</h2>
+            <div class="cta-btns">
+                <a th:href="@{/registro}" class="btn-white">Crear Cuenta Gratis <i class="fas fa-arrow-right"></i></a>
+                <a th:href="@{/login}" class="btn-outline-white">Iniciar Sesión</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="main-footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="logo-white"><i class="fas fa-paw"></i> VetLink</div>
+                <p>Tecnología al servicio del bienestar animal.</p>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+            <div class="footer-links">
+                <h4>Servicios</h4>
+                <a th:href="@{/#servicios}">Gestión de Citas</a>
+                <a th:href="@{/#servicios}">Historial Clínico</a>
+            </div>
+            <div class="footer-links">
+                <h4>Empresa</h4>
+                <a th:href="@{/#inicio}">Sobre Nosotros</a>
+                <a th:href="@{/directorio}">Directorio</a>
+            </div>
+            <div class="footer-links">
+                <h4>Legal</h4>
+                <a href="#">Privacidad</a>
+                <a href="#">Licencias</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 VetLink. Todos los derechos reservados.</p>
+            <p>Hecho con <i class="fas fa-heart" style="color: #ef4444;"></i> para tus mascotas</p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: true });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.querySelector('.nav-links');
+        if (menuToggle && navLinks) {
+            menuToggle.addEventListener('click', () => navLinks.classList.toggle('nav-links-open'));
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ofertar cupo - VetLink</title><link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<body class="dashboard-body"><aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header><section class="container"><div class="vl-section vl-section-active">
+<div class="vl-section-head"><div><h1>Ofertar horario</h1><p th:text="${veterinaria.nombre} + ': publica un cupo para que un dueño lo reserve.'"></p></div></div>
+<p class="form-message" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+<form th:action="@{/citas/recepcion/ofertar}" th:object="${form}" method="post" class="vl-table-wrap" style="padding:28px"><div class="vl-form-grid">
+<div class="vl-field"><label>Fecha</label><input type="date" th:field="*{fecha}" required></div><div class="vl-field"><label>Hora</label><input type="time" th:field="*{hora}" required></div>
+<div class="vl-field"><label>Veterinario</label><select th:field="*{idVeterinario}" required><option value="">Selecciona</option><option th:each="v:${veterinarios}" th:value="${v.idUsuario}" th:text="${v.usuario.nombre + ' ' + v.usuario.apellido}"></option></select></div>
+<div class="vl-field"><label>Servicio</label><select th:field="*{idServicio}" required><option value="">Selecciona</option><option th:each="s:${servicios}" th:value="${s.servicio.idServicio}" th:text="${s.servicio.nombreServicio}"></option></select></div>
+</div><div style="display:flex;justify-content:flex-end;margin-top:20px"><button class="vl-btn vl-btn-primary" type="submit">Publicar cupo</button></div></form>
+</div></section></main><div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>

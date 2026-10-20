@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de citas - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Reporte de citas</h1><p>Filtra por veterinaria, estado y rango de fechas.</p></div>
+                <div class="vl-section-actions" sec:authorize="hasRole('RECEPCIONISTA')">
+                    <a th:href="@{/citas/recepcion/ofertar}" class="vl-btn vl-btn-ghost"><i class="fas fa-clock"></i> Ofertar cupo</a>
+                    <a th:href="@{/citas/recepcion/agendar}" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                </div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.agendada}">Cita agendada.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.cancelada}">Cita cancelada.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.reagendada}">Cita reagendada.</p>
+
+            <form th:action="@{/reportes/citas}" th:object="${filtro}" method="get" class="vl-table-wrap" style="padding:20px; margin-bottom:20px;">
+                <div class="vl-form-grid">
+                    <div class="vl-field" th:if="${puedeCambiarVeterinaria}">
+                        <label>Veterinaria</label>
+                        <select th:field="*{idVeterinaria}">
+                            <option value="">Todas</option>
+                            <option th:each="v : ${veterinarias}" th:value="${v.idVeterinaria}" th:text="${v.nombre}"></option>
+                        </select>
+                    </div>
+                    <div class="vl-field">
+                        <label>Estado</label>
+                        <select th:field="*{estado}">
+                            <option value="">Todos</option>
+                            <option th:each="e : ${estados}" th:value="${e}" th:text="${e}"></option>
+                        </select>
+                    </div>
+                    <div class="vl-field">
+                        <label>Desde</label>
+                        <input type="date" th:field="*{desde}">
+                    </div>
+                    <div class="vl-field">
+                        <label>Hasta</label>
+                        <input type="date" th:field="*{hasta}">
+                    </div>
+                </div>
+                <button type="submit" class="vl-btn vl-btn-primary" style="margin-top:10px;"><i class="fas fa-filter"></i> Filtrar</button>
+            </form>
+
+            <div class="vl-table-wrap">
+                <table class="vl-table">
+                    <thead><tr><th>Fecha</th><th>Hora</th><th>Mascota</th><th>Veterinaria</th><th>Veterinario</th><th>Servicio</th><th>Estado</th><th sec:authorize="hasRole('RECEPCIONISTA')"></th></tr></thead>
+                    <tbody>
+                    <tr th:each="c : ${citas}">
+                        <td th:text="${c.fecha}"></td>
+                        <td th:text="${c.hora}"></td>
+                        <td th:text="${c.mascota != null ? c.mascota.nombre : 'Cupo disponible'}"></td>
+                        <td th:text="${c.veterinaria.nombre}"></td>
+                        <td th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></td>
+                        <td th:text="${c.servicio.nombreServicio}"></td>
+                        <td><span class="vl-badge" th:classappend="${c.estado.name() == 'AGENDADA' ? 'vl-badge-ok' : (c.estado.name() == 'CANCELADA' ? 'vl-badge-danger' : 'vl-badge-warn')}" th:text="${c.estado}"></span></td>
+                        <td sec:authorize="hasRole('RECEPCIONISTA')">
+                            <div th:if="${c.estado.name() == 'AGENDADA'}" style="display:flex; gap:6px; align-items:center;">
+                                <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" method="post" style="display:flex; gap:4px; align-items:center;">
+                                    <input type="date" name="fecha" th:value="${c.fecha}" required style="padding:4px; font-size:0.75rem; border-radius:6px; border:1px solid #e2e8f0;">
+                                    <input type="time" name="hora" th:value="${c.hora}" required style="padding:4px; font-size:0.75rem; border-radius:6px; border:1px solid #e2e8f0;">
+                                    <button type="submit" class="vl-btn-icon" title="Reagendar"><i class="fas fa-calendar-days"></i></button>
+                                </form>
+                                <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/cancelar'}" method="post">
+                                    <button type="submit" class="vl-btn-icon danger" title="Cancelar"><i class="fas fa-xmark"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="vl-empty" th:if="${#lists.isEmpty(citas)}">
+                    <i class="fas fa-calendar-xmark"></i>
+                    <h4>Sin resultados</h4>
+                    <p>No hay citas que coincidan con los filtros.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

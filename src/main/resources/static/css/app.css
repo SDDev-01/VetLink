@@ -1,0 +1,533 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+/* =========================================================
+   VETLINK · APP SHELL COMPARTIDO
+   Modales, formularios, tablas, badges, toasts.
+   Se apoya en las variables definidas en color_global.css
+   y dashboard.css.
+   ========================================================= */
+
+/* color_global.css agrega padding-top:80px pensando en el navbar público;
+   los dashboards usan su propio sidebar, así que lo anulamos aquí. */
+body.dashboard-body { padding-top: 0 !important; letter-spacing: normal !important; }
+
+/* Formularios de gestión: aprovechan el ancho del panel sin perder lectura. */
+.dashboard-body .vl-table-wrap[style*="max-width"] { max-width: 1080px !important; width: 100%; margin-inline: auto; }
+.dashboard-body form .vl-form-section-title { grid-column: 1 / -1; padding: 12px 0 4px; margin-top: 8px; border-bottom: 1px solid #eef2f7; }
+.dashboard-body .vl-form-grid { align-items: start; }
+@media (min-width: 1100px) { .dashboard-body .vl-form-grid.vl-form-grid-wide { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---------- Detalles del sidebar que faltaban en dashboard.css ---------- */
+.logo-icon {
+    width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+}
+.avatar-wrapper { position: relative; }
+.status-indicator {
+    position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
+    border-radius: 50%; border: 2px solid #fff;
+}
+.status-indicator.online { background: #22c55e; }
+
+/* ---------- Sidebar: secciones dinámicas ---------- */
+.vl-section { display: none; }
+.vl-section.vl-section-active { display: block; }
+
+.nav-item { user-select: none; }
+.nav-item[data-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+
+.sidebar-role-tag {
+    margin: 0 20px 20px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 12px;
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-role-tag i { font-size: 0.85rem; }
+
+/* ---------- Botones genéricos ---------- */
+.vl-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 11px 20px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition, all .25s ease);
+}
+.vl-btn-primary { background: var(--primary); color: #fff; }
+.vl-btn-primary:hover { background: var(--primary-dark, #1d4ed8); transform: translateY(-1px); }
+.vl-btn-ghost { background: #f1f5f9; color: #334155; }
+.vl-btn-ghost:hover { background: #e2e8f0; }
+.vl-btn-danger { background: #fee2e2; color: #dc2626; }
+.vl-btn-danger:hover { background: #fecaca; }
+.vl-btn-success { background: #dcfce7; color: #15803d; }
+.vl-btn-success:hover { background: #bbf7d0; }
+.vl-btn-sm { padding: 7px 13px; font-size: 0.78rem; border-radius: 9px; }
+.vl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vl-btn-icon {
+    width: 36px; height: 36px; padding: 0; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #f1f5f9; color: #475569; border: none; cursor: pointer;
+}
+.vl-btn-icon:hover { background: #e2e8f0; color: var(--primary); }
+.vl-btn-icon.danger:hover { background: #fee2e2; color: #dc2626; }
+
+/* ---------- Cabecera de sección ---------- */
+.vl-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 26px;
+}
+.vl-section-head h1 { font-size: 1.9rem; letter-spacing: -1px; color: var(--text, #0f172a); margin-bottom: 4px; }
+.vl-section-head p { color: var(--text-light, #64748b); font-size: 0.95rem; }
+.vl-section-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- Filtros / tabs ---------- */
+.vl-filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.vl-filter-chip {
+    padding: 8px 16px; border-radius: 50px; background: #f1f5f9; color: #475569;
+    font-size: 0.82rem; font-weight: 700; cursor: pointer; border: 1px solid transparent;
+    transition: 0.2s;
+}
+.vl-filter-chip:hover { background: #e2e8f0; }
+.vl-filter-chip.active { background: var(--primary-light, #dbeafe); color: var(--primary); border-color: var(--secondary-blue-border, #bfdbfe); }
+
+/* ---------- Tarjetas / grid de entidades ---------- */
+.vl-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+.vl-entity-card {
+    background: #fff; border-radius: 20px; padding: 22px;
+    box-shadow: var(--shadow, 0 10px 25px -5px rgba(0,0,0,.05));
+    border: 1px solid #f1f5f9;
+    transition: 0.25s;
+    display: flex; flex-direction: column; gap: 12px;
+}
+.vl-entity-card:hover { transform: translateY(-4px); box-shadow: 0 16px 30px -8px rgba(0,0,0,.1); }
+.vl-entity-top { display: flex; align-items: center; gap: 14px; }
+.vl-entity-avatar {
+    width: 52px; height: 52px; border-radius: 16px; background: var(--primary-light, #dbeafe);
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+    overflow: hidden;
+}
+.vl-entity-avatar img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.vl-entity-avatar.inactive { background: #f1f5f9; filter: grayscale(1); opacity: 0.6; }
+.vl-entity-name { font-weight: 800; font-size: 1.05rem; color: var(--text, #0f172a); }
+.vl-entity-sub { font-size: 0.82rem; color: var(--text-light, #64748b); }
+.vl-entity-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; color: #64748b; }
+.vl-entity-meta span { background: #f8fafc; padding: 4px 10px; border-radius: 8px; }
+.vl-entity-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+
+/* ---------- Badges de estado ---------- */
+.vl-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 50px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase; }
+.vl-badge-ok { background: #dcfce7; color: #15803d; }
+.vl-badge-warn { background: #fef3c7; color: #b45309; }
+.vl-badge-danger { background: #fee2e2; color: #dc2626; }
+.vl-badge-info { background: #dbeafe; color: #1d4ed8; }
+.vl-badge-muted { background: #f1f5f9; color: #64748b; }
+
+/* ---------- Tabla ---------- */
+.vl-table-wrap { background: #fff; border-radius: 20px; box-shadow: var(--shadow, 0 10px 25px -5px rgba(0,0,0,.05)); overflow: hidden; border: 1px solid #f1f5f9; }
+.vl-table { width: 100%; border-collapse: collapse; }
+.vl-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #f1f5f9; }
+.vl-table td { padding: 16px 20px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; color: #334155; vertical-align: middle; }
+.vl-table tr:last-child td { border-bottom: none; }
+.vl-table tr:hover td { background: #fafcff; }
+.vl-table-actions { display: flex; gap: 8px; }
+
+/* ---------- Estado vacío ---------- */
+.vl-empty { text-align: center; padding: 60px 20px; color: #94a3b8; }
+.vl-empty i { font-size: 2.6rem; margin-bottom: 14px; opacity: 0.5; }
+.vl-empty h4 { color: #475569; font-size: 1.05rem; margin-bottom: 6px; }
+.vl-empty p { font-size: 0.88rem; }
+
+/* ---------- Placeholder "próximamente" ---------- */
+.vl-soon { text-align: center; padding: 80px 30px; color: #94a3b8; }
+.vl-soon i { font-size: 3rem; color: var(--primary-light, #dbeafe); margin-bottom: 18px; }
+.vl-soon h3 { color: var(--text, #0f172a); font-size: 1.3rem; margin-bottom: 8px; }
+.vl-soon p { max-width: 420px; margin: 0 auto; }
+
+/* =========================================================
+   MODALES
+   ========================================================= */
+.vl-modal-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5000; padding: 20px; opacity: 0; transition: opacity 0.2s ease;
+    backdrop-filter: blur(2px);
+}
+.vl-modal-overlay.vl-modal-visible { opacity: 1; }
+.vl-modal {
+    background: #fff; border-radius: 22px; width: 100%; max-width: 560px;
+    max-height: 88vh; overflow-y: auto; box-shadow: 0 30px 60px -15px rgba(0,0,0,.35);
+    transform: translateY(16px) scale(0.98); transition: transform 0.22s cubic-bezier(0.16,1,0.3,1);
+}
+.vl-modal-overlay.vl-modal-visible .vl-modal { transform: translateY(0) scale(1); }
+.vl-modal-lg { max-width: 780px; }
+.vl-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 26px; border-bottom: 1px solid #f1f5f9; position: sticky; top: 0; background: #fff; z-index: 2;
+}
+.vl-modal-title { display: flex; align-items: center; gap: 12px; }
+.vl-modal-title h3 { font-size: 1.15rem; color: var(--text, #0f172a); letter-spacing: -0.3px; }
+.vl-modal-icon { width: 38px; height: 38px; border-radius: 11px; background: var(--primary-light, #dbeafe); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+.vl-modal-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; color: #64748b; }
+.vl-modal-close:hover { background: #e2e8f0; color: #0f172a; }
+.vl-modal-body { padding: 24px 26px; }
+.vl-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid #f1f5f9; }
+.vl-confirm-text { color: #475569; font-size: 0.95rem; line-height: 1.6; }
+
+/* ---------- Formularios dentro de modales ---------- */
+.vl-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.vl-form-grid .vl-full { grid-column: 1 / -1; }
+.vl-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.vl-field label { font-size: 0.8rem; font-weight: 700; color: #334155; }
+.vl-field label .req { color: #ef4444; }
+.vl-field input, .vl-field select, .vl-field textarea {
+    border: 1.5px solid #e2e8f0; border-radius: 11px; padding: 11px 14px;
+    font-family: inherit; font-size: 0.9rem; color: #0f172a; transition: 0.2s; background: #fff;
+}
+.vl-field input:focus, .vl-field select:focus, .vl-field textarea:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light, #dbeafe);
+}
+.vl-field textarea { resize: vertical; min-height: 80px; }
+.vl-field small.vl-error { color: #dc2626; font-size: 0.75rem; min-height: 14px; }
+.vl-field small.vl-hint { color: #94a3b8; font-size: 0.75rem; }
+.vl-form-section-title { font-weight: 800; font-size: 0.95rem; color: var(--text, #0f172a); margin: 6px 0 14px; display: flex; align-items: center; gap: 8px; }
+.vl-form-section-title i { color: var(--primary); }
+.vl-divider { height: 1px; background: #f1f5f9; margin: 18px 0; }
+
+/* Listas dinámicas dentro de modales (vacunas, tratamientos, servicios...) */
+.vl-dyn-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.vl-dyn-row { display: flex; gap: 8px; align-items: center; background: #f8fafc; padding: 10px; border-radius: 12px; }
+.vl-dyn-row input, .vl-dyn-row select { flex: 1; }
+.vl-add-row-btn {
+    border: 1.5px dashed #cbd5e1; background: transparent; color: var(--primary);
+    padding: 10px; border-radius: 11px; font-weight: 700; font-size: 0.85rem; cursor: pointer; width: 100%;
+}
+.vl-add-row-btn:hover { background: var(--primary-light, #dbeafe); border-color: var(--primary); }
+
+/* ---------- Toasts ---------- */
+#vl-toast-container { position: fixed; bottom: 26px; right: 26px; z-index: 6000; display: flex; flex-direction: column; gap: 10px; }
+.vl-toast {
+    background: #0f172a; color: #fff; padding: 14px 18px; border-radius: 13px;
+    display: flex; align-items: center; gap: 12px; font-size: 0.88rem; font-weight: 600;
+    box-shadow: 0 15px 30px -8px rgba(0,0,0,.35); opacity: 0; transform: translateX(30px); transition: 0.3s;
+    max-width: 340px;
+}
+.vl-toast-visible { opacity: 1; transform: translateX(0); }
+.vl-toast-success { background: #15803d; }
+.vl-toast-error { background: #dc2626; }
+.vl-toast-info { background: #1d4ed8; }
+
+/* ---------- Detalle de mascota / historial timeline ---------- */
+.vl-timeline { display: flex; flex-direction: column; gap: 18px; }
+.vl-timeline-item { display: flex; gap: 16px; }
+.vl-timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0; position: relative; }
+.vl-timeline-item:not(:last-child) .vl-timeline-dot::after {
+    content: ''; position: absolute; top: 16px; left: 5px; width: 2px; height: calc(100% + 18px); background: #e2e8f0;
+}
+.vl-timeline-content { flex: 1; background: #f8fafc; border-radius: 14px; padding: 16px 18px; }
+.vl-timeline-content h5 { font-size: 0.92rem; color: var(--text, #0f172a); margin-bottom: 4px; }
+.vl-timeline-content .vl-timeline-date { font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; }
+.vl-timeline-content p { font-size: 0.86rem; color: #475569; line-height: 1.55; }
+.vl-tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.vl-tag { background: #fff; border: 1px solid #e2e8f0; padding: 3px 10px; border-radius: 8px; font-size: 0.72rem; color: #475569; }
+
+/* =========================================================
+   DRAWER (PANEL DESLIZANTE) — fichas de mascota, historial,
+   veterinaria, etc.
+   ========================================================= */
+.vl-drawer-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.45);
+    z-index: 5500; display: flex; justify-content: flex-end;
+    opacity: 0; transition: opacity 0.25s ease;
+}
+.vl-drawer-overlay.vl-drawer-visible { opacity: 1; }
+.vl-drawer {
+    width: 100%; max-width: 640px; height: 100%; background: #f8fafc;
+    display: flex; flex-direction: column; box-shadow: -20px 0 50px -10px rgba(0,0,0,.25);
+    transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.vl-drawer-overlay.vl-drawer-visible .vl-drawer { transform: translateX(0); }
+.vl-drawer-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #1d4ed8) 100%);
+    color: #fff; padding: 22px 26px; display: flex; gap: 16px; align-items: flex-start; flex-shrink: 0;
+}
+.vl-drawer-close {
+    width: 38px; height: 38px; border-radius: 11px; border: none; background: rgba(255,255,255,0.18);
+    color: #fff; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.vl-drawer-close:hover { background: rgba(255,255,255,0.3); }
+.vl-drawer-header-content { flex: 1; }
+.vl-drawer-tabs { display: flex; gap: 4px; background: #fff; padding: 0 20px; border-bottom: 1px solid #f1f5f9; overflow-x: auto; flex-shrink: 0; }
+.vl-drawer-tab {
+    border: none; background: transparent; padding: 14px 14px; font-size: 0.82rem; font-weight: 700;
+    color: #94a3b8; cursor: pointer; border-bottom: 2.5px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 7px;
+}
+.vl-drawer-tab.active { color: var(--primary); border-color: var(--primary); }
+.vl-drawer-body { flex: 1; overflow-y: auto; padding: 24px 26px; }
+.vl-drawer-pane { display: none; }
+.vl-drawer-pane.active { display: block; }
+.vl-drawer-footer { padding: 16px 26px; border-top: 1px solid #f1f5f9; background: #fff; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
+
+/* Encabezado tipo "perfil" dentro del drawer */
+.vl-profile-head { display: flex; align-items: center; gap: 16px; }
+.vl-profile-avatar-lg {
+    width: 72px; height: 72px; border-radius: 20px; background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center; font-size: 2.1rem; overflow: hidden; flex-shrink: 0;
+}
+.vl-profile-avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
+.vl-profile-head h2 { font-size: 1.35rem; margin-bottom: 4px; }
+.vl-profile-head .sub { opacity: 0.9; font-size: 0.88rem; }
+.vl-profile-head .vl-tag-row .vl-tag { background: rgba(255,255,255,0.18); border-color: transparent; color: #fff; }
+
+/* =========================================================
+   CALENDARIO MENSUAL
+   ========================================================= */
+.vl-calendar { background: #fff; border-radius: 20px; box-shadow: var(--shadow, 0 10px 25px -5px rgba(0,0,0,.05)); border: 1px solid #f1f5f9; overflow: hidden; }
+.vl-calendar-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid #f1f5f9; }
+.vl-calendar-head h4 { font-size: 1.05rem; text-transform: capitalize; }
+.vl-calendar-nav { display: flex; gap: 8px; }
+.vl-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.vl-calendar-dow { text-align: center; font-size: 0.7rem; font-weight: 800; color: #94a3b8; padding: 10px 0; text-transform: uppercase; border-bottom: 1px solid #f8fafc; }
+.vl-calendar-day {
+    min-height: 74px; border-right: 1px solid #f8fafc; border-bottom: 1px solid #f8fafc; padding: 6px;
+    cursor: pointer; transition: 0.15s; position: relative; display: flex; flex-direction: column; gap: 3px;
+}
+.vl-calendar-day:hover { background: #f8fafc; }
+.vl-calendar-day.vl-day-out { opacity: 0.35; }
+.vl-calendar-day.vl-day-today .vl-day-num { background: var(--primary); color: #fff; }
+.vl-calendar-day.vl-day-selected { background: var(--primary-light, #dbeafe); }
+.vl-day-num { width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: #475569; }
+.vl-day-dot-row { display: flex; gap: 3px; flex-wrap: wrap; }
+.vl-day-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+.vl-day-dot.warn { background: #f59e0b; }
+.vl-day-dot.danger { background: #ef4444; }
+.vl-calendar-mini .vl-calendar-day { min-height: 38px; font-size: 0.72rem; }
+
+/* Agenda del día seleccionado */
+.vl-agenda-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.vl-agenda-item {
+    background: #fff; border: 1px solid #f1f5f9; border-left: 4px solid var(--primary); border-radius: 12px;
+    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.15s;
+}
+.vl-agenda-item:hover { box-shadow: 0 8px 20px -6px rgba(0,0,0,.1); transform: translateX(2px); }
+
+/* Slots de horario disponibles (agendar cita) */
+.vl-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 6px; }
+.vl-slot-btn {
+    border: 1.5px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 9px 6px;
+    font-size: 0.8rem; font-weight: 700; color: #334155; cursor: pointer; transition: 0.15s; text-align: center;
+}
+.vl-slot-btn:hover { border-color: var(--primary); color: var(--primary); }
+.vl-slot-btn.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* =========================================================
+   CARNET DE VACUNACIÓN
+   ========================================================= */
+.vl-carnet {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%);
+    border-radius: 22px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 22px;
+}
+.vl-carnet::after {
+    content: ''; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
+    background: rgba(255,255,255,0.08); border-radius: 50%;
+}
+.vl-carnet-top { display: flex; align-items: center; gap: 16px; position: relative; z-index: 1; }
+.vl-carnet-photo {
+    width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center; font-size: 1.8rem; overflow: hidden; border: 2px solid rgba(255,255,255,0.4);
+}
+.vl-carnet-photo img { width: 100%; height: 100%; object-fit: cover; }
+.vl-carnet-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; font-weight: 700; }
+.vl-carnet-name { font-size: 1.25rem; font-weight: 800; }
+.vl-carnet-meta { font-size: 0.8rem; opacity: 0.85; }
+.vl-carnet-rows { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+.vl-carnet-row {
+    background: rgba(255,255,255,0.12); border-radius: 12px; padding: 11px 14px;
+    display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(4px);
+}
+.vl-carnet-row .name { font-weight: 700; font-size: 0.88rem; }
+.vl-carnet-row .dates { font-size: 0.72rem; opacity: 0.85; }
+
+/* =========================================================
+   NOTIFICACIONES (campana)
+   ========================================================= */
+.vl-notif-panel {
+    position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
+    background: #fff; border-radius: 16px; box-shadow: 0 20px 45px -10px rgba(0,0,0,.2); border: 1px solid #f1f5f9;
+    z-index: 4000; opacity: 0; transform: translateY(-8px); pointer-events: none; transition: 0.2s;
+}
+.vl-notif-panel.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.vl-notif-head { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; font-weight: 800; font-size: 0.9rem; }
+.vl-notif-item { display: flex; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #f8fafc; font-size: 0.82rem; color: #334155; }
+.vl-notif-item i { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem; }
+.vl-notif-empty { padding: 30px 18px; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+.action-circle { position: relative; }
+
+/* =========================================================
+   FICHA MÉDICA (historial detallado)
+   ========================================================= */
+.vl-medrecord-section { margin-bottom: 20px; }
+.vl-medrecord-section h5 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; margin-bottom: 8px; font-weight: 800; }
+.vl-medrecord-section p { font-size: 0.92rem; color: #334155; line-height: 1.6; }
+.vl-medrecord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.vl-medcard { background: #fff; border: 1px solid #f1f5f9; border-radius: 14px; padding: 14px 16px; }
+.vl-medcard strong { display: block; font-size: 0.85rem; margin-bottom: 3px; }
+.vl-medcard span { font-size: 0.78rem; color: #64748b; }
+
+/* Wizard de agendamiento */
+.vl-wizard-steps { display: flex; align-items: center; gap: 6px; margin-bottom: 22px; }
+.vl-wizard-step { flex: 1; height: 5px; border-radius: 3px; background: #e2e8f0; }
+.vl-wizard-step.active { background: var(--primary); }
+.vl-wizard-option {
+    border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+    cursor: pointer; display: flex; align-items: center; gap: 14px; transition: 0.15s;
+}
+.vl-wizard-option:hover { border-color: var(--primary); background: var(--primary-light, #eff6ff); }
+.vl-wizard-option.selected { border-color: var(--primary); background: var(--primary-light, #eff6ff); }
+.vl-wizard-option .icon { width: 42px; height: 42px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; overflow: hidden; }
+.vl-wizard-option .icon img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 12px; }
+
+/* Perfil (dueño / veterinario) tipo red social */
+.vl-social-profile-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #1d4ed8) 100%);
+    border-radius: 22px; padding: 34px 30px; color: #fff; display: flex; align-items: center; gap: 22px; margin-bottom: 24px;
+}
+.vl-social-avatar { width: 84px; height: 84px; border-radius: 22px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; overflow: hidden; border: 3px solid rgba(255,255,255,0.35); flex-shrink: 0; }
+.vl-social-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.vl-social-profile-header h2 { font-size: 1.5rem; margin-bottom: 4px; }
+.vl-social-profile-header p { opacity: 0.9; font-size: 0.9rem; }
+
+/* =========================================================
+   CHAT
+   ========================================================= */
+.vl-chat-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; height: 620px; }
+.vl-chat-list { background: #fff; border-radius: 20px; box-shadow: var(--shadow, 0 10px 25px -5px rgba(0,0,0,.05)); border: 1px solid #f1f5f9; overflow-y: auto; }
+.vl-chat-list-item {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer;
+    border-bottom: 1px solid #f8fafc; transition: 0.15s;
+}
+.vl-chat-list-item:hover, .vl-chat-list-item.active { background: var(--primary-light, #eff6ff); }
+.vl-chat-list-avatar { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-light, #dbeafe); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; overflow: hidden; }
+.vl-chat-list-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.vl-chat-list-name { font-weight: 700; font-size: 0.88rem; color: #0f172a; }
+.vl-chat-list-preview { font-size: 0.78rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.vl-chat-list-time { font-size: 0.68rem; color: #cbd5e1; margin-left: auto; flex-shrink: 0; }
+
+.vl-chat-panel { background: #fff; border-radius: 20px; box-shadow: var(--shadow, 0 10px 25px -5px rgba(0,0,0,.05)); border: 1px solid #f1f5f9; display: flex; flex-direction: column; overflow: hidden; }
+.vl-chat-panel-head { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px; }
+.vl-chat-thread { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.vl-chat-bubble-row { display: flex; }
+.vl-chat-bubble-row.mine { justify-content: flex-end; }
+.vl-chat-bubble { max-width: 68%; padding: 10px 14px; border-radius: 16px; font-size: 0.86rem; line-height: 1.5; position: relative; }
+.vl-chat-bubble-row:not(.mine) .vl-chat-bubble { background: #f1f5f9; color: #0f172a; border-bottom-left-radius: 4px; }
+.vl-chat-bubble-row.mine .vl-chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.vl-chat-bubble.deleted { font-style: italic; opacity: 0.6; }
+.vl-chat-bubble-time { display: block; font-size: 0.65rem; opacity: 0.7; margin-top: 4px; }
+.vl-chat-bubble-file { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; margin-top: 4px; text-decoration: underline; }
+.vl-chat-bubble-del { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1px solid #e2e8f0; color: #94a3b8; font-size: 0.65rem; display: none; align-items: center; justify-content: center; cursor: pointer; }
+.vl-chat-bubble-row.mine:hover .vl-chat-bubble-del { display: flex; }
+.vl-chat-input-row { padding: 14px 16px; border-top: 1px solid #f1f5f9; display: flex; gap: 8px; align-items: flex-end; }
+.vl-chat-input-row textarea { flex: 1; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 10px 14px; font-family: inherit; font-size: 0.86rem; resize: none; max-height: 90px; }
+.vl-chat-input-row textarea:focus { outline: none; border-color: var(--primary); }
+.vl-chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; gap: 10px; }
+.vl-chat-empty i { font-size: 2.4rem; opacity: 0.4; }
+
+@media (max-width: 900px) {
+    .vl-chat-layout { grid-template-columns: 1fr; height: auto; }
+    .vl-chat-list { max-height: 260px; }
+    .vl-chat-panel { height: 500px; }
+}
+
+/* =========================================================
+   RESEÑAS Y CALIFICACIONES
+   ========================================================= */
+.vl-star-picker { display: flex; gap: 6px; font-size: 1.8rem; color: #e2e8f0; margin: 6px 0 4px; }
+.vl-star-picker i { cursor: pointer; transition: 0.15s; }
+.vl-star-picker i.active { color: #f59e0b; }
+.vl-star-picker i:hover { transform: scale(1.15); }
+
+.vl-review-card { background: #fff; border: 1px solid #f1f5f9; border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
+.vl-review-card.reported { border-color: #fecaca; background: #fff7f7; }
+.vl-review-stars { color: #f59e0b; font-size: 0.95rem; margin-bottom: 6px; }
+.vl-review-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.vl-review-author { font-weight: 700; font-size: 0.85rem; color: #0f172a; }
+.vl-review-date { font-size: 0.72rem; color: #94a3b8; }
+.vl-review-text { font-size: 0.86rem; color: #334155; line-height: 1.55; }
+.vl-review-actions { display: flex; gap: 8px; margin-top: 10px; }
+.vl-pending-review-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 14px; padding: 12px 16px; margin-bottom: 10px; }
+
+/* =========================================================
+   EMERGENCIAS
+   ========================================================= */
+.vl-emergency-banner {
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    border-radius: 20px; padding: 20px 24px; color: #fff; display: flex; align-items: center; gap: 16px; margin-bottom: 22px;
+}
+.vl-emergency-banner i { font-size: 1.8rem; }
+.vl-emergency-banner .txt { flex: 1; }
+.vl-emergency-banner h4 { font-size: 1.05rem; margin-bottom: 2px; }
+.vl-emergency-banner p { font-size: 0.82rem; opacity: 0.9; }
+
+.vl-etype-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.vl-etype-btn {
+    border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px 14px; text-align: center; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; transition: 0.15s; background: #fff;
+}
+.vl-etype-btn i { font-size: 1.4rem; color: #dc2626; }
+.vl-etype-btn span { font-size: 0.8rem; font-weight: 700; color: #334155; }
+.vl-etype-btn:hover, .vl-etype-btn.selected { border-color: #dc2626; background: #fef2f2; }
+
+.vl-evet-card {
+    display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1.5px solid #e2e8f0; border-radius: 14px; margin-bottom: 10px;
+}
+.vl-evet-card .icon { width: 44px; height: 44px; border-radius: 12px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+
+.vl-emergency-card { border-left: 4px solid #dc2626; }
+.vl-emergency-card.atendida { border-left-color: #22c55e; }
+.vl-emergency-card.cancelada { border-left-color: #94a3b8; opacity: 0.7; }
+
+/* ---------- Responsive añadido ---------- */
+@media (max-width: 640px) {
+    .vl-drawer { max-width: 100%; }
+    .vl-medrecord-grid { grid-template-columns: 1fr; }
+    .vl-notif-panel { width: 92vw; right: -60px; }
+}
+@media (max-width: 900px) {
+    .vl-form-grid { grid-template-columns: 1fr; }
+    .panels-grid { grid-template-columns: 1fr !important; }
+    .stats-row { grid-template-columns: 1fr !important; }
+    .actions-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 768px) {
+    body { display: block !important; }
+    .sidebar { width: 100% !important; height: auto !important; position: relative !important; }
+    .nav-menu ul { display: flex; overflow-x: auto; gap: 6px; }
+    .nav-menu { padding: 0 12px 12px; }
+    .sidebar-brand { padding: 20px; }
+    .container { padding: 20px !important; }
+    .top-bar { padding: 12px 20px !important; }
+    .search-global { display: none; }
+    .vl-card-grid { grid-template-columns: 1fr; }
+    .actions-grid { grid-template-columns: 1fr !important; }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directorio - VetLink</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/directorio.css}">
+    <link rel="stylesheet" th:href="@{/css/color_global.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<nav th:replace="~{layout/navbar :: navbar}"></nav>
+
+<main class="directory-layout">
+<section class="directory-content">
+    <header class="directory-header">
+        <span class="badge-top">Directorio VetLink</span>
+        <h1>Encuentra servicios <br><span>Veterinarios</span></h1>
+
+        <div class="search-bar-premium">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="¿Qué servicio buscas hoy?" onkeyup="filtrarDirectorio()">
+        </div>
+
+        <div class="vl-filter-bar" style="margin-top:14px;">
+            <div class="vl-field" style="min-width:220px; margin-bottom:0;">
+                <select id="filterServicio" onchange="filtrarDirectorio()">
+                    <option value="">Cualquier servicio</option>
+                    <option th:each="s : ${todosLosServicios}" th:value="${s.nombreServicio}" th:text="${s.nombreServicio}"></option>
+                </select>
+            </div>
+            <div class="vl-field" style="min-width:180px; margin-bottom:0;">
+                <input type="date" id="filterFecha" onchange="filtrarDirectorio()">
+            </div>
+        </div>
+    </header>
+
+    <div class="directory-grid" id="directoryGrid"></div>
+</section>
+
+<aside class="map-sticky-wrapper">
+    <div class="map-frame">
+        <div id="map"></div>
+        <div class="map-overlay-info">
+            <i class="fas fa-map-marked-alt"></i> Explorando Bogotá
+        </div>
+    </div>
+</aside>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var VETE_DATOS = /*[[${veterinarias}]]*/ [];
+    /*]]>*/
+</script>
+<script th:src="@{/js/directorio.js}"></script>
+</body>
+</html>
