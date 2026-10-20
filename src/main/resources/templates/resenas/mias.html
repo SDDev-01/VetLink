@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Reseñas - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Reseñas</h1><p>Las opiniones que has dejado sobre las veterinarias que visitaste.</p></div>
+                <div class="vl-section-actions">
+                    <a th:href="@{/directorio}" class="vl-btn vl-btn-primary"><i class="fas fa-star"></i> Dejar una reseña</a>
+                </div>
+            </div>
+
+            <div class="vl-card-grid" th:if="${not #lists.isEmpty(resenas)}">
+                <div class="vl-entity-card" th:each="r : ${resenas}">
+                    <div class="vl-entity-top">
+                        <div>
+                            <div class="vl-entity-name" th:text="${r.veterinaria.nombre}">Veterinaria</div>
+                            <div class="vl-entity-sub" th:text="${r.fechaPublicacion}">Fecha</div>
+                        </div>
+                    </div>
+                    <div style="color:#f59e0b; margin:8px 0;" th:text="${'★'.repeat(r.calificacion.valor)}"></div>
+                    <p th:text="${r.comentario}"></p>
+                </div>
+            </div>
+
+            <div class="vl-empty" th:if="${#lists.isEmpty(resenas)}">
+                <i class="fas fa-star-half-alt"></i>
+                <h4>Sin reseñas aún</h4>
+                <p>Cuando tengas una cita en una veterinaria, podrás calificarla desde el directorio.</p>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

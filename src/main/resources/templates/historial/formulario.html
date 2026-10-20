@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${editando} != null ? 'Editar consulta' : 'Nueva consulta'">Consulta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del veterinario', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="(${editando} != null ? 'Editar consulta de ' : 'Nueva consulta para ') + ${mascota.nombre}">Consulta</h1></div>
+            </div>
+
+            <div class="vl-table-wrap" style="padding:24px; max-width:640px;">
+                <form th:action="${editando} != null ? @{'/historial/' + ${historialId} + '/editar'} : @{/historial/nuevo}" th:object="${form}" method="post">
+                    <input type="hidden" th:field="*{idMascota}">
+                    <div class="vl-form-grid">
+                        <div class="vl-field vl-full">
+                            <label>Motivo de consulta</label>
+                            <textarea th:field="*{motivoConsulta}" rows="2"></textarea>
+                            <small class="vl-error" th:if="${#fields.hasErrors('motivoConsulta')}" th:errors="*{motivoConsulta}"></small>
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>Diagnóstico</label>
+                            <textarea th:field="*{diagnostico}" rows="2"></textarea>
+                            <small class="vl-error" th:if="${#fields.hasErrors('diagnostico')}" th:errors="*{diagnostico}"></small>
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>Observaciones</label>
+                            <textarea th:field="*{observaciones}" rows="2"></textarea>
+                        </div>
+                        <div class="vl-field">
+                            <label>Próxima cita sugerida</label>
+                            <input type="date" th:field="*{proximaCita}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('proximaCita')}" th:errors="*{proximaCita}"></small>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                        <a th:href="@{'/historial/paciente/' + *{idMascota}}" class="vl-btn vl-btn-ghost">Cancelar</a>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

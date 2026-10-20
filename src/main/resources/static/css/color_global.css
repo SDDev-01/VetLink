@@ -1,0 +1,125 @@
+/* --- CONFIGURACIÓN BASE --- */
+:root {
+    --primary: #2563eb;       /* Azul Cobalto Principal */
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --secondary-blue-border: #bfdbfe;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --bg-light: #f8fafc;
+    --white: #ffffff;
+    --green-soft: #ecfdf5;
+    --green-text: #10b981;
+    --error: #ef4444;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --radius-lg: 1.25rem;
+}
+html {
+    scroll-behavior: smooth; /* Esto hace que el menú desplace suavemente */
+}
+
+body {
+    font-family: 'Baloo', sans-serif;
+    letter-spacing: 1px;
+    color: var(--text-dark);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    overflow-x: hidden;
+    padding-top: 80px;
+}
+/* --- NAVEGACIÓN --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 7%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+}
+
+.logo {
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    border-bottom: none;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.logo:hover,
+.logo:focus,
+.logo:active,
+.logo:visited {
+    text-decoration: none;
+    border-bottom: none;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.nav-menu a,
+.nav-auth a,
+.btn-login,
+.btn-register,
+.logo {
+    text-decoration: none;
+}
+
+.nav-menu {
+    display: flex;
+    gap: 30px;
+}
+
+.nav-menu a {
+    text-decoration: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: 0.3s;
+}
+
+.nav-menu a:hover {
+    color: var(--primary);
+}
+
+.nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.btn-login {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.btn-register {
+    background: var(--primary);
+    color: white !important;
+    padding: 12px 25px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-register:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+}

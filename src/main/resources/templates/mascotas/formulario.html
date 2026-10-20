@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mascota - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="${form.idMascota != null ? 'Editar mascota' : 'Nueva mascota'}">Mascota</h1></div>
+            </div>
+
+            <div class="vl-table-wrap" style="padding:24px; max-width:640px;">
+                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+
+                <form th:action="${form.idMascota != null} ? @{/mascotas/{id}/editar(id=${form.idMascota})} : @{/mascotas/nueva}"
+                      th:object="${form}" method="post">
+                    <div class="vl-form-grid">
+                        <div class="vl-field">
+                            <label>Nombre</label>
+                            <input type="text" th:field="*{nombre}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Especie</label>
+                            <select th:field="*{idEspecie}" id="pet-especie-sel" onchange="cargarRazasEdicion()">
+                                <option value="">Selecciona</option>
+                                <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
+                            </select>
+                            <small class="vl-error" th:if="${#fields.hasErrors('idEspecie')}" th:errors="*{idEspecie}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Raza</label>
+                            <select th:field="*{idRaza}" id="pet-raza-sel">
+                                <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}"
+                                        th:attr="data-especie=${r.especie.idEspecie}"></option>
+                            </select>
+                            <small class="vl-error" th:if="${#fields.hasErrors('idRaza')}" th:errors="*{idRaza}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Género</label>
+                            <select th:field="*{genero}">
+                                <option value="">Selecciona</option>
+                                <option value="M">Macho</option>
+                                <option value="H">Hembra</option>
+                            </select>
+                            <small class="vl-error" th:if="${#fields.hasErrors('genero')}" th:errors="*{genero}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Fecha de nacimiento</label>
+                            <input type="date" th:field="*{fechaNacimiento}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('fechaNacimiento')}" th:errors="*{fechaNacimiento}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Peso (kg)</label>
+                            <input type="number" step="0.1" th:field="*{peso}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('peso')}" th:errors="*{peso}"></small>
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>URL de foto (opcional)</label>
+                            <input type="text" th:field="*{foto}">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                        <a th:href="@{/mascotas}" class="vl-btn vl-btn-ghost">Cancelar</a>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    function cargarRazasEdicion() {
+        const idEspecie = document.getElementById('pet-especie-sel').value;
+        document.querySelectorAll('#pet-raza-sel option').forEach(opt => {
+            if (!opt.dataset.especie) return;
+            opt.hidden = opt.dataset.especie !== idEspecie;
+        });
+    }
+    document.addEventListener('DOMContentLoaded', cargarRazasEdicion);
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

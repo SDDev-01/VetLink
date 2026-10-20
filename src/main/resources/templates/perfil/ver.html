@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-social-profile-header">
+                <div class="vl-social-avatar" th:text="${#strings.substring(usuario.nombre,0,1)} + ${#strings.substring(usuario.apellido,0,1)}">--</div>
+                <div>
+                    <h2 th:text="${usuario.rol.name() == 'VETERINARIO' ? 'Dr(a). ' : ''} + ${usuario.nombre} + ' ' + ${usuario.apellido}">Nombre</h2>
+                    <p><i class="fas fa-envelope"></i> <span th:text="${correo}">correo</span></p>
+                    <p><i class="fas fa-id-badge"></i> <span th:text="${usuario.rol}">Rol</span></p>
+                </div>
+            </div>
+
+            <div class="vl-table-wrap" style="padding:24px; max-width:640px;">
+                <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Perfil actualizado correctamente.</p>
+
+                <div class="vl-form-section-title"><i class="fas fa-id-card"></i> Información personal</div>
+                <form th:action="@{/perfil}" th:object="${form}" method="post">
+                    <div class="vl-form-grid">
+                        <div class="vl-field">
+                            <label>Nombres</label>
+                            <input type="text" th:field="*{nombre}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
+                        </div>
+                        <div class="vl-field">
+                            <label>Apellidos</label>
+                            <input type="text" th:field="*{apellido}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>Teléfono</label>
+                            <input type="text" th:field="*{telefono}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></small>
+                        </div>
+                    </div>
+
+                    <div class="vl-divider"></div>
+                    <div class="vl-form-section-title"><i class="fas fa-key"></i> Cambiar contraseña</div>
+                    <div class="vl-form-grid">
+                        <div class="vl-field vl-full">
+                            <label>Nueva contraseña</label>
+                            <input type="password" th:field="*{nuevaPassword}" placeholder="Dejar en blanco para no cambiar">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+            <div class="vl-table-wrap" style="padding:24px; max-width:640px; margin-top:22px; border-color:#fecaca;">
+                <div class="vl-form-section-title" style="color:#b91c1c"><i class="fas fa-triangle-exclamation"></i> Zona de cuenta</div>
+                <p style="color:#64748b; margin-bottom:14px;">Desactivar tu cuenta cierra el acceso, pero conserva los registros clínicos y citas por seguridad médica.</p>
+                <form th:action="@{/perfil/eliminar}" method="post" onsubmit="return confirm('¿Confirmas que deseas desactivar tu cuenta?');">
+                    <div class="vl-field"><label>Confirma tu contraseña actual</label><input type="password" name="passwordActual" required></div>
+                    <button type="submit" class="vl-btn vl-btn-danger" style="margin-top:12px">Desactivar cuenta</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

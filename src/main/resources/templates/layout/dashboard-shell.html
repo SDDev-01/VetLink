@@ -1,0 +1,123 @@
+<!--/* Shell reutilizable del dashboard: sidebar + topbar, portados de dashboard-cliente.html /
+   dashboard-veterinario.html / dashboard-recepcionista.html. Los datos del usuario y el
+   resaltado del item activo ahora los resuelve el servidor (antes los ponia dashboard-shell.js
+   leyendo VL.getUsuarioActual()). Cada pagina que use este shell debe definir en su modelo:
+   usuario (Usuario), seccionActiva (String, ej "home"/"mascotas"/"citas"...). */-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<aside th:fragment="sidebar(rolTag, items, seccionActiva)" class="sidebar reveal active">
+    <div class="sidebar-brand">
+        <div class="logo-icon"><i class="fas fa-paw"></i></div>
+        <span>VetLink</span>
+    </div>
+
+    <div class="sidebar-role-tag" th:text="${rolTag}">Panel</div>
+
+    <nav class="nav-menu">
+        <ul>
+            <li th:each="item : ${items}"
+                th:classappend="${item.key == seccionActiva} ? 'active' : ''"
+                class="nav-item"
+                th:attr="data-url=${item.url}">
+                <i th:class="${item.icono}"></i> <span th:text="${item.label}">Item</span>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="nav-item logout" style="border:none; width:100%; text-align:left; background:none; cursor:pointer;">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </button>
+        </form>
+    </div>
+</aside>
+
+<script th:fragment="scripts">
+    document.querySelectorAll('.nav-item[data-url]').forEach(function (item) {
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', function () {
+            window.location.href = item.getAttribute('data-url');
+        });
+    });
+
+    // Campana de notificaciones (si esta pagina usa la variante de 3 parametros del topbar)
+    var bell = document.getElementById('vl-notif-bell');
+    if (bell) {
+        var panel = document.getElementById('vl-notif-panel');
+        bell.addEventListener('click', function (e) {
+            e.stopPropagation();
+            panel.classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (!bell.contains(e.target)) panel.classList.remove('open');
+        });
+    }
+</script>
+
+<header th:fragment="topbar(usuario, placeholder)" class="top-bar">
+    <div class="top-bar-container">
+        <div class="search-global">
+            <i class="fas fa-search"></i>
+            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled>
+        </div>
+        <div class="header-actions">
+            <div class="action-circle">
+                <i class="far fa-bell"></i>
+                <span class="badge">0</span>
+            </div>
+            <div class="user-pill-wrapper">
+                <div class="user-pill">
+                    <div class="user-text">
+                        <span class="username" th:text="${usuario.nombre} + ' ' + ${usuario.apellido}">Usuario</span>
+                        <span class="email" th:text="${usuario.rol}">Rol</span>
+                    </div>
+                    <div class="avatar-wrapper">
+                        <div class="avatar" th:text="${#strings.substring(usuario.nombre,0,1)} + ${#strings.substring(usuario.apellido,0,1)}">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!--/* Variante con campana de notificaciones funcional. Las notificaciones ya vienen
+   calculadas por el controlador (lista de Notificacion{icono, claseColor, texto}) */-->
+<header th:fragment="topbarNotificaciones(usuario, placeholder, notificaciones)" class="top-bar">
+    <div class="top-bar-container">
+        <div class="search-global">
+            <i class="fas fa-search"></i>
+            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled>
+        </div>
+        <div class="header-actions">
+            <div class="action-circle" id="vl-notif-bell">
+                <i class="far fa-bell"></i>
+                <span class="badge" th:text="${#lists.size(notificaciones)}">0</span>
+                <div class="vl-notif-panel" id="vl-notif-panel">
+                    <div class="vl-notif-head">Notificaciones</div>
+                    <div th:each="n : ${notificaciones}" class="vl-notif-item">
+                        <i th:class="'fas ' + ${n.icono}"
+                           th:styleappend="${n.claseColor == 'vl-badge-danger' ? 'background:#fee2e2;color:#dc2626' : (n.claseColor == 'vl-badge-warn' ? 'background:#fef3c7;color:#b45309' : (n.claseColor == 'vl-badge-ok' ? 'background:#dcfce7;color:#15803d' : 'background:#dbeafe;color:#1d4ed8'))}"></i>
+                        <span th:text="${n.texto}">Notificación</span>
+                    </div>
+                    <div class="vl-notif-empty" th:if="${#lists.isEmpty(notificaciones)}">No tienes notificaciones nuevas.</div>
+                </div>
+            </div>
+            <div class="user-pill-wrapper">
+                <div class="user-pill">
+                    <div class="user-text">
+                        <span class="username" th:text="${usuario.nombre} + ' ' + ${usuario.apellido}">Usuario</span>
+                        <span class="email" th:text="${usuario.rol}">Rol</span>
+                    </div>
+                    <div class="avatar-wrapper">
+                        <div class="avatar" th:text="${#strings.substring(usuario.nombre,0,1)} + ${#strings.substring(usuario.apellido,0,1)}">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+</body>
+</html>

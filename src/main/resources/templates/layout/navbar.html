@@ -1,0 +1,27 @@
+<!--/* Fragmento de navbar: transcripcion exacta de navbar.html del prototipo original.
+   Unica diferencia: la sesion la resuelve Spring Security en el servidor
+   (sec:authorize) en vez de leer localStorage con VL.getUsuarioActual(). */-->
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<nav th:fragment="navbar" class="navbar">
+    <a th:href="@{/}" class="logo"><i class="fas fa-paw"></i> VetLink</a>
+    <div class="nav-menu">
+        <a th:href="@{/#servicios}">Servicios</a>
+        <a th:href="@{/#beneficios}">Beneficios</a>
+        <a th:href="@{/directorio}">Directorio</a>
+    </div>
+    <div class="nav-auth" id="nav-auth-slot">
+        <th:block sec:authorize="!isAuthenticated()">
+            <a th:href="@{/login}" class="btn-login">Iniciar Sesión</a>
+            <a th:href="@{/registro}" class="btn-register">Registrarse</a>
+        </th:block>
+        <th:block sec:authorize="isAuthenticated()">
+            <a th:href="@{/dashboard}" class="btn-login"><i class="fas fa-columns"></i> Mi Panel</a>
+            <a th:href="@{/dashboard}" class="btn-register" style="display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-user-circle"></i> <span sec:authentication="principal.usuario.nombre">Usuario</span>
+            </a>
+        </th:block>
+    </div>
+</nav>
+</body>
+</html>

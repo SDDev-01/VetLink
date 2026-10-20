@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial Clínico - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="'Historial de ' + ${mascota.nombre}">Historial</h1></div>
+                <div class="vl-section-actions" sec:authorize="hasRole('VETERINARIO')" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+                    <a th:href="@{'/historial/nuevo/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary"><i class="fas fa-plus"></i> Nueva consulta</a>
+                </div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.creado}">Consulta registrada.</p>
+
+            <div class="vl-table-wrap" th:if="${not #lists.isEmpty(historial)}" style="padding:0;">
+                <div style="padding:20px; border-bottom:1px solid #eef2f7;" th:each="h : ${historial}">
+                    <div style="color:#94a3b8; font-size:0.85rem; margin-bottom:6px;"
+                         th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></div>
+                    <p style="margin:4px 0;"><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
+                    <p style="margin:4px 0;"><strong>Diagnóstico:</strong> <span th:text="${h.diagnostico}"></span></p>
+                    <p style="margin:4px 0;" th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
+                    <p style="margin:4px 0; color:#94a3b8; font-size:0.85rem;">Próxima cita sugerida: <span th:text="${h.proximaCita}"></span></p>
+                </div>
+            </div>
+
+            <div class="vl-empty" th:if="${#lists.isEmpty(historial)}">
+                <i class="fas fa-file-medical"></i>
+                <h4>Sin consultas</h4>
+                <p>Esta mascota no tiene consultas registradas.</p>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

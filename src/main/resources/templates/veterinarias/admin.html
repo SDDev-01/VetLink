@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Veterinaria - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Mi Veterinaria</h1><p>Administra la información pública y el equipo de tu clínica.</p></div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.actualizada}">Información actualizada.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.veterinarioCreado}">Veterinario registrado. Ya puede iniciar sesión con el correo y contraseña que definiste.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.recepcionistaCreada}">Recepcionista adicional registrada.</p>
+            <p class="form-message" style="color:#dc2626" th:if="${param.error}" th:text="${param.error}"></p>
+            <p class="form-message" style="color:#dc2626" th:if="${errorEquipo}" th:text="${errorEquipo}"></p>
+
+            <!-- INFORMACIÓN DE LA VETERINARIA -->
+            <div class="vl-table-wrap" style="padding:26px; margin-bottom:28px;">
+                <div class="vl-form-section-title"><i class="fas fa-hospital"></i> Información de la veterinaria</div>
+                <form th:action="@{/veterinarias/admin/info}" method="post">
+                    <div class="vl-form-grid">
+                        <div class="vl-field vl-full">
+                            <label>Nombre</label>
+                            <input type="text" name="nombre" th:value="${veterinaria.nombre}" required>
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>Descripción</label>
+                            <textarea name="descripcion" th:text="${veterinaria.descripcion}"></textarea>
+                        </div>
+                        <div class="vl-field">
+                            <label>Página web</label>
+                            <input type="text" name="paginaWeb" th:value="${veterinaria.paginaWeb}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Logo (nombre de archivo o URL)</label>
+                            <input type="text" name="logo" th:value="${veterinaria.logo}">
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="vl-table-wrap" style="padding:26px; margin-top:28px;">
+                <div class="vl-form-section-title"><i class="fas fa-user-headset"></i> Recepción</div>
+                <div class="vl-tag-row" style="margin-bottom:18px;"><span class="vl-tag" th:each="r:${recepcionistas}" th:text="${r.usuario.nombre+' '+r.usuario.apellido+(r.esPrincipal?' · Principal':'')}"></span></div>
+                <form th:action="@{/veterinarias/admin/recepcionistas}" th:object="${formEquipo}" method="post">
+                    <div class="vl-form-grid"><div class="vl-field"><label>Tipo documento</label><select th:field="*{idTipoDocumento}"><option value="">Selecciona</option><option th:each="t:${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option></select></div><div class="vl-field"><label>Número</label><input th:field="*{numeroDocumento}"></div><div class="vl-field"><label>Nombres</label><input th:field="*{nombre}"></div><div class="vl-field"><label>Apellidos</label><input th:field="*{apellido}"></div><div class="vl-field"><label>Correo</label><input type="email" th:field="*{correo}"></div><div class="vl-field"><label>Teléfono</label><input th:field="*{telefono}"></div><div class="vl-field"><label>Turno</label><select th:field="*{turno}"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option></select></div><div class="vl-field"><label>Contraseña temporal</label><input type="password" th:field="*{password}"></div></div><button class="vl-btn vl-btn-primary" style="margin-top:14px">Registrar recepcionista</button>
+                </form>
+            </div>
+
+            <!-- EQUIPO DE VETERINARIOS -->
+            <div class="vl-table-wrap" style="padding:26px;">
+                <div class="vl-form-section-title"><i class="fas fa-user-doctor"></i> Equipo de veterinarios</div>
+
+                <div class="vl-card-grid" style="margin-bottom:24px;">
+                    <div class="vl-entity-card" th:each="v : ${equipo}">
+                        <div class="vl-entity-top">
+                            <div class="vl-entity-avatar"><i class="fas fa-user-doctor"></i></div>
+                            <div>
+                                <div class="vl-entity-name" th:text="'Dr(a). ' + ${v.usuario.nombre} + ' ' + ${v.usuario.apellido}">Nombre</div>
+                                <div class="vl-entity-sub" th:text="${v.especialidad != null ? v.especialidad.nombreEspecialidad : 'Medicina General'}">Especialidad</div>
+                            </div>
+                        </div>
+                        <div class="vl-entity-meta">
+                            <span><i class="fas fa-id-card"></i> Lic. <span th:text="${v.licencia}"></span></span>
+                        </div>
+                    </div>
+                    <div class="vl-empty" th:if="${#lists.isEmpty(equipo)}" style="grid-column:1/-1;">
+                        <i class="fas fa-user-doctor"></i>
+                        <h4>Aún no hay veterinarios registrados</h4>
+                    </div>
+                </div>
+
+                <div class="vl-divider"></div>
+                <div class="vl-form-section-title" style="margin-top:16px;"><i class="fas fa-user-plus"></i> Registrar veterinario</div>
+                <p style="color:#64748b; font-size:0.82rem; margin-bottom:14px;">Los veterinarios no crean su propia cuenta: tú la registras aquí y compartes las credenciales con ellos.</p>
+
+                <form th:action="@{/veterinarias/admin/equipo}" th:object="${formEquipo}" method="post">
+                    <div class="vl-form-grid">
+                        <div class="vl-field">
+                            <label>Tipo de documento</label>
+                            <select th:field="*{idTipoDocumento}">
+                                <option value="">Selecciona</option>
+                                <option th:each="t : ${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option>
+                            </select>
+                        </div>
+                        <div class="vl-field">
+                            <label>Número de documento</label>
+                            <input type="text" th:field="*{numeroDocumento}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Nombres</label>
+                            <input type="text" th:field="*{nombre}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Apellidos</label>
+                            <input type="text" th:field="*{apellido}">
+                        </div>
+                        <div class="vl-field vl-full">
+                            <label>Correo</label>
+                            <input type="email" th:field="*{correo}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Teléfono</label>
+                            <input type="text" th:field="*{telefono}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Contraseña temporal</label>
+                            <input type="password" th:field="*{password}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Licencia profesional</label>
+                            <input type="text" th:field="*{licencia}">
+                        </div>
+                        <div class="vl-field">
+                            <label>Especialidad</label>
+                            <select th:field="*{idEspecialidad}">
+                                <option value="">Medicina General</option>
+                                <option th:each="e : ${especialidades}" th:value="${e.idEspecialidadVeterinario}" th:text="${e.nombreEspecialidad}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-user-plus"></i> Registrar veterinario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

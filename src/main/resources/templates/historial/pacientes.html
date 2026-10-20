@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacientes - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del veterinario', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar pacientes...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Pacientes</h1><p>Mascotas que han tenido al menos una cita contigo.</p></div>
+            </div>
+
+            <div class="vl-field" style="max-width:320px; margin-bottom:18px;">
+                <input type="text" id="buscarPaciente" placeholder="Buscar por nombre...">
+            </div>
+
+            <div class="vl-card-grid" id="listaPacientes" th:if="${not #lists.isEmpty(pacientes)}">
+                <div class="vl-entity-card" th:each="m : ${pacientes}" th:data-nombre="${#strings.toLowerCase(m.nombre)}">
+                    <div class="vl-entity-top">
+                        <div class="vl-entity-avatar"><i class="fas fa-paw"></i></div>
+                        <div>
+                            <div class="vl-entity-name" th:text="${m.nombre}">Nombre</div>
+                            <div class="vl-entity-sub" th:text="${m.especie.nombreEspecie} + ' · ' + ${m.raza.nombreRaza}">Especie</div>
+                        </div>
+                    </div>
+                    <div class="vl-entity-actions">
+                        <a th:href="@{'/historial/paciente/' + ${m.idMascota}}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-address-card"></i> Carpeta médica</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vl-empty" th:if="${#lists.isEmpty(pacientes)}">
+                <i class="fas fa-dog"></i>
+                <h4>Sin pacientes todavía</h4>
+                <p>Cuando tengas una cita agendada, la mascota aparecerá aquí.</p>
+            </div>
+        </div>
+    </section>
+</main>
+<script>
+    document.getElementById('buscarPaciente').addEventListener('input', function (e) {
+        var q = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('#listaPacientes .vl-entity-card').forEach(function (card) {
+            card.style.display = card.dataset.nombre.includes(q) ? '' : 'none';
+        });
+    });
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

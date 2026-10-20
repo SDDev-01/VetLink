@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${veterinaria.nombre} + ' - VetLink'">Veterinaria</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/color_global.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<nav th:replace="~{layout/navbar :: navbar}"></nav>
+
+<main class="container" style="max-width:900px; margin:0 auto; padding:32px 16px;">
+    <div class="vl-table-wrap" style="padding:28px; margin-bottom:20px;">
+        <h1 th:text="${veterinaria.nombre}">Nombre</h1>
+        <p style="color:#64748b;" th:text="${veterinaria.descripcion}">Descripción</p>
+        <p th:if="${veterinaria.paginaWeb}"><i class="fas fa-globe"></i> <a th:href="${veterinaria.paginaWeb}" th:text="${veterinaria.paginaWeb}" target="_blank"></a></p>
+        <p th:if="${promedio}">
+            <i class="fas fa-star" style="color:#f59e0b"></i>
+            Calificación promedio: <strong th:text="${#numbers.formatDecimal(promedio, 1, 1)}"></strong> / 5
+        </p>
+
+        <div class="vl-entity-meta" th:if="${not #lists.isEmpty(servicios)}" style="margin-top:12px;">
+            <span th:each="s : ${servicios}" class="vl-badge vl-badge-ok" th:text="${s.servicio.nombreServicio} + ' · $' + ${s.precio}"></span>
+        </div>
+        <div class="vl-section-actions" style="margin-top:20px;" sec:authorize="hasRole('TUTOR')">
+            <a class="vl-btn vl-btn-primary" th:href="@{/citas/agendar(idVeterinaria=${veterinaria.idVeterinaria})}"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+            <a class="vl-btn vl-btn-ghost" th:href="@{/chat}"><i class="fas fa-comments"></i> Contactar por chat</a>
+        </div>
+    </div>
+
+    <h2 style="font-size:1.1rem; margin-bottom:12px;">Reseñas</h2>
+    <p class="form-message" style="color:#16a34a" th:if="${param.gracias}">Reseña publicada correctamente.</p>
+    <p class="form-message" style="color:#dc2626" th:if="${errorResena}" th:text="${errorResena}"></p>
+    <div class="vl-table-wrap" style="padding:0; margin-bottom:20px;">
+        <div style="padding:18px; border-bottom:1px solid #eef2f7;" th:each="r : ${resenas}">
+            <div style="display:flex; justify-content:space-between;">
+                <strong th:text="${r.tutor.nombre} + ' ' + ${r.tutor.apellido}"></strong>
+                <span style="color:#94a3b8; font-size:0.85rem;" th:text="${r.fechaPublicacion}"></span>
+            </div>
+            <div style="color:#f59e0b;" th:text="${'★'.repeat(r.calificacion.valor)}"></div>
+            <p th:text="${r.comentario}"></p>
+        </div>
+        <div class="vl-empty" th:if="${#lists.isEmpty(resenas)}">
+            <i class="fas fa-star-half-alt"></i>
+            <h4>Sin reseñas todavía</h4>
+        </div>
+    </div>
+
+    <div class="vl-table-wrap" style="padding:24px;" sec:authorize="hasRole('TUTOR')">
+        <h3 style="font-size:1rem; margin-bottom:6px;">Deja tu reseña</h3>
+        <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:14px;">Solo puedes opinar si has tenido una cita en esta veterinaria.</p>
+        <form th:action="@{/resenas/nueva}" method="post">
+            <input type="hidden" name="idVeterinaria" th:value="${veterinaria.idVeterinaria}">
+            <div class="vl-form-grid">
+                <div class="vl-field">
+                    <label>Calificación</label>
+                    <select name="valor" required>
+                        <option value="">Selecciona</option>
+                        <option value="5">5 - Excelente</option>
+                        <option value="4">4 - Bueno</option>
+                        <option value="3">3 - Regular</option>
+                        <option value="2">2 - Malo</option>
+                        <option value="1">1 - Muy malo</option>
+                    </select>
+                </div>
+                <div class="vl-field vl-full">
+                    <label>Comentario (opcional)</label>
+                    <textarea name="comentario" rows="2"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-star"></i> Publicar reseña</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

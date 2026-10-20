@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Citas - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar citas...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Mis Citas</h1><p>Todas las citas de todas tus mascotas.</p></div>
+                <div class="vl-section-actions">
+                    <a th:href="@{/citas/agendar}" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                </div>
+            </div>
+
+            <p class="form-message" style="color:#16a34a" th:if="${param.cancelada}">Cita cancelada.</p>
+            <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+
+            <div class="panels-grid" style="margin-bottom:24px;">
+                <div class="panel"><div id="citas-calendar"></div></div>
+                <div class="panel"><div id="citas-agenda"></div></div>
+            </div>
+
+            <div class="vl-table-wrap">
+                <table class="vl-table">
+                    <thead><tr><th>Mascota</th><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Veterinaria</th><th>Veterinario</th><th>Estado</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="c : ${citas}" th:onclick="|window.location='@{/citas/{id}(id=${c.idCita})}'|" style="cursor:pointer;">
+                        <td th:text="${c.mascota.nombre}"></td>
+                        <td th:text="${c.fecha}"></td>
+                        <td th:text="${c.hora}"></td>
+                        <td th:text="${c.servicio.nombreServicio}"></td>
+                        <td th:text="${c.veterinaria.nombre}"></td>
+                        <td th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></td>
+                        <td><span class="vl-badge" th:classappend="${c.estado.name() == 'AGENDADA' ? 'vl-badge-ok' : (c.estado.name() == 'CANCELADA' ? 'vl-badge-danger' : 'vl-badge-warn')}" th:text="${c.estado}"></span></td>
+                        <td>
+                            <form th:if="${c.estado.name() == 'AGENDADA'}" th:action="@{'/citas/' + ${c.idCita} + '/cancelar'}" method="post" style="display:inline;">
+                                <input type="hidden" name="idMascota" th:value="${c.mascota.idMascota}">
+                                <input type="hidden" name="origen" value="mias">
+                                <button type="submit" class="vl-btn-icon danger" title="Cancelar"><i class="fas fa-xmark"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="vl-empty" th:if="${#lists.isEmpty(citas)}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h4>Sin citas</h4>
+                    <p>Aún no tienes citas agendadas. Ve a una de tus mascotas para agendar una.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var VL_CITAS_MIAS = /*[[${citasJson}]]*/ [];
+    /*]]>*/
+</script>
+<script th:src="@{/js/vl-calendar-lite.js}"></script>
+<script th:src="@{/js/citas-mias.js}"></script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,271 @@
+/* --- LOGIN PAGE STYLES --- */
+.login-body {
+    background: linear-gradient(135deg, var(--bg-light) 0%, #e2e8f0 100%);
+    min-height: 100vh;
+    /* Espacio para que el nav fijo no tape el contenido */
+    padding-top: 80px; 
+    display: flex;
+    flex-direction: column;
+}
+
+.login-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.form-card {
+    max-width: 420px;
+    width: 100%;
+    background: var(--white);
+    padding: 45px 35px;
+    border-radius: 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--secondary-blue-border);
+    transition: transform 0.3s ease;
+}
+
+.form-card:hover {
+    transform: translateY(-5px);
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-icon-circle {
+    width: 65px;
+    height: 65px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 20px; /* Estilo moderno cuadradito redondeado */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-size: 28px;
+    transform: rotate(-10deg);
+}
+
+.form-title {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: -0.5px;
+}
+
+.input-group {
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.input-group input {
+    width: 100%;
+    background: var(--bg-light);
+    border: 2px solid var(--secondary-blue-border);
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.input-group input:focus {
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 4px var(--primary-light);
+    outline: none;
+}
+
+.error-text {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 7px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    display: block;
+    font-weight: 600;
+    height: 15px; /* Evita que el layout salte al aparecer el error */
+}
+
+.form-message {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 15px;
+    border-radius: 12px;
+    margin: 15px 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: left;
+    animation: alert-in 0.25s ease-out;
+}
+
+.form-message::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.95rem;
+}
+
+.alert-success {
+    color: #047857;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+}
+
+.alert-success::before {
+    content: "\f058";
+}
+
+.alert-error {
+    color: #b91c1c;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+}
+
+.alert-error::before {
+    content: "\f06a";
+}
+
+@keyframes alert-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--secondary-blue-border);
+    color: var(--text-muted);
+}
+
+.form-footer a {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+/* --- DISEÑO DE LABELS Y FILAS --- */
+.label-row {
+    display: flex;
+    justify-content: space-between; /* Empuja el label a la izquierda y el link a la derecha */
+    align-items: flex-end; /* Alinea los textos por la base */
+    margin-bottom: 10px;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    text-transform: uppercase; /* Les da un toque más serio/moderno */
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-group label i {
+    color: var(--primary); /* El icono toma el azul de tu marca */
+    font-size: 0.9rem;
+}
+
+/* --- DISEÑO DE "¿OLVIDASTE TU CONTRASEÑA?" --- */
+.forgot-link {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.3s;
+    border-bottom: 1px solid transparent;
+}
+
+.forgot-link:hover {
+    color: var(--primary);
+    border-bottom: 1px solid var(--primary);
+}
+
+/* --- MEJORA DEL INPUT PARA QUE NO SE VEA TOSCO --- */
+.input-group input {
+    width: 100%;
+    background: var(--bg-light);
+    border: 2px solid var(--secondary-blue-border);
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.input-group input:focus {
+    background: var(--white);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+    outline: none;
+}
+
+/* Ajuste de margen para los grupos de input */
+.input-group {
+    margin-bottom: 22px;
+    position: relative;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-8px); }
+}
+
+/* Mejora para los iconos de error dentro del span */
+.error-text i {
+    margin-right: 4px;
+    font-size: 0.7rem;
+}
+/* ---- Extensiones VetLink: cuentas demo, utilidades de formulario ---- */
+.password-wrapper { position: relative; }
+.btn-block { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+.btn-block:disabled { cursor: not-allowed; }
+
+.demo-accounts {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px dashed #e2e8f0;
+}
+.demo-title {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.demo-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.demo-chip {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.demo-chip:hover { background: #dbeafe; border-color: #bfdbfe; }
+.demo-accounts small { color: #94a3b8; font-size: 0.75rem; }

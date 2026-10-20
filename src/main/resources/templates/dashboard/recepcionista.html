@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Panel - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar citas...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="welcome-header reveal active">
+                <h1 th:text="'Hola, ' + ${usuario.nombre}">Dashboard</h1>
+                <p th:text="'Administras ' + ${veterinaria.nombre}">Resumen</p>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card reveal active">
+                    <div class="stat-info"><span class="stat-label">Citas de hoy</span><span class="stat-number" th:text="${statCitasHoy}">0</span></div>
+                    <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
+                </div>
+                <div class="stat-card reveal active">
+                    <div class="stat-info"><span class="stat-label">Agendadas (total)</span><span class="stat-number" th:text="${statAgendadas}">0</span></div>
+                    <div class="stat-icon purple"><i class="fas fa-calendar-check"></i></div>
+                </div>
+            </div>
+
+            <div class="panels-grid">
+                <div class="panel reveal active">
+                    <div class="panel-header"><h3>Citas de hoy en tu clínica</h3><a th:href="@{/reportes/citas}" class="view-all">Ver todas</a></div>
+                    <div>
+                        <div class="list-item" th:each="c : ${citasHoy}">
+                            <div class="pet-avatar"><i class="fas fa-paw"></i></div>
+                            <div class="item-details"><strong th:text="${c.mascota != null ? c.mascota.nombre : 'Cupo disponible'}">Cupo disponible</strong><span th:text="${c.hora} + ' · Dr(a). ' + ${c.veterinario.apellido}"></span></div>
+                            <div class="item-action"><span class="vl-badge vl-badge-ok" th:text="${c.estado}"></span></div>
+                        </div>
+                        <p th:if="${#lists.isEmpty(citasHoy)}" style="color:#94a3b8; font-size:0.88rem; padding:10px 0;">No hay citas para hoy.</p>
+                    </div>
+                </div>
+
+                <div class="panel reveal active">
+                    <div class="panel-header"><h3>Accesos rápidos</h3></div>
+                    <div class="quick-actions-section" style="padding:0;">
+                        <div class="actions-grid">
+                            <a th:href="@{/citas/recepcion/agendar}" class="action-btn" style="text-decoration:none;"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                            <a th:href="@{/recepcion/mascotas}" class="action-btn" style="text-decoration:none;"><i class="fas fa-dog"></i> Mascotas</a>
+                            <a th:href="@{/historial/pacientes}" class="action-btn" style="text-decoration:none;"><i class="fas fa-file-medical"></i> Historial clínico</a>
+                            <a th:href="@{/veterinarias/admin}" class="action-btn" style="text-decoration:none;"><i class="fas fa-hospital"></i> Mi veterinaria</a>
+                            <a th:href="@{/emergencias}" class="action-btn" style="text-decoration:none;"><i class="fas fa-truck-medical"></i> Emergencias</a>
+                            <a th:href="@{/chat}" class="action-btn" style="text-decoration:none;"><i class="fas fa-comments"></i> Chat</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>
