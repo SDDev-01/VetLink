@@ -115,9 +115,17 @@ public class AgendaController {
         };
     }
 
+    /** VL-25: se carga solo la cita pedida y se compara con el usuario, sin traer toda la agenda. */
     private Cita autorizada(Integer id, VetlinkUserPrincipal p) {
         Cita c = citas.findById(id).orElseThrow();
-        if (citasPara(p).stream().noneMatch(x -> x.getIdCita().equals(id))) {
+        var u = p.getUsuario();
+        boolean permitido = switch (u.getRol()) {
+            case VETERINARIO -> c.getVeterinario().getIdUsuario().equals(u.getIdUsuario());
+            case RECEPCIONISTA -> c.getVeterinaria().getIdVeterinaria()
+                    .equals(u.getRecepcionista().getVeterinaria().getIdVeterinaria());
+            default -> false;
+        };
+        if (!permitido) {
             throw new AccessDeniedException("No tienes acceso a esta cita");
         }
         return c;

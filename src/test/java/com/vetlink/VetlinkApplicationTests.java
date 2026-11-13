@@ -55,13 +55,9 @@ class VetlinkApplicationTests {
 		assertThat(html).doesNotContain("dueno.usuario.nombre");
 	}
 
-	@Test
-	void veterinarioPacientesListSkipsCitasWithoutMascota() throws IOException {
-		Path controllerPath = Path.of("src/main/java/com/vetlink/historial/controller/HistorialClinicoController.java");
-		String controller = Files.readString(controllerPath);
-
-		assertThat(controller).contains("c.getMascota() != null");
-	}
+	// VL-25: la prueba "veterinarioPacientesListSkipsCitasWithoutMascota" buscaba el texto
+	// "c.getMascota() != null" en el controlador. Ese recorrido se cambió por una consulta JPQL;
+	// el comportamiento (los cupos sin mascota no rompen la lista) lo cubre VL25ConsultasDirectasTest.
 
 	@Test
 	void citaReportShowsAvailableSlotWhenMascotaIsMissing() throws IOException {

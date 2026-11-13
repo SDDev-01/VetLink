@@ -39,13 +39,15 @@ public class HistorialClinicoController {
     private final com.vetlink.vacuna.repository.VacunaRepository vacunaRepository;
     private final com.vetlink.historial.repository.ArchivoHistorialRepository archivoRepository;
     private final AccesoPacienteService accesoPacienteService;
+    private final com.vetlink.mascota.repository.MascotaRepository mascotaRepository;
 
     public HistorialClinicoController(HistorialClinicoService historialService, MascotaService mascotaService,
                                        CitaRepository citaRepository, CarnetVacunaService carnetVacunaService,
                                        LoteVacunaRepository loteVacunaRepository,
                                        com.vetlink.vacuna.repository.VacunaRepository vacunaRepository,
                                        com.vetlink.historial.repository.ArchivoHistorialRepository archivoRepository,
-                                       AccesoPacienteService accesoPacienteService) {
+                                       AccesoPacienteService accesoPacienteService,
+                                       com.vetlink.mascota.repository.MascotaRepository mascotaRepository) {
         this.historialService = historialService;
         this.mascotaService = mascotaService;
         this.citaRepository = citaRepository;
@@ -54,6 +56,7 @@ public class HistorialClinicoController {
         this.vacunaRepository = vacunaRepository;
         this.archivoRepository = archivoRepository;
         this.accesoPacienteService = accesoPacienteService;
+        this.mascotaRepository = mascotaRepository;
     }
 
     /** Pacientes: para VETERINARIO son las mascotas que ha atendido; para RECEPCIONISTA,
@@ -61,24 +64,13 @@ public class HistorialClinicoController {
     @GetMapping("/pacientes")
     public String misPacientes(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
-        var pacientes = new LinkedHashMap<Integer, com.vetlink.mascota.model.Mascota>();
-        if (principal.getUsuario().getRol() == com.vetlink.usuario.model.Rol.RECEPCIONISTA) {
-            Integer idVeterinaria = principal.getUsuario().getRecepcionista().getVeterinaria().getIdVeterinaria();
-            citaRepository.buscarConFiltros(idVeterinaria, null, null, null, null)
-                    .forEach(c -> {
-                        if (c.getMascota() != null) {
-                            pacientes.putIfAbsent(c.getMascota().getIdMascota(), c.getMascota());
-                        }
-                    });
-        } else {
-            citaRepository.findByVeterinario_IdUsuarioOrderByFechaDesc(principal.getUsuario().getIdUsuario())
-                    .forEach(c -> {
-                        if (c.getMascota() != null) {
-                            pacientes.putIfAbsent(c.getMascota().getIdMascota(), c.getMascota());
-                        }
-                    });
-        }
-        model.addAttribute("pacientes", pacientes.values());
+        // VL-25: consultas "select distinct c.mascota" en vez de recorrer todas las citas.
+        // El join implícito con c.mascota deja fuera los cupos sin mascota.
+        var usuario = principal.getUsuario();
+        var pacientes = usuario.getRol() == com.vetlink.usuario.model.Rol.RECEPCIONISTA
+                ? mascotaRepository.buscarConCitaEnVeterinaria(usuario.getRecepcionista().getVeterinaria().getIdVeterinaria())
+                : mascotaRepository.buscarConCitaConVeterinario(usuario.getIdUsuario());
+        model.addAttribute("pacientes", pacientes);
         return "historial/pacientes";
     }
 

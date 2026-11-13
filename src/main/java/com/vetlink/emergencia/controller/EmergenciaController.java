@@ -9,7 +9,9 @@ import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.usuario.model.Rol;
 import com.vetlink.usuario.model.Usuario;
+import com.vetlink.usuario.model.Veterinario;
 import com.vetlink.usuario.repository.UsuarioRepository;
+import com.vetlink.usuario.repository.VeterinarioRepository;
 import com.vetlink.veterinaria.repository.VeterinariaRepository;
 import jakarta.validation.Valid;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,13 +32,16 @@ public class EmergenciaController {
     private final MascotaRepository mascotas;
     private final VeterinariaRepository veterinarias;
     private final UsuarioRepository usuarios;
+    private final VeterinarioRepository veterinarios;
 
     public EmergenciaController(EmergenciaRepository repo, MascotaRepository mascotas,
-                                VeterinariaRepository veterinarias, UsuarioRepository usuarios) {
+                                VeterinariaRepository veterinarias, UsuarioRepository usuarios,
+                                VeterinarioRepository veterinarios) {
         this.repo = repo;
         this.mascotas = mascotas;
         this.veterinarias = veterinarias;
         this.usuarios = usuarios;
+        this.veterinarios = veterinarios;
     }
 
     @GetMapping
@@ -55,9 +60,9 @@ public class EmergenciaController {
             case RECEPCIONISTA -> {
                 var v = u.getRecepcionista().getVeterinaria();
                 m.addAttribute("emergencias", repo.findByVeterinaria_IdVeterinariaOrderByCreadaEnDesc(v.getIdVeterinaria()));
-                m.addAttribute("veterinarios", usuarios.findAll().stream()
-                        .filter(x -> x.getVeterinario() != null
-                                && x.getVeterinario().getVeterinaria().getIdVeterinaria().equals(v.getIdVeterinaria()))
+                // VL-25: consulta directa en vez de cargar todos los usuarios.
+                m.addAttribute("veterinarios", veterinarios.findByVeterinaria_IdVeterinaria(v.getIdVeterinaria()).stream()
+                        .map(Veterinario::getUsuario)
                         .toList());
             }
         }

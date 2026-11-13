@@ -14,4 +14,8 @@ public interface MascotaRepository extends JpaRepository<Mascota, Integer> {
     /** RF0021/RF0004 (recepcionista) — mascotas que han tenido al menos una cita en esa veterinaria. */
     @Query("select distinct c.mascota from Cita c where c.veterinaria.idVeterinaria = :idVeterinaria")
     List<Mascota> buscarConCitaEnVeterinaria(Integer idVeterinaria);
+
+    /** VL-25: mascotas que tienen o tuvieron alguna cita con el veterinario (los cupos sin mascota no cuentan). */
+    @Query("select distinct c.mascota from Cita c where c.veterinario.idUsuario = :idVeterinario")
+    List<Mascota> buscarConCitaConVeterinario(Integer idVeterinario);
 }

@@ -38,10 +38,12 @@ public class CitaController {
     private final UsuarioRepository usuarioRepository;
     private final HorarioVeterinariaRepository horarioVeterinariaRepository;
     private final CitaRepository citaRepository;
+    private final com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository;
 
     public CitaController(CitaService citaService, MascotaService mascotaService, VeterinariaRepository veterinariaRepository,
                            ServicioRepository servicioRepository, UsuarioRepository usuarioRepository,
-                           HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository) {
+                           HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository,
+                           com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository) {
         this.citaService = citaService;
         this.mascotaService = mascotaService;
         this.veterinariaRepository = veterinariaRepository;
@@ -49,6 +51,7 @@ public class CitaController {
         this.usuarioRepository = usuarioRepository;
         this.horarioVeterinariaRepository = horarioVeterinariaRepository;
         this.citaRepository = citaRepository;
+        this.veterinarioRepository = veterinarioRepository;
     }
 
     @GetMapping("/mias")
@@ -246,10 +249,9 @@ public class CitaController {
     @GetMapping("/veterinarios/{idVeterinaria}")
     @ResponseBody
     public List<VeterinarioOption> veterinariosDe(@PathVariable Integer idVeterinaria) {
-        return usuarioRepository.findAll().stream()
-                .filter(u -> u.getVeterinario() != null
-                        && u.getVeterinario().getVeterinaria() != null
-                        && u.getVeterinario().getVeterinaria().getIdVeterinaria().equals(idVeterinaria))
+        // VL-25: consulta directa en vez de cargar todos los usuarios.
+        return veterinarioRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
+                .map(v -> v.getUsuario())
                 .map(u -> new VeterinarioOption(u.getIdUsuario(), u.getNombre() + " " + u.getApellido()))
                 .toList();
     }
