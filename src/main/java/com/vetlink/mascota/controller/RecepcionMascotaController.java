@@ -1,5 +1,6 @@
 package com.vetlink.mascota.controller;
 
+import com.vetlink.cita.repository.CitaRepository;
 import com.vetlink.mascota.dto.MascotaForm;
 import com.vetlink.mascota.model.Mascota;
 import com.vetlink.mascota.repository.EspecieRepository;
@@ -11,6 +12,7 @@ import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.usuario.model.Tutor;
 import com.vetlink.usuario.repository.TutorRepository;
 import jakarta.validation.Valid;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -29,15 +31,17 @@ public class RecepcionMascotaController {
     private final EspecieRepository especieRepository;
     private final RazaRepository razaRepository;
     private final TutorRepository tutorRepository;
+    private final CitaRepository citaRepository;
 
     public RecepcionMascotaController(MascotaService mascotaService, MascotaRepository mascotaRepository,
                                        EspecieRepository especieRepository, RazaRepository razaRepository,
-                                       TutorRepository tutorRepository) {
+                                       TutorRepository tutorRepository, CitaRepository citaRepository) {
         this.mascotaService = mascotaService;
         this.mascotaRepository = mascotaRepository;
         this.especieRepository = especieRepository;
         this.razaRepository = razaRepository;
         this.tutorRepository = tutorRepository;
+        this.citaRepository = citaRepository;
     }
 
     @GetMapping
@@ -85,6 +89,7 @@ public class RecepcionMascotaController {
 
     @GetMapping("/{id}/editar")
     public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+        verificarPacienteDeMiClinica(id, principal);
         cargarShell(model, principal);
         cargarCatalogos(model);
         Mascota mascota = mascotaService.buscarPorId(id);
@@ -105,6 +110,7 @@ public class RecepcionMascotaController {
     @PostMapping("/{id}/editar")
     public String editar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                           @Valid @ModelAttribute("form") MascotaForm form, BindingResult result, Model model) {
+        verificarPacienteDeMiClinica(id, principal);
         form.setIdMascota(id);
         if (result.hasErrors()) {
             cargarShell(model, principal);
@@ -113,6 +119,14 @@ public class RecepcionMascotaController {
         }
         mascotaService.actualizarSinVerificarTutor(form);
         return "redirect:/recepcion/mascotas?actualizada";
+    }
+
+    /** VL-02: la recepcionista solo trabaja con mascotas que tienen o tuvieron cita en su clínica. */
+    private void verificarPacienteDeMiClinica(Integer idMascota, VetlinkUserPrincipal principal) {
+        Integer miClinica = principal.getUsuario().getRecepcionista().getVeterinaria().getIdVeterinaria();
+        if (!citaRepository.existsByMascota_IdMascotaAndVeterinaria_IdVeterinaria(idMascota, miClinica)) {
+            throw new AccessDeniedException("Esta mascota no es paciente de tu clínica");
+        }
     }
 
     private void cargarShell(Model model, VetlinkUserPrincipal principal) {
