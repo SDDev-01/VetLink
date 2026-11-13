@@ -29,7 +29,6 @@
 
             <p class="form-message" style="color:#16a34a" th:if="${param.creado}">Historial registrado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Historial actualizado.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.eliminado}">Historial eliminado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.vacunaRegistrada}">Vacuna registrada.</p>
             <p class="form-message" style="color:#dc2626" th:if="${errorVacuna}" th:text="${errorVacuna}"></p>
 
@@ -137,17 +136,8 @@
                                 </div>
                                 <div class="vl-entity-actions" style="border:none; padding-top:10px;"
                                      th:if="${h.veterinario.idUsuario == idUsuarioActual}">
-                                    <a th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
-                                    <form th:if="${minutosParaEliminar.get(h.numeroHistorial)} != null and ${minutosParaEliminar.get(h.numeroHistorial)} > 0"
-                                          th:action="@{'/historial/' + ${h.numeroHistorial} + '/eliminar'}" method="post" style="display:inline;"
-                                          onsubmit="return confirm('¿Eliminar este historial? Esta acción no se puede deshacer.');">
-                                        <input type="hidden" name="idMascota" th:value="${mascota.idMascota}">
-                                        <button type="submit" class="vl-btn vl-btn-danger vl-btn-sm"><i class="fas fa-trash"></i> Eliminar</button>
-                                    </form>
-                                    <span th:if="${minutosParaEliminar.get(h.numeroHistorial)} != null and ${minutosParaEliminar.get(h.numeroHistorial)} > 0"
-                                          class="vl-badge vl-badge-warn">
-                                        <i class="fas fa-hourglass-half"></i> Eliminable <span th:text="${minutosParaEliminar.get(h.numeroHistorial)}"></span> min más
-                                    </span>
+                                    <!-- VL-19: las historias no se eliminan; el autor puede editarlas durante 24 horas -->
+                                    <a th:if="${editables.contains(h.numeroHistorial)}" th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
                                     <form th:action="@{'/historial/'+${h.numeroHistorial}+'/archivos'}" method="post" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;">
                                         <input type="file" name="archivo" required>
                                         <button class="vl-btn vl-btn-ghost vl-btn-sm" type="submit"><i class="fas fa-paperclip"></i> Adjuntar</button>

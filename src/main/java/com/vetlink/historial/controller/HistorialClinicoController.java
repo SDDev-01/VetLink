@@ -127,9 +127,12 @@ public class HistorialClinicoController {
         model.addAttribute("citas", citaRepository.findByMascota_IdMascotaOrderByFechaDescHoraDesc(idMascota));
         model.addAttribute("idUsuarioActual", principal.getUsuario().getIdUsuario());
 
-        var minutos = new LinkedHashMap<Integer, Long>();
-        for (HistorialClinico h : historial) minutos.put(h.getNumeroHistorial(), historialService.minutosRestantesParaEliminar(h));
-        model.addAttribute("minutosParaEliminar", minutos);
+        // VL-19: qué registros puede editar todavía el usuario actual (autor y dentro de 24 h).
+        Integer yo = principal.getUsuario().getIdUsuario();
+        model.addAttribute("editables", historial.stream()
+                .filter(h -> historialService.esEditable(h, yo))
+                .map(HistorialClinico::getNumeroHistorial)
+                .collect(java.util.stream.Collectors.toSet()));
         var archivos = new LinkedHashMap<Integer, java.util.List<com.vetlink.historial.model.ArchivoHistorial>>();
         for (HistorialClinico h : historial) archivos.put(h.getNumeroHistorial(), archivoRepository.findByHistorial_NumeroHistorial(h.getNumeroHistorial()));
         model.addAttribute("archivosPorHistorial", archivos);
@@ -143,7 +146,7 @@ public class HistorialClinicoController {
     @GetMapping("/{id}/editar")
     public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         HistorialClinico historial = historialService.buscarPorId(id);
-        verificarAutor(historial, principal);
+        verificarEditable(historial, principal);
         cargarShell(model, principal);
         HistorialClinicoForm form = new HistorialClinicoForm();
         form.setIdMascota(historial.getMascota().getIdMascota());
@@ -161,9 +164,14 @@ public class HistorialClinicoController {
     @PostMapping("/{id}/editar")
     public String editar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                           @Valid @ModelAttribute("form") HistorialClinicoForm form, BindingResult result, Model model) {
+        HistorialClinico existente = historialService.buscarPorId(id);
+        verificarEditable(existente, principal);
+        // La mascota de una historia no cambia, venga lo que venga en el formulario.
+        form.setIdMascota(existente.getMascota().getIdMascota());
         if (result.hasErrors()) {
             cargarShell(model, principal);
-            model.addAttribute("mascota", mascotaService.buscarPorId(form.getIdMascota()));
+            model.addAttribute("mascota", existente.getMascota());
+            model.addAttribute("historialId", id);
             model.addAttribute("editando", true);
             return "historial/formulario";
         }
@@ -173,17 +181,6 @@ public class HistorialClinicoController {
             throw new AccessDeniedException(e.getMessage());
         }
         return "redirect:/historial/paciente/" + form.getIdMascota() + "?actualizado";
-    }
-
-    @PostMapping("/{id}/eliminar")
-    public String eliminar(@PathVariable Integer id, @RequestParam Integer idMascota,
-                            @AuthenticationPrincipal VetlinkUserPrincipal principal) {
-        try {
-            historialService.eliminar(id, principal.getUsuario().getIdUsuario());
-        } catch (SecurityException e) {
-            throw new AccessDeniedException(e.getMessage());
-        }
-        return "redirect:/historial/paciente/" + idMascota + "?eliminado";
     }
 
     @PostMapping("/{id}/archivos")
@@ -210,6 +207,14 @@ public class HistorialClinicoController {
         accesoPacienteService.verificar(adjunto.getHistorial().getMascota(), principal);
         Path path=Path.of(adjunto.getRutaArchivo()); if(!Files.exists(path)) throw new IllegalArgumentException("El archivo ya no existe en el almacenamiento");
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(adjunto.getTipoArchivo())).body(new org.springframework.core.io.FileSystemResource(path));
+    }
+
+    /** VL-19: solo el autor y solo durante las 24 horas siguientes al registro. */
+    private void verificarEditable(HistorialClinico historial, VetlinkUserPrincipal principal) {
+        verificarAutor(historial, principal);
+        if (!historialService.esEditable(historial, principal.getUsuario().getIdUsuario())) {
+            throw new AccessDeniedException("La historia ya no se puede editar");
+        }
     }
 
     private void verificarAutor(HistorialClinico historial, VetlinkUserPrincipal principal) {
