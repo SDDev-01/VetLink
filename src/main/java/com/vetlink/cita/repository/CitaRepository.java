@@ -67,4 +67,20 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
 
     /** VL-03: ¿el veterinario tiene o tuvo alguna cita con esta mascota? */
     boolean existsByMascota_IdMascotaAndVeterinario_IdUsuario(Integer idMascota, Integer idVeterinario);
+
+    /**
+     * VL-13: citas AGENDADAS del dueño que aún no han pasado (fecha > hoy, o hoy con hora >= ahora),
+     * solo de mascotas activas, de la más cercana a la más lejana.
+     */
+    @Query("""
+           select c from Cita c
+           where c.mascota.tutor.idUsuario = :idTutor
+             and c.mascota.estado = 1
+             and c.estado = com.vetlink.cita.model.EstadoCita.AGENDADA
+             and (c.fecha > :hoy or (c.fecha = :hoy and c.hora >= :ahora))
+           order by c.fecha asc, c.hora asc
+           """)
+    List<Cita> proximasAgendadasDeTutor(@Param("idTutor") Integer idTutor,
+                                        @Param("hoy") LocalDate hoy,
+                                        @Param("ahora") LocalTime ahora);
 }
