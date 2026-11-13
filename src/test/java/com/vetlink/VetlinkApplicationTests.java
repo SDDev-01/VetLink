@@ -9,11 +9,13 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.vetlink.historial.model.ArchivoHistorial;
 import jakarta.persistence.Column;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class VetlinkApplicationTests {
 
 	@Test

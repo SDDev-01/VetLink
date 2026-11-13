@@ -1,0 +1,12 @@
+-- =====================================================================
+-- V5_correcciones.sql
+-- Correcciones de CORRECCIONES_SPRING.md (tareas VL-XX).
+--
+-- Se ejecuta UNA SOLA VEZ, después de V4_atencion_y_archivos.sql.
+-- ANTES DE APLICARLO haz un respaldo completo de la base:
+--     mysqldump -u root -p mydb > mydb_respaldo_antes_de_V5.sql
+--
+-- Cada sentencia lleva un comentario con el número de tarea que la origina.
+-- Este archivo no borra filas de datos existentes.
+-- =====================================================================
+
