@@ -242,8 +242,8 @@ public class CitaController {
 
     private void verificarAccesoTutor(com.vetlink.mascota.model.Mascota mascota,
                                       VetlinkUserPrincipal principal) {
-        if (principal.getUsuario().getRol() == com.vetlink.usuario.model.Rol.TUTOR
-                && !mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
+        // VL-05: sin importar el rol, solo el dueño de la mascota pasa.
+        if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "No tienes permiso para consultar esta mascota");
         }

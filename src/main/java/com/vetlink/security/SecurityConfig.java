@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .requestMatchers("/veterinarias/admin/**", "/reportes/**").hasAnyRole("RECEPCIONISTA", "VETERINARIO")
                 .requestMatchers("/dashboard/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/carnet/**").hasRole("VETERINARIO")
+                .requestMatchers("/citas/mascota/**", "/citas/agendar/**").hasRole("TUTOR")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

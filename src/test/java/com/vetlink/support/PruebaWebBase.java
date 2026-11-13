@@ -23,8 +23,10 @@ import com.vetlink.usuario.repository.TutorRepository;
 import com.vetlink.usuario.repository.UsuarioRepository;
 import com.vetlink.usuario.repository.VeterinarioRepository;
 import com.vetlink.veterinaria.model.Servicio;
+import com.vetlink.veterinaria.model.ServicioVeterinaria;
 import com.vetlink.veterinaria.model.Veterinaria;
 import com.vetlink.veterinaria.repository.ServicioRepository;
+import com.vetlink.veterinaria.repository.ServicioVeterinariaRepository;
 import com.vetlink.veterinaria.repository.VeterinariaRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +73,7 @@ public abstract class PruebaWebBase {
     @Autowired protected TipoDocumentoRepository tipoDocumentoRepository;
     @Autowired protected VeterinariaRepository veterinariaRepository;
     @Autowired protected ServicioRepository servicioRepository;
+    @Autowired protected ServicioVeterinariaRepository servicioVeterinariaRepository;
     @Autowired protected EspecieRepository especieRepository;
     @Autowired protected RazaRepository razaRepository;
     @Autowired protected MascotaRepository mascotaRepository;
@@ -123,6 +126,22 @@ public abstract class PruebaWebBase {
         s.setNombreServicio(nombre);
         s.setDescripcion(nombre);
         return servicioRepository.save(s);
+    }
+
+    /** Servicio compartido por las pruebas (el mismo que usa crearCita). */
+    protected Servicio servicioPorDefecto() {
+        return servicioRepository.findAll().stream().findFirst()
+                .orElseGet(() -> crearServicio("Consulta general"));
+    }
+
+    /** Registra que la clínica ofrece el servicio (requisito para agendar). */
+    protected ServicioVeterinaria ofrecerServicio(Veterinaria clinica, Servicio servicio) {
+        ServicioVeterinaria sv = new ServicioVeterinaria();
+        sv.setVeterinaria(clinica);
+        sv.setServicio(servicio);
+        sv.setPrecio(50000.0);
+        sv.setDuracionAprox(30);
+        return servicioVeterinariaRepository.save(sv);
     }
 
     // ------------------------------------------------------------------
@@ -219,8 +238,7 @@ public abstract class PruebaWebBase {
         c.setMascota(mascota);
         c.setVeterinario(veterinario);
         c.setVeterinaria(clinica);
-        c.setServicio(servicioRepository.findAll().stream().findFirst()
-                .orElseGet(() -> crearServicio("Consulta general")));
+        c.setServicio(servicioPorDefecto());
         c.setFecha(fecha);
         c.setHora(hora);
         c.setEstado(estado);
