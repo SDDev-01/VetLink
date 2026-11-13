@@ -13,6 +13,10 @@ public interface ResenaRepository extends JpaRepository<Resena, Integer> {
 
     List<Resena> findByTutor_IdUsuarioOrderByFechaPublicacionDesc(Integer idTutor);
 
+    /** VL-28: promedio general de todas las reseñas (null si no hay ninguna). */
+    @Query("select avg(r.calificacion.valor) from Resena r")
+    Double promedioGeneral();
+
     @Query("select avg(r.calificacion.valor) from Resena r where r.veterinaria.idVeterinaria = :idVeterinaria")
     Double promedioDeVeterinaria(@Param("idVeterinaria") Integer idVeterinaria);
 

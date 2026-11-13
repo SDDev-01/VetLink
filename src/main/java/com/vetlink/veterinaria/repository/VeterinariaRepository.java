@@ -8,4 +8,5 @@ import java.util.List;
 public interface VeterinariaRepository extends JpaRepository<Veterinaria, Integer> {
     List<Veterinaria> findByEstado(Byte estado);
     List<Veterinaria> findByNombreContainingIgnoreCaseAndEstado(String nombre, Byte estado);
+    long countByEstado(Byte estado);
 }
