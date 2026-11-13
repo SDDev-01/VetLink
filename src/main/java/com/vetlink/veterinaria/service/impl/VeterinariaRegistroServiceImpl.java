@@ -60,6 +60,7 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         if (veterinariaRepository.findAll().stream().anyMatch(v -> v.getNit().equalsIgnoreCase(form.getNit()))) {
             throw new IllegalArgumentException("Ya existe una veterinaria registrada con ese NIT");
         }
+        validarHorarios(form.getHorarios());
 
         Veterinaria veterinaria = new Veterinaria();
         veterinaria.setNit(form.getNit());
@@ -104,7 +105,8 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         }
 
         for (VeterinariaRegistroForm.HorarioDiaForm h : form.getHorarios()) {
-            if (!h.isAbierto()) continue;
+            // Puede haber huecos en la lista si en el formulario se quitó un rango extra (VL-14).
+            if (h == null || !h.isAbierto()) continue;
             DiaSemana dia = diaSemanaRepository.findById(h.getIdDiaSemana())
                     .orElseThrow(() -> new IllegalArgumentException("Dia invalido"));
             HorarioVeterinaria horario = new HorarioVeterinaria();
@@ -117,6 +119,38 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         }
 
         return veterinaria;
+    }
+
+    /**
+     * VL-14: cada rango abierto debe tener apertura anterior al cierre, y los rangos
+     * de un mismo día no se pueden cruzar. Se puede tener más de un rango por día.
+     */
+    private void validarHorarios(List<VeterinariaRegistroForm.HorarioDiaForm> horarios) {
+        java.util.Map<Integer, List<LocalTime[]>> porDia = new java.util.HashMap<>();
+        for (VeterinariaRegistroForm.HorarioDiaForm h : horarios) {
+            if (h == null || !h.isAbierto()) continue;
+            String nombreDia = diaSemanaRepository.findById(h.getIdDiaSemana())
+                    .map(DiaSemana::getDiaSemana)
+                    .orElseThrow(() -> new IllegalArgumentException("Dia invalido"));
+            LocalTime apertura;
+            LocalTime cierre;
+            try {
+                apertura = LocalTime.parse(h.getHoraApertura());
+                cierre = LocalTime.parse(h.getHoraCierre());
+            } catch (RuntimeException e) {
+                throw new IllegalArgumentException("Revisa las horas del " + nombreDia + ": formato inválido");
+            }
+            if (!apertura.isBefore(cierre)) {
+                throw new IllegalArgumentException("El " + nombreDia
+                        + ", la hora de apertura debe ser anterior a la de cierre");
+            }
+            for (LocalTime[] otro : porDia.computeIfAbsent(h.getIdDiaSemana(), k -> new java.util.ArrayList<>())) {
+                if (apertura.isBefore(otro[1]) && otro[0].isBefore(cierre)) {
+                    throw new IllegalArgumentException("El " + nombreDia + " tiene horarios que se cruzan");
+                }
+            }
+            porDia.get(h.getIdDiaSemana()).add(new LocalTime[]{apertura, cierre});
+        }
     }
 
     /**

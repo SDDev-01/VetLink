@@ -23,3 +23,14 @@
 -- ---------------------------------------------------------------------
 INSERT INTO calificacion (idCalificacion, valor, descripcion) VALUES (4, 2, 'Malo'), (5, 1, 'Muy malo'); -- VL-10
 
+-- ---------------------------------------------------------------------
+-- VL-14: agregar el domingo (dia_semana solo tenía lunes a sábado).
+-- Verificado en database/mydb.sql: ids 1..6 (AUTO_INCREMENT=7), el 7 está libre.
+-- Comprobación previa en tu base:  SELECT * FROM dia_semana WHERE idDiaSemana = 7;
+-- ---------------------------------------------------------------------
+INSERT INTO dia_semana (idDiaSemana, diaSemana) VALUES (7, 'Domingo'); -- VL-14
+
+-- VL-14: horarios inválidos ya guardados (apertura >= cierre, p. ej. 20:34 a 00:23).
+-- La aplicación ya no los usa para calcular disponibilidad; revísalos y corrígelos a mano:
+-- SELECT * FROM horario_veterinaria WHERE horaApertura >= horaCierre;
+

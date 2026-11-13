@@ -176,17 +176,23 @@ public class CitaController {
                     .filter(c -> c.getVeterinario().getIdUsuario().equals(idVeterinario))
                     .filter(c -> c.getServicio().getIdServicio().equals(idServicio))
                     .map(c -> c.getHora().toString().substring(0, 5)).toList();
-            return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty());
+            return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty(), List.of());
         }
         String nombreDia = nombreDiaEs(fecha.getDayOfWeek());
 
-        HorarioVeterinaria horarioDia = horarioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
+        // VL-14: una clínica puede tener varios rangos el mismo día (p. ej. 08-12 y 14-18).
+        List<HorarioVeterinaria> horariosDia = horarioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
                 .filter(h -> h.getEstado() == 1 && h.getDiaSemana().getDiaSemana().equalsIgnoreCase(nombreDia))
-                .findFirst().orElse(null);
+                .filter(h -> h.getHoraApertura().isBefore(h.getHoraCierre()))
+                .sorted(java.util.Comparator.comparing(HorarioVeterinaria::getHoraApertura))
+                .toList();
 
-        if (horarioDia == null) {
-            return new HorariosDisponiblesResponse(null, null, List.of(), true);
+        if (horariosDia.isEmpty()) {
+            return new HorariosDisponiblesResponse(null, null, List.of(), true, List.of());
         }
+        List<RangoHorario> rangos = horariosDia.stream()
+                .map(h -> new RangoHorario(hhmm(h.getHoraApertura()), hhmm(h.getHoraCierre())))
+                .toList();
 
         List<Cita> citasDelDia = idVeterinario != null
                 ? citaRepository.findByVeterinario_IdUsuarioAndFecha(idVeterinario, fecha)
@@ -197,11 +203,16 @@ public class CitaController {
                 .map(c -> c.getHora().toString().substring(0, 5))
                 .toList();
 
+        // apertura/cierre se conservan (primer y último horario del día) para no romper clientes antiguos.
         return new HorariosDisponiblesResponse(
-                horarioDia.getHoraApertura().toString().substring(0, 5),
-                horarioDia.getHoraCierre().toString().substring(0, 5),
-                ocupadas, false
+                rangos.get(0).apertura(),
+                rangos.stream().map(RangoHorario::cierre).max(String::compareTo).orElseThrow(),
+                ocupadas, false, rangos
         );
+    }
+
+    private static String hhmm(java.time.LocalTime hora) {
+        return hora.toString().substring(0, 5);
     }
 
     private String nombreDiaEs(DayOfWeek dia) {
@@ -216,7 +227,11 @@ public class CitaController {
         };
     }
 
-    public record HorariosDisponiblesResponse(String apertura, String cierre, List<String> ocupadas, boolean cerrado) {}
+    public record HorariosDisponiblesResponse(String apertura, String cierre, List<String> ocupadas, boolean cerrado,
+                                              List<RangoHorario> rangos) {}
+
+    /** VL-14: un rango de atención {apertura, cierre} en formato HH:mm. */
+    public record RangoHorario(String apertura, String cierre) {}
 
     /** Veterinarios que trabajan en una veterinaria dada, usado por AJAX desde el formulario. */
     @GetMapping("/veterinarios/{idVeterinaria}")

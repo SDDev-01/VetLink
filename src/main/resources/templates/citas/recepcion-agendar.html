@@ -127,18 +127,23 @@
                 cont.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">La veterinaria no atiende ese día.</p>';
                 return;
             }
+            // VL-14: se recorren todos los rangos del día (p. ej. 08:00-12:00 y 14:00-18:00).
+            var rangos = (data.rangos && data.rangos.length) ? data.rangos : [{apertura: data.apertura, cierre: data.cierre}];
             var slots = [];
-            var cursor = horaAMinutos(data.apertura);
-            var fin = horaAMinutos(data.cierre);
-            while (cursor + 30 <= fin) {
-                var hh = String(Math.floor(cursor / 60)).padStart(2, '0');
-                var mm = String(cursor % 60).padStart(2, '0');
-                var horaStr = hh + ':' + mm;
-                if (data.ocupadas.indexOf(horaStr) === -1) slots.push(horaStr);
-                cursor += 30;
-            }
+            rangos.forEach(function (rango) {
+                var cursor = horaAMinutos(rango.apertura);
+                var fin = horaAMinutos(rango.cierre);
+                while (cursor + 30 <= fin) {
+                    var hh = String(Math.floor(cursor / 60)).padStart(2, '0');
+                    var mm = String(cursor % 60).padStart(2, '0');
+                    var horaStr = hh + ':' + mm;
+                    if (data.ocupadas.indexOf(horaStr) === -1 && slots.indexOf(horaStr) === -1) slots.push(horaStr);
+                    cursor += 30;
+                }
+            });
+            var textoRangos = rangos.map(function (r) { return r.apertura + ' - ' + r.cierre; }).join(' y ');
             cont.innerHTML = slots.length
-                ? '<label style="font-size:0.8rem; font-weight:700; color:#334155;">Horarios disponibles</label><div class="vl-slots-grid">'
+                ? '<label style="font-size:0.8rem; font-weight:700; color:#334155;">Horarios disponibles (atiende ' + textoRangos + ')</label><div class="vl-slots-grid">'
                     + slots.map(h => '<button type="button" class="vl-slot-btn" data-hora="' + h + '">' + h + '</button>').join('') + '</div>'
                 : '<p style="color:#94a3b8; font-size:0.85rem;">No hay horarios disponibles ese día.</p>';
 
