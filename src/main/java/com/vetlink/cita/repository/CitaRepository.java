@@ -83,4 +83,18 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     List<Cita> proximasAgendadasDeTutor(@Param("idTutor") Integer idTutor,
                                         @Param("hoy") LocalDate hoy,
                                         @Param("ahora") LocalTime ahora);
+
+    /** VL-23: cupos DISPONIBLES futuros de un servicio en una clínica, para reagendar. */
+    @Query("""
+           select c from Cita c
+           where c.veterinaria.idVeterinaria = :idVeterinaria
+             and c.servicio.idServicio = :idServicio
+             and c.estado = com.vetlink.cita.model.EstadoCita.DISPONIBLE
+             and (c.fecha > :hoy or (c.fecha = :hoy and c.hora > :ahora))
+           order by c.fecha asc, c.hora asc
+           """)
+    List<Cita> cuposDisponiblesFuturos(@Param("idVeterinaria") Integer idVeterinaria,
+                                       @Param("idServicio") Integer idServicio,
+                                       @Param("hoy") LocalDate hoy,
+                                       @Param("ahora") LocalTime ahora);
 }

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reagendar cita - VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
+
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div>
+                    <h1>Reagendar cita</h1>
+                    <p th:text="${cita.mascota != null ? cita.mascota.nombre : 'Cupo'} + ' · ' + ${cita.servicio.nombreServicio}
+                                + ' · actualmente el ' + ${cita.fecha} + ' a las ' + ${cita.hora}">Cita</p>
+                </div>
+                <a th:href="@{/reportes/citas}" class="vl-btn vl-btn-ghost">Volver</a>
+            </div>
+
+            <!-- VL-23: se elige un cupo DISPONIBLE futuro del mismo servicio; el horario actual queda libre -->
+            <div class="vl-table-wrap" style="padding:28px; max-width:720px;">
+                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+
+                <form th:if="${!#lists.isEmpty(cupos)}" th:action="@{'/citas/recepcion/' + ${cita.idCita} + '/reagendar'}" method="post">
+                    <label style="font-size:0.8rem; font-weight:700; color:#334155;">Cupos disponibles</label>
+                    <div class="vl-slots-grid" style="margin:10px 0 16px;">
+                        <label class="vl-slot-btn" th:each="c : ${cupos}" style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+                            <input type="radio" name="idCupoNuevo" th:value="${c.idCita}" required>
+                            <span th:text="${#temporals.format(c.fecha, 'dd/MM/yyyy')} + ' ' + ${#temporals.format(c.hora, 'HH:mm')}
+                                           + ' · Dr(a). ' + ${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-check"></i> Mover a este cupo</button>
+                    </div>
+                </form>
+
+                <div class="vl-empty" th:if="${#lists.isEmpty(cupos)}">
+                    <i class="fas fa-calendar-xmark"></i>
+                    <h4>No hay cupos disponibles</h4>
+                    <p>Oferta un cupo de este servicio para poder mover la cita.</p>
+                    <a th:href="@{/citas/recepcion/ofertar}" class="vl-btn vl-btn-primary" style="margin-top:10px;">Ofertar cupo</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>
