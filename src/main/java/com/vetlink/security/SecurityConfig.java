@@ -38,7 +38,7 @@ public class SecurityConfig {
         http
             .authenticationProvider(authProvider)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/registro", "/login", "/directorio/**", "/css/**", "/js/**", "/resource/**", "/uploads/**", "/api/catalogos/**").permitAll()
+                .requestMatchers("/", "/registro", "/login", "/directorio/**", "/css/**", "/js/**", "/resource/**", "/api/catalogos/**").permitAll()
                 // VL-22: la foto también la ve el personal que atiende a la mascota (lo verifica AccesoPacienteService).
                 .requestMatchers(HttpMethod.GET, "/mascotas/*/foto").authenticated()
                 .requestMatchers("/mascotas/**", "/citas/mias/**").hasRole("TUTOR")
