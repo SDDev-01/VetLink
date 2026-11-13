@@ -182,6 +182,7 @@ public class CitaServiceImpl implements CitaService {
         if (cita.getEstado() != EstadoCita.AGENDADA) {
             throw new IllegalStateException("Solo se pueden reagendar citas que están agendadas");
         }
+        validarNoEsPasado(nuevaFecha, nuevaHora); // VL-15
         if (citaRepository.existsByVeterinario_IdUsuarioAndFechaAndHoraAndEstado(
                 cita.getVeterinario().getIdUsuario(), nuevaFecha, nuevaHora, EstadoCita.AGENDADA)) {
             throw new IllegalStateException("El veterinario ya tiene una cita en ese horario");
@@ -194,6 +195,7 @@ public class CitaServiceImpl implements CitaService {
     @Override
     @Transactional
     public Cita ofertarCupo(com.vetlink.cita.dto.OfertarCitaForm form, Integer idVeterinariaRecepcionista) {
+        validarNoEsPasado(form.getFecha(), form.getHora()); // VL-15
         Usuario veterinario = usuarioRepository.findById(form.getIdVeterinario())
                 .orElseThrow(() -> new IllegalArgumentException("Veterinario no encontrado"));
         Servicio servicio = servicioRepository.findById(form.getIdServicio())
@@ -222,6 +224,14 @@ public class CitaServiceImpl implements CitaService {
         cupo.setServicio(servicio);
         cupo.setVeterinaria(veterinaria);
         return citaRepository.save(cupo);
+    }
+
+    /** VL-15: misma regla que ValidadorFechaFutura, comparando fecha y hora. */
+    private void validarNoEsPasado(java.time.LocalDate fecha, java.time.LocalTime hora) {
+        if (fecha != null && hora != null
+                && java.time.LocalDateTime.of(fecha, hora).isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalStateException("No se permiten citas en horas pasadas.");
+        }
     }
 
     private void verificarCitaDeSuVeterinaria(Cita cita, Integer idVeterinariaRecepcionista) {

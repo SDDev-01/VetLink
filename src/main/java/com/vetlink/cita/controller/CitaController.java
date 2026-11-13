@@ -175,6 +175,8 @@ public class CitaController {
                     .filter(c -> c.getFecha().equals(fecha))
                     .filter(c -> c.getVeterinario().getIdUsuario().equals(idVeterinario))
                     .filter(c -> c.getServicio().getIdServicio().equals(idServicio))
+                    // VL-15: hoy no se ofrecen cupos cuya hora ya pasó.
+                    .filter(c -> !java.time.LocalDateTime.of(c.getFecha(), c.getHora()).isBefore(java.time.LocalDateTime.now()))
                     .map(c -> c.getHora().toString().substring(0, 5)).toList();
             return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty(), List.of());
         }
