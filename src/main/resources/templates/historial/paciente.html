@@ -128,7 +128,7 @@
                         <div class="vl-timeline-item" th:each="h : ${historial}">
                             <div class="vl-timeline-dot"></div>
                             <div class="vl-timeline-content">
-                                <span class="vl-timeline-date" th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
+                                <span class="vl-timeline-date" th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
                                 <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
                                 <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                                 <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>

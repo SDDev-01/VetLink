@@ -3,6 +3,8 @@ package com.vetlink.support;
 import com.vetlink.cita.model.Cita;
 import com.vetlink.cita.model.EstadoCita;
 import com.vetlink.cita.repository.CitaRepository;
+import com.vetlink.historial.model.HistorialClinico;
+import com.vetlink.historial.repository.HistorialClinicoRepository;
 import com.vetlink.mascota.model.Especie;
 import com.vetlink.mascota.model.Mascota;
 import com.vetlink.mascota.model.Raza;
@@ -84,6 +86,7 @@ public abstract class PruebaWebBase {
     @Autowired protected MascotaRepository mascotaRepository;
     @Autowired protected CitaRepository citaRepository;
     @Autowired protected CiudadRepository ciudadRepository;
+    @Autowired protected HistorialClinicoRepository historialRepository;
 
     protected int siguiente() {
         return SECUENCIA.incrementAndGet();
@@ -255,6 +258,19 @@ public abstract class PruebaWebBase {
     protected Cita crearCita(Mascota mascota, Usuario veterinario, Veterinaria clinica) {
         return crearCita(mascota, veterinario, clinica, LocalDate.now().plusDays(1),
                 LocalTime.of(10, 0), EstadoCita.AGENDADA);
+    }
+
+    /** Historia clínica con la fecha de registro dada (null = registro antiguo, solo con año). */
+    protected HistorialClinico crearHistorial(Mascota mascota, Usuario veterinario, java.time.LocalDateTime fechaRegistro) {
+        HistorialClinico h = new HistorialClinico();
+        h.setMascota(mascota);
+        h.setVeterinario(veterinario);
+        h.setMotivoConsulta("Control");
+        h.setDiagnostico("Sano");
+        h.setFechaConsulta(fechaRegistro != null ? fechaRegistro.getYear() : 2025);
+        h.setFechaRegistro(fechaRegistro);
+        h.setProximaCita(LocalDate.now().plusMonths(6));
+        return historialRepository.save(h);
     }
 
     /**

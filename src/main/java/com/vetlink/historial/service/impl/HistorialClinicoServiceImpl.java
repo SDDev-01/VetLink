@@ -30,12 +30,12 @@ public class HistorialClinicoServiceImpl implements HistorialClinicoService {
 
     @Override
     public List<HistorialClinico> listarPorMascota(Integer idMascota) {
-        return historialRepository.findByMascota_IdMascotaOrderByNumeroHistorialDesc(idMascota);
+        return historialRepository.listarPorMascotaRecientes(idMascota);
     }
 
     @Override
     public List<HistorialClinico> listarPorTutor(Integer idTutor) {
-        return historialRepository.findByMascota_Tutor_IdUsuarioOrderByNumeroHistorialDesc(idTutor);
+        return historialRepository.listarPorTutorRecientes(idTutor);
     }
 
     @Override

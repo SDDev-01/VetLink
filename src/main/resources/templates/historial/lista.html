@@ -30,7 +30,7 @@
             <div class="vl-table-wrap" th:if="${not #lists.isEmpty(historial)}" style="padding:0;">
                 <div style="padding:20px; border-bottom:1px solid #eef2f7;" th:each="h : ${historial}">
                     <div style="color:#94a3b8; font-size:0.85rem; margin-bottom:6px;"
-                         th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></div>
+                         th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></div>
                     <p style="margin:4px 0;"><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                     <p style="margin:4px 0;"><strong>Diagnóstico:</strong> <span th:text="${h.diagnostico}"></span></p>
                     <p style="margin:4px 0;" th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
