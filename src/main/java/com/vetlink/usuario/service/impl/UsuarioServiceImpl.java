@@ -120,6 +120,11 @@ public class UsuarioServiceImpl implements UsuarioService {
                             .orElseThrow(() -> new IllegalArgumentException("Selecciona una veterinaria valida"));
                 }
                 usuario = usuarioFactory.crearRecepcionista(form, tipoDocumento, veterinaria);
+                // VL-08: quien registra una clínica nueva queda como su administradora.
+                // Las recepcionistas creadas desde el panel siguen con esPrincipal = false.
+                if (form.getNuevaVeterinaria() != null) {
+                    usuario.getRecepcionista().setEsPrincipal(true);
+                }
             }
             default -> throw new IllegalArgumentException("Rol invalido");
         }

@@ -123,6 +123,8 @@ public class VeterinariaAdminController {
         exigirRecepcionistaPrincipal(principal);
         Veterinaria veterinaria = miVeterinaria(principal);
         form.setRol("RECEPCIONISTA"); form.setIdVeterinariaRecepcion(veterinaria.getIdVeterinaria());
+        // VL-08: desde el panel nunca se crea una clínica nueva, así la recepcionista queda con esPrincipal = false.
+        form.setNuevaVeterinaria(null);
         form.setConfirmarPassword(form.getPassword()); if (form.getTurno() == null || form.getTurno().isBlank()) form.setTurno("MAÑANA");
         if (result.hasErrors()) return "redirect:/veterinarias/admin?error=Datos+de+recepcionista+incompletos";
         usuarioService.registrar(form);
