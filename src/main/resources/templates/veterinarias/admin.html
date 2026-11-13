@@ -25,7 +25,7 @@
             <p class="form-message" style="color:#16a34a" th:if="${param.actualizada}">Información actualizada.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.veterinarioCreado}">Veterinario registrado. Ya puede iniciar sesión con el correo y contraseña que definiste.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.recepcionistaCreada}">Recepcionista adicional registrada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${param.error}" th:text="${param.error}"></p>
+            <p class="form-message" style="color:#dc2626" th:if="${error}" th:text="${error}"></p>
             <p class="form-message" style="color:#dc2626" th:if="${errorEquipo}" th:text="${errorEquipo}"></p>
 
             <!-- INFORMACIÓN DE LA VETERINARIA -->
@@ -59,8 +59,29 @@
             <div class="vl-table-wrap" style="padding:26px; margin-top:28px;">
                 <div class="vl-form-section-title"><i class="fas fa-user-headset"></i> Recepción</div>
                 <div class="vl-tag-row" style="margin-bottom:18px;"><span class="vl-tag" th:each="r:${recepcionistas}" th:text="${r.usuario.nombre+' '+r.usuario.apellido+(r.esPrincipal?' · Principal':'')}"></span></div>
+                <p class="form-message" style="color:#dc2626" th:if="${errorRecepcion}" th:text="${errorRecepcion}"></p>
                 <form th:action="@{/veterinarias/admin/recepcionistas}" th:object="${formEquipo}" method="post">
-                    <div class="vl-form-grid"><div class="vl-field"><label>Tipo documento</label><select th:field="*{idTipoDocumento}"><option value="">Selecciona</option><option th:each="t:${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option></select></div><div class="vl-field"><label>Número</label><input th:field="*{numeroDocumento}"></div><div class="vl-field"><label>Nombres</label><input th:field="*{nombre}"></div><div class="vl-field"><label>Apellidos</label><input th:field="*{apellido}"></div><div class="vl-field"><label>Correo</label><input type="email" th:field="*{correo}"></div><div class="vl-field"><label>Teléfono</label><input th:field="*{telefono}"></div><div class="vl-field"><label>Turno</label><select th:field="*{turno}"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option></select></div><div class="vl-field"><label>Contraseña temporal</label><input type="password" th:field="*{password}"></div></div><button class="vl-btn vl-btn-primary" style="margin-top:14px">Registrar recepcionista</button>
+                    <!-- VL-21: errores por campo solo cuando el error vino de este formulario -->
+                    <th:block th:with="mostrar=${errorRecepcion != null}">
+                    <div class="vl-form-grid">
+                        <div class="vl-field"><label>Tipo documento</label><select th:field="*{idTipoDocumento}"><option value="">Selecciona</option><option th:each="t:${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option></select>
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('idTipoDocumento')}" th:errors="*{idTipoDocumento}"></small></div>
+                        <div class="vl-field"><label>Número</label><input th:field="*{numeroDocumento}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('numeroDocumento')}" th:errors="*{numeroDocumento}"></small></div>
+                        <div class="vl-field"><label>Nombres</label><input th:field="*{nombre}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('nombre')}" th:errors="*{nombre}"></small></div>
+                        <div class="vl-field"><label>Apellidos</label><input th:field="*{apellido}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('apellido')}" th:errors="*{apellido}"></small></div>
+                        <div class="vl-field"><label>Correo</label><input type="email" th:field="*{correo}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('correo')}" th:errors="*{correo}"></small></div>
+                        <div class="vl-field"><label>Teléfono</label><input th:field="*{telefono}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('telefono')}" th:errors="*{telefono}"></small></div>
+                        <div class="vl-field"><label>Turno</label><select th:field="*{turno}"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option></select></div>
+                        <div class="vl-field"><label>Contraseña temporal</label><input type="password" th:field="*{password}">
+                            <small class="vl-error" th:if="${mostrar and #fields.hasErrors('password')}" th:errors="*{password}"></small></div>
+                    </div>
+                    </th:block>
+                    <button class="vl-btn vl-btn-primary" style="margin-top:14px">Registrar recepcionista</button>
                 </form>
             </div>
 

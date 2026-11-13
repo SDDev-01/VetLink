@@ -66,9 +66,8 @@ class VL08ClinicaNuevaPrincipalTest extends PruebaWebBase {
                         .param("apellido", "Panel")
                         .param("correo", "panel" + n + "@pruebas.vetlink")
                         .param("telefono", "3001234567")
-                        .param("password", "Clave12345")
-                        .param("confirmarPassword", "Clave12345")
-                        .param("rol", "RECEPCIONISTA"))
+                        .param("password", "Clave12345"))
+                // Solo los campos que envía el formulario real del panel (sin rol ni confirmarPassword).
                 .andExpect(redirectedUrl("/veterinarias/admin?recepcionistaCreada"));
 
         sincronizar();
