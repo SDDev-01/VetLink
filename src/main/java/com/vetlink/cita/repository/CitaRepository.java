@@ -64,4 +64,7 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
 
     /** VL-02: ¿la mascota tiene o tuvo alguna cita en esta clínica? */
     boolean existsByMascota_IdMascotaAndVeterinaria_IdVeterinaria(Integer idMascota, Integer idVeterinaria);
+
+    /** VL-03: ¿el veterinario tiene o tuvo alguna cita con esta mascota? */
+    boolean existsByMascota_IdMascotaAndVeterinario_IdUsuario(Integer idMascota, Integer idVeterinario);
 }

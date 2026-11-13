@@ -31,7 +31,7 @@
             <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Historial actualizado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.eliminado}">Historial eliminado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.vacunaRegistrada}">Vacuna registrada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${param.errorVacuna}" th:text="${param.errorVacuna}"></p>
+            <p class="form-message" style="color:#dc2626" th:if="${errorVacuna}" th:text="${errorVacuna}"></p>
 
             <div class="vl-drawer-tabs" style="border-radius:16px 16px 0 0; border:1px solid #f1f5f9; border-bottom:none;">
                 <button type="button" class="vl-drawer-tab active" data-tab="resumen"><i class="fas fa-circle-info"></i> Resumen</button>

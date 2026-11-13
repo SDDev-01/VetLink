@@ -2,6 +2,7 @@ package com.vetlink.historial.controller;
 
 import com.vetlink.historial.dto.HistorialClinicoForm;
 import com.vetlink.historial.model.HistorialClinico;
+import com.vetlink.security.AccesoPacienteService;
 import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.cita.repository.CitaRepository;
 import com.vetlink.historial.service.HistorialClinicoService;
@@ -37,12 +38,14 @@ public class HistorialClinicoController {
     private final LoteVacunaRepository loteVacunaRepository;
     private final com.vetlink.vacuna.repository.VacunaRepository vacunaRepository;
     private final com.vetlink.historial.repository.ArchivoHistorialRepository archivoRepository;
+    private final AccesoPacienteService accesoPacienteService;
 
     public HistorialClinicoController(HistorialClinicoService historialService, MascotaService mascotaService,
                                        CitaRepository citaRepository, CarnetVacunaService carnetVacunaService,
                                        LoteVacunaRepository loteVacunaRepository,
                                        com.vetlink.vacuna.repository.VacunaRepository vacunaRepository,
-                                       com.vetlink.historial.repository.ArchivoHistorialRepository archivoRepository) {
+                                       com.vetlink.historial.repository.ArchivoHistorialRepository archivoRepository,
+                                       AccesoPacienteService accesoPacienteService) {
         this.historialService = historialService;
         this.mascotaService = mascotaService;
         this.citaRepository = citaRepository;
@@ -50,6 +53,7 @@ public class HistorialClinicoController {
         this.loteVacunaRepository = loteVacunaRepository;
         this.vacunaRepository = vacunaRepository;
         this.archivoRepository = archivoRepository;
+        this.accesoPacienteService = accesoPacienteService;
     }
 
     /** Pacientes: para VETERINARIO son las mascotas que ha atendido; para RECEPCIONISTA,
@@ -89,7 +93,7 @@ public class HistorialClinicoController {
     public String listar(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
-        verificarAccesoPaciente(mascota, principal);
+        accesoPacienteService.verificar(mascota, principal);
         model.addAttribute("mascota", mascota);
         model.addAttribute("historial", historialService.listarPorMascota(idMascota));
         return "historial/lista";
@@ -99,7 +103,7 @@ public class HistorialClinicoController {
     public String nuevoForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
-        verificarAccesoPaciente(mascota, principal);
+        accesoPacienteService.verificar(mascota, principal);
         model.addAttribute("mascota", mascota);
         HistorialClinicoForm form = new HistorialClinicoForm();
         form.setIdMascota(idMascota);
@@ -114,7 +118,7 @@ public class HistorialClinicoController {
     public String carpetaMedica(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
-        verificarAccesoPaciente(mascota, principal);
+        accesoPacienteService.verificar(mascota, principal);
         var historial = historialService.listarPorMascota(idMascota);
 
         model.addAttribute("mascota", mascota);
@@ -203,7 +207,7 @@ public class HistorialClinicoController {
     public ResponseEntity<org.springframework.core.io.Resource> descargarArchivo(@PathVariable Integer idArchivo,
              @AuthenticationPrincipal VetlinkUserPrincipal principal) throws java.io.IOException {
         var adjunto = archivoRepository.findById(idArchivo).orElseThrow(() -> new IllegalArgumentException("Archivo no encontrado"));
-        verificarAccesoPaciente(adjunto.getHistorial().getMascota(), principal);
+        accesoPacienteService.verificar(adjunto.getHistorial().getMascota(), principal);
         Path path=Path.of(adjunto.getRutaArchivo()); if(!Files.exists(path)) throw new IllegalArgumentException("El archivo ya no existe en el almacenamiento");
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(adjunto.getTipoArchivo())).body(new org.springframework.core.io.FileSystemResource(path));
     }
@@ -223,7 +227,7 @@ public class HistorialClinicoController {
             model.addAttribute("mascota", mascotaService.buscarPorId(form.getIdMascota()));
             return "historial/formulario";
         }
-        verificarAccesoPaciente(mascotaService.buscarPorId(form.getIdMascota()), principal);
+        accesoPacienteService.verificar(mascotaService.buscarPorId(form.getIdMascota()), principal);
         historialService.crear(form, principal.getUsuario().getIdUsuario());
         return "redirect:/historial/paciente/" + form.getIdMascota() + "?creado";
     }
@@ -236,22 +240,5 @@ public class HistorialClinicoController {
             case VETERINARIO -> DashboardController.navVeterinario();
             case RECEPCIONISTA -> DashboardController.navRecepcionista();
         });
-    }
-
-    private void verificarAccesoPaciente(com.vetlink.mascota.model.Mascota mascota,
-                                      VetlinkUserPrincipal principal) {
-        var rol = principal.getUsuario().getRol();
-        boolean permitido = switch (rol) {
-            case TUTOR -> mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario());
-            case VETERINARIO -> citaRepository.findByVeterinario_IdUsuarioOrderByFechaDesc(
-                    principal.getUsuario().getIdUsuario()).stream()
-                    .anyMatch(c -> c.getMascota() != null && c.getMascota().getIdMascota().equals(mascota.getIdMascota()));
-            case RECEPCIONISTA -> citaRepository.buscarConFiltros(
-                    principal.getUsuario().getRecepcionista().getVeterinaria().getIdVeterinaria(), null, null, null, null).stream()
-                    .anyMatch(c -> c.getMascota() != null && c.getMascota().getIdMascota().equals(mascota.getIdMascota()));
-        };
-        if (!permitido) {
-            throw new AccessDeniedException("No tienes permiso para consultar esta mascota");
-        }
     }
 }
