@@ -7,6 +7,8 @@ import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.veterinaria.model.Veterinaria;
 import com.vetlink.veterinaria.repository.ServicioRepository;
+import com.vetlink.usuario.model.Usuario;
+import com.vetlink.usuario.repository.TutorRepository;
 import com.vetlink.usuario.repository.VeterinarioRepository;
 import com.vetlink.veterinaria.repository.ServicioVeterinariaRepository;
 import jakarta.validation.Valid;
@@ -30,15 +32,20 @@ public class RecepcionCitaController {
     private final ServicioRepository servicioRepository;
     private final VeterinarioRepository veterinarioRepository;
     private final ServicioVeterinariaRepository servicioVeterinariaRepository;
+    private final TutorRepository tutorRepository;
+
+    static final String MENSAJE_DUENIO_NO_ENCONTRADO = "No hay un dueño registrado con ese documento o correo";
 
     public RecepcionCitaController(CitaService citaService, MascotaRepository mascotaRepository,
                                     ServicioRepository servicioRepository, VeterinarioRepository veterinarioRepository,
-                                    ServicioVeterinariaRepository servicioVeterinariaRepository) {
+                                    ServicioVeterinariaRepository servicioVeterinariaRepository,
+                                    TutorRepository tutorRepository) {
         this.citaService = citaService;
         this.mascotaRepository = mascotaRepository;
         this.servicioRepository = servicioRepository;
         this.veterinarioRepository = veterinarioRepository;
         this.servicioVeterinariaRepository = servicioVeterinariaRepository;
+        this.tutorRepository = tutorRepository;
     }
 
     @GetMapping("/ofertar")
@@ -72,12 +79,19 @@ public class RecepcionCitaController {
     }
 
     @GetMapping("/agendar")
-    public String agendarForm(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String agendarForm(@AuthenticationPrincipal VetlinkUserPrincipal principal,
+                              @RequestParam(required = false) String buscarDuenio, Model model) {
         Veterinaria veterinaria = miVeterinaria(principal);
         cargarShell(model, principal);
         model.addAttribute("veterinaria", veterinaria);
         model.addAttribute("servicios", servicioRepository.findAll());
-        model.addAttribute("mascotas", mascotaRepository.findAll());
+        // VL-06: ya no se listan todas las mascotas; se busca primero al dueño.
+        if (buscarDuenio != null && !buscarDuenio.isBlank()) {
+            model.addAttribute("buscarDuenio", buscarDuenio.trim());
+            tutorRepository.buscarPorDocumentoOCorreo(buscarDuenio)
+                    .ifPresentOrElse(t -> cargarDuenio(model, t.getUsuario()),
+                            () -> model.addAttribute("duenioNoEncontrado", MENSAJE_DUENIO_NO_ENCONTRADO));
+        }
         AgendarCitaForm form = new AgendarCitaForm();
         form.setIdVeterinaria(veterinaria.getIdVeterinaria());
         model.addAttribute("form", form);
@@ -91,23 +105,34 @@ public class RecepcionCitaController {
         form.setIdVeterinaria(veterinaria.getIdVeterinaria());
 
         if (result.hasErrors()) {
-            cargarShell(model, principal);
-            model.addAttribute("veterinaria", veterinaria);
-            model.addAttribute("servicios", servicioRepository.findAll());
-            model.addAttribute("mascotas", mascotaRepository.findAll());
+            recargarAgendar(model, principal, veterinaria, form);
             return "citas/recepcion-agendar";
         }
         try {
             citaService.agendarComoRecepcionista(form, veterinaria.getIdVeterinaria());
         } catch (RuntimeException e) {
-            cargarShell(model, principal);
-            model.addAttribute("veterinaria", veterinaria);
-            model.addAttribute("servicios", servicioRepository.findAll());
-            model.addAttribute("mascotas", mascotaRepository.findAll());
+            recargarAgendar(model, principal, veterinaria, form);
             model.addAttribute("errorGeneral", e.getMessage());
             return "citas/recepcion-agendar";
         }
         return "redirect:/reportes/citas?agendada";
+    }
+
+    /** Vuelve a pintar el formulario con el dueño de la mascota elegida (si la hay). */
+    private void recargarAgendar(Model model, VetlinkUserPrincipal principal, Veterinaria veterinaria, AgendarCitaForm form) {
+        cargarShell(model, principal);
+        model.addAttribute("veterinaria", veterinaria);
+        model.addAttribute("servicios", servicioRepository.findAll());
+        if (form.getIdMascota() != null) {
+            mascotaRepository.findById(form.getIdMascota())
+                    .ifPresent(m -> cargarDuenio(model, m.getTutor()));
+        }
+    }
+
+    /** VL-06: el dueño encontrado y solo sus mascotas activas. */
+    private void cargarDuenio(Model model, Usuario duenio) {
+        model.addAttribute("duenioEncontrado", duenio);
+        model.addAttribute("mascotas", mascotaRepository.findByTutor_IdUsuarioAndEstado(duenio.getIdUsuario(), (byte) 1));
     }
 
     @PostMapping("/{id}/cancelar")

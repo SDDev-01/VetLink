@@ -60,9 +60,18 @@ public class RecepcionMascotaController {
     }
 
     @GetMapping("/nueva")
-    public String nuevaForm(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String nuevaForm(@AuthenticationPrincipal VetlinkUserPrincipal principal,
+                            @RequestParam(required = false) String buscarDuenio, Model model) {
         cargarShell(model, principal);
         cargarCatalogos(model);
+        // VL-06: en vez de listar todos los dueños, se busca uno por documento o correo.
+        if (buscarDuenio != null && !buscarDuenio.isBlank()) {
+            model.addAttribute("buscarDuenio", buscarDuenio.trim());
+            tutorRepository.buscarPorDocumentoOCorreo(buscarDuenio)
+                    .ifPresentOrElse(t -> model.addAttribute("duenioEncontrado", t.getUsuario()),
+                            () -> model.addAttribute("duenioNoEncontrado",
+                                    "No hay un dueño registrado con ese documento o correo"));
+        }
         model.addAttribute("form", new MascotaForm());
         return "recepcion/mascotas/formulario";
     }
@@ -72,19 +81,27 @@ public class RecepcionMascotaController {
                          @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
                          @RequestParam Integer idTutor, Model model) {
         if (result.hasErrors()) {
-            cargarShell(model, principal);
-            cargarCatalogos(model);
+            recargarNueva(model, principal, idTutor);
             return "recepcion/mascotas/formulario";
         }
         try {
+            // VL-06: el id llega del navegador; debe ser un dueño real.
+            if (!tutorRepository.existsById(idTutor)) {
+                throw new IllegalArgumentException("Dueño no válido");
+            }
             mascotaService.crear(form, idTutor);
         } catch (RuntimeException e) {
-            cargarShell(model, principal);
-            cargarCatalogos(model);
+            recargarNueva(model, principal, idTutor);
             model.addAttribute("errorGeneral", e.getMessage());
             return "recepcion/mascotas/formulario";
         }
         return "redirect:/recepcion/mascotas?creada";
+    }
+
+    private void recargarNueva(Model model, VetlinkUserPrincipal principal, Integer idTutor) {
+        cargarShell(model, principal);
+        cargarCatalogos(model);
+        tutorRepository.findById(idTutor).ifPresent(t -> model.addAttribute("duenioEncontrado", t.getUsuario()));
     }
 
     @GetMapping("/{id}/editar")
@@ -138,6 +155,5 @@ public class RecepcionMascotaController {
     private void cargarCatalogos(Model model) {
         model.addAttribute("especies", especieRepository.findAll());
         model.addAttribute("razas", razaRepository.findAll());
-        model.addAttribute("duenos", tutorRepository.findAll());
     }
 }

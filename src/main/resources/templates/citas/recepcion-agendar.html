@@ -25,17 +25,32 @@
             <div class="vl-table-wrap" style="padding:28px; max-width:600px;">
                 <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
 
+                <!-- VL-06: buscar al dueño por documento o correo -->
+                <form th:action="@{/citas/recepcion/agendar}" method="get"
+                      style="display:flex; gap:8px; align-items:flex-end; margin-bottom:20px;">
+                    <div class="vl-field" style="flex:1;">
+                        <label>Buscar dueño (documento o correo)</label>
+                        <input type="text" name="buscarDuenio" th:value="${buscarDuenio}" required
+                               placeholder="Ej.: 1012345678 o nombre@correo.com">
+                    </div>
+                    <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-search"></i> Buscar</button>
+                </form>
+                <p class="form-message" style="color:#dc2626" th:if="${duenioNoEncontrado}" th:text="${duenioNoEncontrado}"></p>
+
                 <form th:action="@{/citas/recepcion/agendar}" th:object="${form}" method="post">
                     <input type="hidden" th:field="*{idVeterinaria}">
 
                     <div class="vl-form-grid">
                         <div class="vl-field vl-full">
                             <label>Mascota</label>
+                            <p th:if="${duenioEncontrado} != null" style="margin:0 0 6px; color:#334155;"
+                               th:text="'Dueño: ' + ${duenioEncontrado.nombre} + ' ' + ${duenioEncontrado.apellido}"></p>
                             <select th:field="*{idMascota}">
-                                <option value="">Selecciona</option>
-                                <option th:each="m : ${mascotas}" th:value="${m.idMascota}"
-                                        th:text="${m.nombre} + ' (dueño: ' + ${m.tutor.nombre} + ' ' + ${m.tutor.apellido} + ')'"></option>
+                                <option value="" th:text="${duenioEncontrado} != null ? 'Selecciona' : 'Busca primero al dueño'">Selecciona</option>
+                                <option th:each="m : ${mascotas}" th:value="${m.idMascota}" th:text="${m.nombre}"></option>
                             </select>
+                            <p th:if="${duenioEncontrado} != null and ${#lists.isEmpty(mascotas)}" style="color:#94a3b8; font-size:0.85rem;">
+                                Este dueño no tiene mascotas activas.</p>
                             <small class="vl-error" th:if="${#fields.hasErrors('idMascota')}" th:errors="*{idMascota}"></small>
                         </div>
                         <div class="vl-field vl-full">

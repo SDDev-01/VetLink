@@ -74,6 +74,10 @@ public class CitaServiceImpl implements CitaService {
         }
         Mascota mascota = mascotaRepository.findById(form.getIdMascota())
                 .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
+        // VL-06: no se agenda a mascotas dadas de baja.
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            throw new IllegalStateException("La mascota no está activa");
+        }
         return crearCitaValidada(form, mascota);
     }
 
