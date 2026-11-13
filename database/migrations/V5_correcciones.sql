@@ -39,3 +39,55 @@ INSERT INTO dia_semana (idDiaSemana, diaSemana) VALUES (7, 'Domingo'); -- VL-14
 -- ---------------------------------------------------------------------
 ALTER TABLE historial_clinico MODIFY proximaCita DATE NULL; -- VL-17
 
+-- ---------------------------------------------------------------------
+-- VL-24: llave foránea de emergencia.idMascota y tipo igual al de mascota.idMascota.
+-- Antes de agregar la llave, revisa que no haya emergencias apuntando a mascotas inexistentes
+-- (en la copia de mydb usada para probar este archivo no había ninguna):
+-- SELECT e.idEmergencia, e.idMascota FROM emergencia e
+--   LEFT JOIN mascota m ON m.idMascota = e.idMascota
+--   WHERE e.idMascota IS NOT NULL AND m.idMascota IS NULL;
+-- ---------------------------------------------------------------------
+ALTER TABLE emergencia MODIFY idMascota INT(10) UNSIGNED NULL; -- VL-24
+ALTER TABLE emergencia ADD CONSTRAINT fk_emergencia_mascota FOREIGN KEY (idMascota) REFERENCES mascota(idMascota); -- VL-24
+
+-- ---------------------------------------------------------------------
+-- VL-24: unificar el charset. Estas 36 tablas siguen en utf8 (utf8mb3); el resto ya está en utf8mb4.
+-- EJECUTAR SOLO CON RESPALDO: reescribe cada tabla completa y puede tardar.
+-- ---------------------------------------------------------------------
+-- ALTER TABLE `archivo_historial` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `barrio` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `calificacion` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `carnet_vacuna` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `cita` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `ciudad` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `correo` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `correo_veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `dia_semana` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `especialidad_veterinario` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `especie` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `fabricante_vacuna` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `historial_clinico` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `historial_medicamento` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `historial_tratamiento` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `horario_veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `localidad` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `lote_vacuna` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `mascota` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `medicamento` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `raza` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `recepcionista` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `reseña` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `servicio` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `servicio_veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `telefono` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `telefono_veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `tipo_documento` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `tipo_vacuna` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `tratamiento` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `tutor` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `ubicacion_veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `usuario` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `vacuna` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `veterinaria` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+-- ALTER TABLE `veterinario` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; -- VL-24
+
