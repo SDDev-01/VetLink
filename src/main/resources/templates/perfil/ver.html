@@ -29,6 +29,7 @@
 
             <div class="vl-table-wrap" style="padding:24px; max-width:640px;">
                 <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Perfil actualizado correctamente.</p>
+                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
 
                 <div class="vl-form-section-title"><i class="fas fa-id-card"></i> Información personal</div>
                 <form th:action="@{/perfil}" th:object="${form}" method="post">
@@ -44,6 +45,12 @@
                             <small class="vl-error" th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
                         </div>
                         <div class="vl-field vl-full">
+                            <label>Correo (con él inicias sesión)</label>
+                            <input type="email" th:field="*{correo}">
+                            <small class="vl-error" th:if="${#fields.hasErrors('correo')}" th:errors="*{correo}"></small>
+                            <small style="color:#64748b">Si lo cambias, tendrás que iniciar sesión de nuevo con el correo nuevo.</small>
+                        </div>
+                        <div class="vl-field vl-full">
                             <label>Teléfono</label>
                             <input type="text" th:field="*{telefono}">
                             <small class="vl-error" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></small>
@@ -53,9 +60,15 @@
                     <div class="vl-divider"></div>
                     <div class="vl-form-section-title"><i class="fas fa-key"></i> Cambiar contraseña</div>
                     <div class="vl-form-grid">
-                        <div class="vl-field vl-full">
+                        <div class="vl-field">
+                            <label>Contraseña actual</label>
+                            <input type="password" th:field="*{passwordActual}" autocomplete="current-password" placeholder="Solo si vas a cambiarla">
+                            <small class="vl-error" th:if="${#fields.hasErrors('passwordActual')}" th:errors="*{passwordActual}"></small>
+                        </div>
+                        <div class="vl-field">
                             <label>Nueva contraseña</label>
-                            <input type="password" th:field="*{nuevaPassword}" placeholder="Dejar en blanco para no cambiar">
+                            <input type="password" th:field="*{nuevaPassword}" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                            <small class="vl-error" th:if="${#fields.hasErrors('nuevaPassword')}" th:errors="*{nuevaPassword}"></small>
                         </div>
                     </div>
 

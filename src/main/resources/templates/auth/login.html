@@ -48,6 +48,8 @@
             <p class="form-message alert-success" th:if="${param.registrado}">Cuenta creada. Ya puedes iniciar sesión.</p>
             <p class="form-message alert-success" th:if="${param.registradoVet}">¡Veterinaria registrada! Ya puedes iniciar sesión como su recepcionista administradora.</p>
             <p class="form-message alert-success" th:if="${param.logout}">Sesión cerrada correctamente.</p>
+            <p class="form-message alert-success" th:if="${param.correoActualizado}">Tu correo se actualizó. Inicia sesión con el nuevo correo.</p>
+            <p class="form-message alert-success" th:if="${param.passwordActualizada}">Tu contraseña se actualizó. Inicia sesión de nuevo.</p>
             <p class="form-message alert-error" th:if="${param.error}">Correo o contraseña incorrectos.</p>
 
             <div class="form-footer">
