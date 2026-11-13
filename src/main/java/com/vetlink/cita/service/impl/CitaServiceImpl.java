@@ -152,6 +152,24 @@ public class CitaServiceImpl implements CitaService {
         }
         cita.setEstado(EstadoCita.CANCELADA);
         citaRepository.save(cita);
+
+        // VL-11: si la hora aún no ha pasado, vuelve a quedar disponible como un cupo nuevo.
+        // La cita cancelada se conserva como historia. Si el veterinario ya tiene un cupo
+        // DISPONIBLE a esa misma fecha y hora, no se duplica.
+        boolean esFutura = java.time.LocalDateTime.of(cita.getFecha(), cita.getHora())
+                .isAfter(java.time.LocalDateTime.now());
+        boolean yaHayCupo = citaRepository.existsByVeterinario_IdUsuarioAndFechaAndHoraAndEstado(
+                cita.getVeterinario().getIdUsuario(), cita.getFecha(), cita.getHora(), EstadoCita.DISPONIBLE);
+        if (esFutura && !yaHayCupo) {
+            Cita cupo = new Cita();
+            cupo.setVeterinario(cita.getVeterinario());
+            cupo.setServicio(cita.getServicio());
+            cupo.setVeterinaria(cita.getVeterinaria());
+            cupo.setFecha(cita.getFecha());
+            cupo.setHora(cita.getHora());
+            cupo.setEstado(EstadoCita.DISPONIBLE);
+            citaRepository.save(cupo);
+        }
     }
 
     @Override
