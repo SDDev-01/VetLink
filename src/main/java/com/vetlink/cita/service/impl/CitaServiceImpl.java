@@ -63,6 +63,10 @@ public class CitaServiceImpl implements CitaService {
         if (!mascota.getTutor().getIdUsuario().equals(idTutor)) {
             throw new SecurityException("Esta mascota no te pertenece");
         }
+        // VL-16: no se agenda a una mascota eliminada (estado = 0).
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            throw new IllegalStateException("La mascota no está activa");
+        }
         return crearCitaValidada(form, mascota);
     }
 

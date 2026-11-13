@@ -28,6 +28,7 @@
             <p class="form-message" style="color:#16a34a" th:if="${param.creada}">Mascota registrada correctamente.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.actualizada}">Mascota actualizada.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.eliminada}">Mascota eliminada.</p>
+            <p class="form-message" style="color:#dc2626" th:if="${errorMascota}" th:text="${errorMascota}"></p>
 
             <div class="vl-card-grid" th:if="${not #lists.isEmpty(mascotas)}">
                 <div class="vl-entity-card" th:each="m : ${mascotas}">

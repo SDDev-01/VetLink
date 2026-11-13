@@ -20,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -73,10 +74,16 @@ public class CitaController {
     }
 
     @GetMapping("/agendar/{idMascota}")
-    public String agendarForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String agendarForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
+                              RedirectAttributes redirectAttributes) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
         verificarAccesoTutor(mascota, principal);
+        // VL-16: una mascota eliminada no puede recibir citas.
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            redirectAttributes.addFlashAttribute("errorMascota", "La mascota no está activa; no se le pueden agendar citas.");
+            return "redirect:/mascotas";
+        }
         model.addAttribute("mascota", mascota);
         model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
         model.addAttribute("servicios", servicioRepository.findAll());
