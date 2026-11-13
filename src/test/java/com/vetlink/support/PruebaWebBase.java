@@ -10,6 +10,8 @@ import com.vetlink.mascota.repository.EspecieRepository;
 import com.vetlink.mascota.repository.MascotaRepository;
 import com.vetlink.mascota.repository.RazaRepository;
 import com.vetlink.security.VetlinkUserPrincipal;
+import com.vetlink.ubicacion.model.Ciudad;
+import com.vetlink.ubicacion.repository.CiudadRepository;
 import com.vetlink.usuario.model.Correo;
 import com.vetlink.usuario.model.Recepcionista;
 import com.vetlink.usuario.model.TipoDocumento;
@@ -42,7 +44,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 /**
  * Base de las pruebas web: arranca el contexto completo con H2 (perfil "test")
@@ -78,6 +83,7 @@ public abstract class PruebaWebBase {
     @Autowired protected RazaRepository razaRepository;
     @Autowired protected MascotaRepository mascotaRepository;
     @Autowired protected CitaRepository citaRepository;
+    @Autowired protected CiudadRepository ciudadRepository;
 
     protected int siguiente() {
         return SECUENCIA.incrementAndGet();
@@ -249,6 +255,37 @@ public abstract class PruebaWebBase {
     protected Cita crearCita(Mascota mascota, Usuario veterinario, Veterinaria clinica) {
         return crearCita(mascota, veterinario, clinica, LocalDate.now().plusDays(1),
                 LocalTime.of(10, 0), EstadoCita.AGENDADA);
+    }
+
+    /**
+     * Registra una clínica nueva por el flujo público "Soy Veterinaria" (POST /registro)
+     * y devuelve la recepcionista creada, ya sincronizada desde la base.
+     */
+    protected Usuario registrarClinicaNueva(String nombreClinica) throws Exception {
+        Ciudad ciudad = new Ciudad();
+        ciudad.setNombre("Bogotá");
+        ciudad = ciudadRepository.save(ciudad);
+        int n = siguiente();
+        mockMvc.perform(post("/registro").with(csrf())
+                        .param("numeroDocumento", "CLI" + n)
+                        .param("idTipoDocumento", tipoDocumento().getIdTipoDocumento().toString())
+                        .param("nombre", "Ana")
+                        .param("apellido", "Admin")
+                        .param("correo", "admin" + n + "@pruebas.vetlink")
+                        .param("telefono", "3001234567")
+                        .param("password", PASSWORD_PRUEBAS)
+                        .param("confirmarPassword", PASSWORD_PRUEBAS)
+                        .param("rol", "VETERINARIA")
+                        .param("nuevaVeterinaria.nit", "900" + n)
+                        .param("nuevaVeterinaria.nombre", nombreClinica)
+                        .param("nuevaVeterinaria.telefono", "6011234567")
+                        .param("nuevaVeterinaria.correo", "clinica" + n + "@pruebas.vetlink")
+                        .param("nuevaVeterinaria.direccion", "Calle 100 # 10-10")
+                        .param("nuevaVeterinaria.idCiudad", ciudad.getIdCiudad().toString())
+                        .param("nuevaVeterinaria.barrio", "Chicó"))
+                .andExpect(redirectedUrl("/login?registradoVet"));
+        sincronizar();
+        return usuarioRepository.findByNumeroDocumento("CLI" + n).orElseThrow();
     }
 
     /** Envía los cambios pendientes a la base y vacía el contexto de persistencia. */

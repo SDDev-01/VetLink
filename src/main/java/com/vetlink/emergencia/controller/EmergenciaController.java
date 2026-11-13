@@ -76,7 +76,12 @@ public class EmergenciaController {
         }
         Emergencia e = new Emergencia();
         e.setMascota(mascota);
-        e.setVeterinaria(veterinarias.findById(f.getIdVeterinaria()).orElseThrow());
+        var veterinaria = veterinarias.findById(f.getIdVeterinaria()).orElseThrow();
+        // VL-09: solo clínicas verificadas reciben emergencias.
+        if (!veterinaria.isActiva()) {
+            throw new IllegalArgumentException("Veterinaria no encontrada");
+        }
+        e.setVeterinaria(veterinaria);
         e.setMotivo(f.getMotivo().trim());
         e.setDetalle(f.getDetalle());
         e.setCreadaEn(LocalDateTime.now());

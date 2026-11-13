@@ -76,7 +76,12 @@ public class VeterinariaController {
 
     @GetMapping("/{id}")
     public String detalle(@PathVariable Integer id, Model model) {
-        model.addAttribute("veterinaria", veterinariaService.buscarPorId(id));
+        Veterinaria veterinaria = veterinariaService.buscarPorId(id);
+        // VL-09: una clínica pendiente de verificación (o dada de baja) no es pública.
+        if (!veterinaria.isActiva()) {
+            throw new IllegalArgumentException("Veterinaria no encontrada");
+        }
+        model.addAttribute("veterinaria", veterinaria);
         model.addAttribute("resenas", resenaService.listarPorVeterinaria(id));
         model.addAttribute("promedio", resenaService.promedioDeVeterinaria(id));
         return cargarMensajesDetalle(id, model);

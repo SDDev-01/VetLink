@@ -66,7 +66,8 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         veterinaria.setNombre(form.getNombre());
         veterinaria.setDescripcion(form.getDescripcion());
         veterinaria.setPaginaWeb(form.getPaginaWeb());
-        veterinaria.setEstado((byte) 1);
+        // VL-09: la clínica nueva queda pendiente de verificación y no aparece en el directorio.
+        veterinaria.setEstado((byte) 0);
         veterinaria = veterinariaRepository.save(veterinaria);
 
         TelefonoVeterinaria telefono = new TelefonoVeterinaria();

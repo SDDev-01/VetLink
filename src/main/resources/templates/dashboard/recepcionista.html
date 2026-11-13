@@ -23,6 +23,13 @@
                 <p th:text="'Administras ' + ${veterinaria.nombre}">Resumen</p>
             </div>
 
+            <!-- VL-09 -->
+            <div th:if="${!veterinaria.activa}" class="vl-table-wrap"
+                 style="padding:16px 20px; margin-bottom:20px; border-left:4px solid #f59e0b; background:#fffbeb; color:#92400e;">
+                <i class="fas fa-hourglass-half"></i>
+                Tu clínica está pendiente de verificación. Aún no aparece en el directorio.
+            </div>
+
             <div class="stats-row">
                 <div class="stat-card reveal active">
                     <div class="stat-info"><span class="stat-label">Citas de hoy</span><span class="stat-number" th:text="${statCitasHoy}">0</span></div>

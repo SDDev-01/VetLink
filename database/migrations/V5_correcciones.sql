@@ -10,3 +10,9 @@
 -- Este archivo no borra filas de datos existentes.
 -- =====================================================================
 
+-- ---------------------------------------------------------------------
+-- VL-09: las clínicas nuevas se registran con estado = 0 (pendiente de verificación).
+-- Para aprobar una clínica después de revisarla:
+-- UPDATE veterinaria SET estado = 1 WHERE idVeterinaria = ?;
+-- ---------------------------------------------------------------------
+
