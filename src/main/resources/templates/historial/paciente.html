@@ -20,7 +20,7 @@
         <div class="vl-section vl-section-active">
 
             <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
-                <div class="vl-profile-avatar-lg"><i class="fas fa-paw"></i></div>
+                <div class="vl-profile-avatar-lg"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
                 <div>
                     <h2 th:text="${mascota.nombre}">Nombre</h2>
                     <div class="sub" th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · Dueño: ' + ${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}">Detalle</div>
@@ -58,7 +58,7 @@
                 <div class="vl-drawer-pane" data-pane="carnet">
                     <div class="vl-carnet">
                         <div class="vl-carnet-top">
-                            <div class="vl-carnet-photo"><i class="fas fa-paw"></i></div>
+                            <div class="vl-carnet-photo"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
                             <div>
                                 <div class="vl-carnet-label">Carnet de vacunación</div>
                                 <div class="vl-carnet-name" th:text="${mascota.nombre}"></div>

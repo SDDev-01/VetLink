@@ -33,7 +33,7 @@
             <div class="vl-card-grid" th:if="${not #lists.isEmpty(mascotas)}">
                 <div class="vl-entity-card" th:each="m : ${mascotas}">
                     <div class="vl-entity-top">
-                        <div class="vl-entity-avatar"><i class="fas fa-paw"></i></div>
+                        <div class="vl-entity-avatar"><img th:if="${m.fotoUrl != null}" th:src="@{${m.fotoUrl}}" alt=""><i th:if="${m.fotoUrl == null}" class="fas fa-paw"></i></div>
                         <div>
                             <div class="vl-entity-name" th:text="${m.nombre}">Nombre</div>
                             <div class="vl-entity-sub" th:text="${m.especie.nombreEspecie} + ' · ' + ${m.raza.nombreRaza}">Especie</div>

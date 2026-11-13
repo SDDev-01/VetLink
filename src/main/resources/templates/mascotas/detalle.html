@@ -21,8 +21,8 @@
 
             <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
                 <div class="vl-profile-avatar-lg">
-                    <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
-                    <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                    <img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt="">
+                    <i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i>
                 </div>
                 <div>
                     <h2 th:text="${mascota.nombre}">Nombre</h2>
@@ -66,8 +66,8 @@
                     <div class="vl-carnet">
                         <div class="vl-carnet-top">
                             <div class="vl-carnet-photo">
-                                <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
-                                <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                                <img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt="">
+                                <i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i>
                             </div>
                             <div>
                                 <div class="vl-carnet-label">Carnet de vacunación</div>

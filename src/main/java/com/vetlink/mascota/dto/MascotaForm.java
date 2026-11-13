@@ -34,6 +34,7 @@ public class MascotaForm {
     @Positive(message = "El peso debe ser mayor a 0")
     private Double peso;
 
-    @Size(max = 500, message = "La URL de la foto no puede superar 500 caracteres")
+    /** VL-22: solo para la vista previa en el formulario; el servidor no guarda lo que llegue aquí. */
+    @Size(max = 500)
     private String foto;
 }
