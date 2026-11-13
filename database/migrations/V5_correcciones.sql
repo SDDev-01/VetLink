@@ -34,3 +34,8 @@ INSERT INTO dia_semana (idDiaSemana, diaSemana) VALUES (7, 'Domingo'); -- VL-14
 -- La aplicación ya no los usa para calcular disponibilidad; revísalos y corrígelos a mano:
 -- SELECT * FROM horario_veterinaria WHERE horaApertura >= horaCierre;
 
+-- ---------------------------------------------------------------------
+-- VL-17: la próxima cita sugerida de una historia clínica pasa a ser opcional.
+-- ---------------------------------------------------------------------
+ALTER TABLE historial_clinico MODIFY proximaCita DATE NULL; -- VL-17
+

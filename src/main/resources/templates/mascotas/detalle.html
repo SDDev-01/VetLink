@@ -98,7 +98,7 @@
                                 <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
                                 <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                                 <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
-                                <p style="color:#94a3b8; font-size:0.78rem; margin-top:6px;">Próxima cita sugerida: <span th:text="${h.proximaCita}"></span></p>
+                                <p style="color:#94a3b8; font-size:0.78rem; margin-top:6px;">Próxima cita sugerida: <span th:text="${h.proximaCita != null ? h.proximaCita : 'Sin control programado'}"></span></p>
                             </div>
                         </div>
                     </div>

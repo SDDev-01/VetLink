@@ -34,7 +34,7 @@
                     <p style="margin:4px 0;"><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                     <p style="margin:4px 0;"><strong>Diagnóstico:</strong> <span th:text="${h.diagnostico}"></span></p>
                     <p style="margin:4px 0;" th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
-                    <p style="margin:4px 0; color:#94a3b8; font-size:0.85rem;">Próxima cita sugerida: <span th:text="${h.proximaCita}"></span></p>
+                    <p style="margin:4px 0; color:#94a3b8; font-size:0.85rem;">Próxima cita sugerida: <span th:text="${h.proximaCita != null ? h.proximaCita : 'Sin control programado'}"></span></p>
                 </div>
             </div>
 

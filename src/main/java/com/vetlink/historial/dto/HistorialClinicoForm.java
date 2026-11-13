@@ -1,5 +1,6 @@
 package com.vetlink.historial.dto;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class HistorialClinicoForm {
 
     private String observaciones;
 
-    @NotNull(message = "La proxima cita sugerida es obligatoria")
+    /** VL-17: opcional (no siempre hace falta control), pero nunca en el pasado. */
+    @FutureOrPresent(message = "La próxima cita no puede ser una fecha pasada")
     private LocalDate proximaCita;
 }
