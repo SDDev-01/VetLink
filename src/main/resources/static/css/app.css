@@ -531,3 +531,37 @@ body.dashboard-body { padding-top: 0 !important; letter-spacing: normal !importa
     .vl-card-grid { grid-template-columns: 1fr; }
     .actions-grid { grid-template-columns: 1fr !important; }
 }
+
+
+/* VL-10: selector de calificación con 5 estrellas (radio buttons, sin JS).
+   Los radios van en orden 5..1 y el contenedor se invierte, así "~" pinta
+   la estrella elegida y todas las anteriores. */
+.vl-estrellas {
+    display: inline-flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+}
+.vl-estrellas input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+.vl-estrellas label {
+    font-size: 2rem;
+    line-height: 1;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: color .15s ease;
+}
+.vl-estrellas label:hover,
+.vl-estrellas label:hover ~ label,
+.vl-estrellas input:checked ~ label {
+    color: #f59e0b;
+}
+.vl-estrellas input:focus-visible + label {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
