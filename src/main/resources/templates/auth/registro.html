@@ -207,6 +207,7 @@
                                 <i class="fas fa-plus"></i> Agregar servicio
                             </button>
                             <small class="error-text" id="err-services"></small>
+                            <small class="error-text" id="err-horarios"></small>
                         </div>
 
                         <div class="input-box full-width">
@@ -228,6 +229,11 @@
                                             <div class="time-group"><small>Apertura</small><input type="time" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].horaApertura}" class="open"></div>
                                             <div class="time-group"><small>Cierre</small><input type="time" th:field="*{nuevaVeterinaria.horarios[__${dStat.index}__].horaCierre}" class="close"></div>
                                         </div>
+                                        <!-- VL-14: rangos adicionales del mismo día (p. ej. jornada partida) -->
+                                        <div class="extra-ranges hidden" th:attr="data-id-dia=${dia.idDiaSemana}"></div>
+                                        <button type="button" class="btn-add btn-add-range hidden" onclick="addRange(this)">
+                                            <i class="fas fa-plus"></i> Agregar otro horario
+                                        </button>
                                     </div>
                                 </div>
                             </div>

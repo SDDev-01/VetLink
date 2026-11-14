@@ -20,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -37,10 +38,12 @@ public class CitaController {
     private final UsuarioRepository usuarioRepository;
     private final HorarioVeterinariaRepository horarioVeterinariaRepository;
     private final CitaRepository citaRepository;
+    private final com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository;
 
     public CitaController(CitaService citaService, MascotaService mascotaService, VeterinariaRepository veterinariaRepository,
                            ServicioRepository servicioRepository, UsuarioRepository usuarioRepository,
-                           HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository) {
+                           HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository,
+                           com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository) {
         this.citaService = citaService;
         this.mascotaService = mascotaService;
         this.veterinariaRepository = veterinariaRepository;
@@ -48,6 +51,7 @@ public class CitaController {
         this.usuarioRepository = usuarioRepository;
         this.horarioVeterinariaRepository = horarioVeterinariaRepository;
         this.citaRepository = citaRepository;
+        this.veterinarioRepository = veterinarioRepository;
     }
 
     @GetMapping("/mias")
@@ -73,10 +77,16 @@ public class CitaController {
     }
 
     @GetMapping("/agendar/{idMascota}")
-    public String agendarForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String agendarForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
+                              RedirectAttributes redirectAttributes) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
         verificarAccesoTutor(mascota, principal);
+        // VL-16: una mascota eliminada no puede recibir citas.
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            redirectAttributes.addFlashAttribute("errorMascota", "La mascota no está activa; no se le pueden agendar citas.");
+            return "redirect:/mascotas";
+        }
         model.addAttribute("mascota", mascota);
         model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
         model.addAttribute("servicios", servicioRepository.findAll());
@@ -175,18 +185,26 @@ public class CitaController {
                     .filter(c -> c.getFecha().equals(fecha))
                     .filter(c -> c.getVeterinario().getIdUsuario().equals(idVeterinario))
                     .filter(c -> c.getServicio().getIdServicio().equals(idServicio))
+                    // VL-15: hoy no se ofrecen cupos cuya hora ya pasó.
+                    .filter(c -> !java.time.LocalDateTime.of(c.getFecha(), c.getHora()).isBefore(java.time.LocalDateTime.now()))
                     .map(c -> c.getHora().toString().substring(0, 5)).toList();
-            return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty());
+            return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty(), List.of());
         }
         String nombreDia = nombreDiaEs(fecha.getDayOfWeek());
 
-        HorarioVeterinaria horarioDia = horarioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
+        // VL-14: una clínica puede tener varios rangos el mismo día (p. ej. 08-12 y 14-18).
+        List<HorarioVeterinaria> horariosDia = horarioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
                 .filter(h -> h.getEstado() == 1 && h.getDiaSemana().getDiaSemana().equalsIgnoreCase(nombreDia))
-                .findFirst().orElse(null);
+                .filter(h -> h.getHoraApertura().isBefore(h.getHoraCierre()))
+                .sorted(java.util.Comparator.comparing(HorarioVeterinaria::getHoraApertura))
+                .toList();
 
-        if (horarioDia == null) {
-            return new HorariosDisponiblesResponse(null, null, List.of(), true);
+        if (horariosDia.isEmpty()) {
+            return new HorariosDisponiblesResponse(null, null, List.of(), true, List.of());
         }
+        List<RangoHorario> rangos = horariosDia.stream()
+                .map(h -> new RangoHorario(hhmm(h.getHoraApertura()), hhmm(h.getHoraCierre())))
+                .toList();
 
         List<Cita> citasDelDia = idVeterinario != null
                 ? citaRepository.findByVeterinario_IdUsuarioAndFecha(idVeterinario, fecha)
@@ -197,11 +215,16 @@ public class CitaController {
                 .map(c -> c.getHora().toString().substring(0, 5))
                 .toList();
 
+        // apertura/cierre se conservan (primer y último horario del día) para no romper clientes antiguos.
         return new HorariosDisponiblesResponse(
-                horarioDia.getHoraApertura().toString().substring(0, 5),
-                horarioDia.getHoraCierre().toString().substring(0, 5),
-                ocupadas, false
+                rangos.get(0).apertura(),
+                rangos.stream().map(RangoHorario::cierre).max(String::compareTo).orElseThrow(),
+                ocupadas, false, rangos
         );
+    }
+
+    private static String hhmm(java.time.LocalTime hora) {
+        return hora.toString().substring(0, 5);
     }
 
     private String nombreDiaEs(DayOfWeek dia) {
@@ -216,16 +239,19 @@ public class CitaController {
         };
     }
 
-    public record HorariosDisponiblesResponse(String apertura, String cierre, List<String> ocupadas, boolean cerrado) {}
+    public record HorariosDisponiblesResponse(String apertura, String cierre, List<String> ocupadas, boolean cerrado,
+                                              List<RangoHorario> rangos) {}
+
+    /** VL-14: un rango de atención {apertura, cierre} en formato HH:mm. */
+    public record RangoHorario(String apertura, String cierre) {}
 
     /** Veterinarios que trabajan en una veterinaria dada, usado por AJAX desde el formulario. */
     @GetMapping("/veterinarios/{idVeterinaria}")
     @ResponseBody
     public List<VeterinarioOption> veterinariosDe(@PathVariable Integer idVeterinaria) {
-        return usuarioRepository.findAll().stream()
-                .filter(u -> u.getVeterinario() != null
-                        && u.getVeterinario().getVeterinaria() != null
-                        && u.getVeterinario().getVeterinaria().getIdVeterinaria().equals(idVeterinaria))
+        // VL-25: consulta directa en vez de cargar todos los usuarios.
+        return veterinarioRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
+                .map(v -> v.getUsuario())
                 .map(u -> new VeterinarioOption(u.getIdUsuario(), u.getNombre() + " " + u.getApellido()))
                 .toList();
     }
@@ -242,8 +268,8 @@ public class CitaController {
 
     private void verificarAccesoTutor(com.vetlink.mascota.model.Mascota mascota,
                                       VetlinkUserPrincipal principal) {
-        if (principal.getUsuario().getRol() == com.vetlink.usuario.model.Rol.TUTOR
-                && !mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
+        // VL-05: sin importar el rol, solo el dueño de la mascota pasa.
+        if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "No tienes permiso para consultar esta mascota");
         }

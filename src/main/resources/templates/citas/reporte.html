@@ -72,11 +72,8 @@
                         <td><span class="vl-badge" th:classappend="${c.estado.name() == 'AGENDADA' ? 'vl-badge-ok' : (c.estado.name() == 'CANCELADA' ? 'vl-badge-danger' : 'vl-badge-warn')}" th:text="${c.estado}"></span></td>
                         <td sec:authorize="hasRole('RECEPCIONISTA')">
                             <div th:if="${c.estado.name() == 'AGENDADA'}" style="display:flex; gap:6px; align-items:center;">
-                                <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" method="post" style="display:flex; gap:4px; align-items:center;">
-                                    <input type="date" name="fecha" th:value="${c.fecha}" required style="padding:4px; font-size:0.75rem; border-radius:6px; border:1px solid #e2e8f0;">
-                                    <input type="time" name="hora" th:value="${c.hora}" required style="padding:4px; font-size:0.75rem; border-radius:6px; border:1px solid #e2e8f0;">
-                                    <button type="submit" class="vl-btn-icon" title="Reagendar"><i class="fas fa-calendar-days"></i></button>
-                                </form>
+                                <!-- VL-23: reagendar = elegir otro cupo disponible -->
+                                <a th:href="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" class="vl-btn-icon" title="Reagendar"><i class="fas fa-calendar-days"></i></a>
                                 <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/cancelar'}" method="post">
                                     <button type="submit" class="vl-btn-icon danger" title="Cancelar"><i class="fas fa-xmark"></i></button>
                                 </form>

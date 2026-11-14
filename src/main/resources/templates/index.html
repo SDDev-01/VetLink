@@ -28,9 +28,10 @@
                     </a>
                 </div>
                 <div class="hero-checks">
-                    <span><i class="fas fa-check"></i> Sin tarjeta de crédito</span>
-                    <span><i class="fas fa-check"></i> Cancelación gratuita</span>
-                    <span><i class="fas fa-check"></i> Soporte 24/7</span>
+                    <!-- VL-28: solo afirmaciones que el sistema cumple -->
+                    <span><i class="fas fa-check"></i> Historial clínico en un solo lugar</span>
+                    <span><i class="fas fa-check"></i> Agenda en línea con las clínicas</span>
+                    <span><i class="fas fa-check"></i> Reseñas de dueños verificados</span>
                 </div>
             </div>
 
@@ -52,10 +53,11 @@
     </div>
 
     <section class="stats-bar">
-        <div class="stat-box"><i class="fa-solid fa-paw"></i><strong>10K+</strong><p>Mascotas Atendidas</p></div>
-        <div class="stat-box"><i class="fa-solid fa-user-doctor"></i><strong>500+</strong><p>Veterinarios</p></div>
-        <div class="stat-box"><i class="fa-solid fa-hospital"></i><strong>50+</strong><p>Clínicas Asociadas</p></div>
-        <div class="stat-box"><i class="fa-solid fa-star"></i><strong>4.9/5</strong><p>Calificación Promedio</p></div>
+        <!-- VL-28: cifras calculadas desde la base de datos -->
+        <div class="stat-box"><i class="fa-solid fa-paw"></i><strong th:text="${statMascotas}">0</strong><p>Mascotas registradas</p></div>
+        <div class="stat-box"><i class="fa-solid fa-user-doctor"></i><strong th:text="${statVeterinarios}">0</strong><p>Veterinarios</p></div>
+        <div class="stat-box"><i class="fa-solid fa-hospital"></i><strong th:text="${statClinicas}">0</strong><p>Clínicas asociadas</p></div>
+        <div class="stat-box"><i class="fa-solid fa-star"></i><strong th:text="${statPromedio != null ? #numbers.formatDecimal(statPromedio, 1, 1, 'COMMA') + '/5' : 'Sin reseñas'}">—</strong><p>Calificación promedio</p></div>
     </section>
 
     <section class="services" id="servicios">

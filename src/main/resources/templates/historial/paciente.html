@@ -20,7 +20,7 @@
         <div class="vl-section vl-section-active">
 
             <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
-                <div class="vl-profile-avatar-lg"><i class="fas fa-paw"></i></div>
+                <div class="vl-profile-avatar-lg"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
                 <div>
                     <h2 th:text="${mascota.nombre}">Nombre</h2>
                     <div class="sub" th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · Dueño: ' + ${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}">Detalle</div>
@@ -29,9 +29,8 @@
 
             <p class="form-message" style="color:#16a34a" th:if="${param.creado}">Historial registrado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Historial actualizado.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.eliminado}">Historial eliminado.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.vacunaRegistrada}">Vacuna registrada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${param.errorVacuna}" th:text="${param.errorVacuna}"></p>
+            <p class="form-message" style="color:#dc2626" th:if="${errorVacuna}" th:text="${errorVacuna}"></p>
 
             <div class="vl-drawer-tabs" style="border-radius:16px 16px 0 0; border:1px solid #f1f5f9; border-bottom:none;">
                 <button type="button" class="vl-drawer-tab active" data-tab="resumen"><i class="fas fa-circle-info"></i> Resumen</button>
@@ -59,7 +58,7 @@
                 <div class="vl-drawer-pane" data-pane="carnet">
                     <div class="vl-carnet">
                         <div class="vl-carnet-top">
-                            <div class="vl-carnet-photo"><i class="fas fa-paw"></i></div>
+                            <div class="vl-carnet-photo"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
                             <div>
                                 <div class="vl-carnet-label">Carnet de vacunación</div>
                                 <div class="vl-carnet-name" th:text="${mascota.nombre}"></div>
@@ -128,7 +127,7 @@
                         <div class="vl-timeline-item" th:each="h : ${historial}">
                             <div class="vl-timeline-dot"></div>
                             <div class="vl-timeline-content">
-                                <span class="vl-timeline-date" th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
+                                <span class="vl-timeline-date" th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
                                 <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
                                 <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                                 <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
@@ -137,17 +136,8 @@
                                 </div>
                                 <div class="vl-entity-actions" style="border:none; padding-top:10px;"
                                      th:if="${h.veterinario.idUsuario == idUsuarioActual}">
-                                    <a th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
-                                    <form th:if="${minutosParaEliminar.get(h.numeroHistorial)} != null and ${minutosParaEliminar.get(h.numeroHistorial)} > 0"
-                                          th:action="@{'/historial/' + ${h.numeroHistorial} + '/eliminar'}" method="post" style="display:inline;"
-                                          onsubmit="return confirm('¿Eliminar este historial? Esta acción no se puede deshacer.');">
-                                        <input type="hidden" name="idMascota" th:value="${mascota.idMascota}">
-                                        <button type="submit" class="vl-btn vl-btn-danger vl-btn-sm"><i class="fas fa-trash"></i> Eliminar</button>
-                                    </form>
-                                    <span th:if="${minutosParaEliminar.get(h.numeroHistorial)} != null and ${minutosParaEliminar.get(h.numeroHistorial)} > 0"
-                                          class="vl-badge vl-badge-warn">
-                                        <i class="fas fa-hourglass-half"></i> Eliminable <span th:text="${minutosParaEliminar.get(h.numeroHistorial)}"></span> min más
-                                    </span>
+                                    <!-- VL-19: las historias no se eliminan; el autor puede editarlas durante 24 horas -->
+                                    <a th:if="${editables.contains(h.numeroHistorial)}" th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
                                     <form th:action="@{'/historial/'+${h.numeroHistorial}+'/archivos'}" method="post" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;">
                                         <input type="file" name="archivo" required>
                                         <button class="vl-btn vl-btn-ghost vl-btn-sm" type="submit"><i class="fas fa-paperclip"></i> Adjuntar</button>

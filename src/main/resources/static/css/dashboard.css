@@ -23,8 +23,8 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg);
     display: flex;
-    overflow-x: hidden;
-    min-height: 100vh;
+    overflow: hidden; /* solo scrollean el sidebar y .main-content, nunca el body */
+    height: 100vh;
 }
 
 /* =========================================
@@ -39,6 +39,13 @@ body {
     flex-direction: column;
     position: sticky;
     top: 0;
+    flex-shrink: 0;
+    /* Con muchas opciones (tutor/recepcionista) el menú no cabe en pantallas bajas:
+       antes se desbordaba y dejaba una franja blanca al final. Ahora scrollea dentro. */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
     transition: var(--transition);
     z-index: 100;
 }
@@ -53,9 +60,11 @@ body {
 }
 
 .nav-menu { 
-    flex: 1; 
+    flex: 1 0 auto; 
     padding: 0 15px; 
 }
+
+.nav-menu ul { list-style: none; }
 
 .nav-item {
     padding: 14px 20px;
@@ -409,6 +418,14 @@ body {
     left: 120%;
 }
 
+/* Sobre fondo blanco el brillo blanco no se ve: en los accesos rápidos va teñido de azul. */
+.action-btn::after {
+    background: rgba(37, 99, 235, 0.12);
+    pointer-events: none;
+    z-index: -1;
+}
+.action-btn.emergency::after { background: rgba(255, 255, 255, 0.25); }
+
 /* =========================================
    8. SECCIÓN ACCIONES RÁPIDAS (FOOTER)
    ========================================= */
@@ -444,6 +461,11 @@ body {
     gap: 12px;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
     will-change: transform; /* optimiza animación */
+    /* Contenedor del brillo (::after). Sin esto la barra se posicionaba respecto a un
+       ancestro y, al aplicarse el transform del hover, saltaba al botón a mitad de camino. */
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
 
 }
 
@@ -605,3 +627,12 @@ body {
 }
 
 
+
+/* Pantallas bajas (portátiles 1366x768 con barra del navegador): menú más compacto
+   para que las 9 opciones quepan sin scroll en la mayoría de casos. */
+@media (max-height: 820px) {
+    .sidebar-brand { padding: 22px 30px; }
+    .sidebar-role-tag { margin-bottom: 12px !important; }
+    .nav-item { padding: 10px 20px; margin-bottom: 3px; }
+    .sidebar-footer { padding: 12px 20px; }
+}

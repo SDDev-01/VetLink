@@ -52,18 +52,54 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         usuario.setNombre(form.getNombre());
         usuario.setApellido(form.getApellido());
-        if (form.getNuevaPassword() != null && !form.getNuevaPassword().isBlank()) {
+        // VL-20: cambiar la contraseña exige la actual y al menos 8 caracteres
+        // (el controlador ya lo valida por campo; aquí se repite como defensa).
+        if (form.cambiaPassword()) {
+            if (form.getNuevaPassword().length() < 8) {
+                throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
+            }
+            if (form.getPasswordActual() == null || !passwordEncoder.matches(form.getPasswordActual(), usuario.getPassword())) {
+                throw new IllegalArgumentException("La contraseña actual no es válida");
+            }
             usuario.setPassword(passwordEncoder.encode(form.getNuevaPassword()));
         }
         usuarioRepository.save(usuario);
 
+        // VL-20: si no tenía teléfono, se crea la fila.
         var telefonos = telefonoRepository.findByUsuario_IdUsuario(idUsuario);
-        if (!telefonos.isEmpty()) {
-            var telefono = telefonos.get(0);
-            telefono.setNumeroTelefono(form.getTelefono());
-            telefonoRepository.save(telefono);
+        Telefono telefono = telefonos.isEmpty() ? new Telefono() : telefonos.get(0);
+        telefono.setUsuario(usuario);
+        telefono.setNumeroTelefono(form.getTelefono());
+        telefonoRepository.save(telefono);
+
+        // VL-20: cambio de correo (el de login).
+        String nuevoCorreo = form.getCorreo() == null ? null : form.getCorreo().trim();
+        if (nuevoCorreo != null && !nuevoCorreo.isEmpty()) {
+            var correos = correoRepository.findByUsuario_IdUsuario(idUsuario);
+            Correo correo = correos.isEmpty() ? new Correo() : correos.get(0);
+            if (!nuevoCorreo.equalsIgnoreCase(correo.getCorreo())) {
+                if (correoRepository.existsByCorreoIgnoreCase(nuevoCorreo)) {
+                    throw new IllegalArgumentException("Ese correo ya está en uso por otra cuenta");
+                }
+                correo.setUsuario(usuario);
+                correo.setCorreo(nuevoCorreo);
+                correoRepository.save(correo);
+            }
         }
         return usuario;
+    }
+
+    @Override
+    public boolean passwordCoincide(Integer idUsuario, String password) {
+        return password != null && usuarioRepository.findById(idUsuario)
+                .map(u -> passwordEncoder.matches(password, u.getPassword()))
+                .orElse(false);
+    }
+
+    @Override
+    public String correoPrincipal(Integer idUsuario) {
+        var correos = correoRepository.findByUsuario_IdUsuario(idUsuario);
+        return correos.isEmpty() ? "" : correos.get(0).getCorreo();
     }
 
     @Override
@@ -120,6 +156,11 @@ public class UsuarioServiceImpl implements UsuarioService {
                             .orElseThrow(() -> new IllegalArgumentException("Selecciona una veterinaria valida"));
                 }
                 usuario = usuarioFactory.crearRecepcionista(form, tipoDocumento, veterinaria);
+                // VL-08: quien registra una clínica nueva queda como su administradora.
+                // Las recepcionistas creadas desde el panel siguen con esPrincipal = false.
+                if (form.getNuevaVeterinaria() != null) {
+                    usuario.getRecepcionista().setEsPrincipal(true);
+                }
             }
             default -> throw new IllegalArgumentException("Rol invalido");
         }

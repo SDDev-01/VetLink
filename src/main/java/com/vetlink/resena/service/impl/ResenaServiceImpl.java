@@ -58,7 +58,10 @@ public class ResenaServiceImpl implements ResenaService {
             throw new IllegalArgumentException("La calificación debe estar entre 1 y 5");
         }
         if (!resenaRepository.tutorTuvoCitaEnVeterinaria(form.getIdVeterinaria(), idTutor)) {
-            throw new IllegalStateException("Debes haber tenido una cita en esta veterinaria para dejar una reseña");
+            throw new IllegalStateException("Debes haber sido atendido en esta veterinaria para dejar una reseña");
+        }
+        if (resenaRepository.existsByTutor_IdUsuarioAndVeterinaria_IdVeterinaria(idTutor, form.getIdVeterinaria())) {
+            throw new IllegalStateException("Ya dejaste una reseña para esta veterinaria");
         }
 
         Calificacion calificacion = buscarPorValor(form.getValor());

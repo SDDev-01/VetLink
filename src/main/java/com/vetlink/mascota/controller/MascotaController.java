@@ -5,6 +5,8 @@ import com.vetlink.historial.service.HistorialClinicoService;
 import com.vetlink.mascota.dto.MascotaForm;
 import com.vetlink.mascota.repository.EspecieRepository;
 import com.vetlink.mascota.repository.RazaRepository;
+import com.vetlink.mascota.service.FotoMascotaService;
+import com.vetlink.security.AccesoPacienteService;
 import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.mascota.service.MascotaService;
 import com.vetlink.usuario.controller.DashboardController;
@@ -14,7 +16,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.net.URI;
 
 /** CRUD completo de mascotas para el rol TUTOR. */
 @Controller
@@ -27,16 +35,21 @@ public class MascotaController {
     private final CitaService citaService;
     private final HistorialClinicoService historialClinicoService;
     private final CarnetVacunaService carnetVacunaService;
+    private final FotoMascotaService fotoMascotaService;
+    private final AccesoPacienteService accesoPacienteService;
 
     public MascotaController(MascotaService mascotaService, EspecieRepository especieRepository, RazaRepository razaRepository,
                               CitaService citaService, HistorialClinicoService historialClinicoService,
-                              CarnetVacunaService carnetVacunaService) {
+                              CarnetVacunaService carnetVacunaService, FotoMascotaService fotoMascotaService,
+                              AccesoPacienteService accesoPacienteService) {
         this.mascotaService = mascotaService;
         this.especieRepository = especieRepository;
         this.razaRepository = razaRepository;
         this.citaService = citaService;
         this.historialClinicoService = historialClinicoService;
         this.carnetVacunaService = carnetVacunaService;
+        this.fotoMascotaService = fotoMascotaService;
+        this.accesoPacienteService = accesoPacienteService;
     }
 
     @GetMapping
@@ -56,14 +69,17 @@ public class MascotaController {
 
     @PostMapping("/nueva")
     public String crear(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                         @Valid @ModelAttribute("form") MascotaForm form, BindingResult result, Model model) {
+                         @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
+                         @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+        validarFoto(archivoFoto, result);
         if (result.hasErrors()) {
             cargarShell(model, principal);
             cargarCatalogos(model);
             return "mascotas/formulario";
         }
         try {
-            mascotaService.crear(form, principal.getUsuario().getIdUsuario());
+            var mascota = mascotaService.crear(form, principal.getUsuario().getIdUsuario());
+            fotoMascotaService.guardar(mascota, archivoFoto);
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorGeneral", e.getMessage());
             cargarShell(model, principal);
@@ -85,7 +101,7 @@ public class MascotaController {
         form.setGenero(mascota.getGenero());
         form.setFechaNacimiento(mascota.getFechaNacimiento());
         form.setPeso(mascota.getPeso());
-        form.setFoto(mascota.getFoto());
+        form.setFoto(mascota.getFotoUrl()); // solo para la vista previa
         cargarShell(model, principal);
         cargarCatalogos(model);
         model.addAttribute("form", form);
@@ -94,15 +110,19 @@ public class MascotaController {
 
     @PostMapping("/{id}/editar")
     public String actualizar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
-                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result, Model model) {
+                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
+                              @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
         form.setIdMascota(id);
+        validarFoto(archivoFoto, result);
         if (result.hasErrors()) {
+            form.setFoto(mascotaService.buscarPorId(id).getFotoUrl());
             cargarShell(model, principal);
             cargarCatalogos(model);
             return "mascotas/formulario";
         }
         try {
-            mascotaService.actualizar(form, principal.getUsuario().getIdUsuario());
+            var mascota = mascotaService.actualizar(form, principal.getUsuario().getIdUsuario());
+            fotoMascotaService.guardar(mascota, archivoFoto);
         } catch (RuntimeException e) {
             model.addAttribute("errorGeneral", e.getMessage());
             cargarShell(model, principal);
@@ -132,6 +152,33 @@ public class MascotaController {
         model.addAttribute("historial", historialClinicoService.listarPorMascota(id));
         model.addAttribute("carnet", carnetVacunaService.listarPorMascota(id));
         return "mascotas/detalle";
+    }
+
+    /**
+     * VL-22: devuelve la foto subida solo a quien tiene acceso a la mascota
+     * (su dueño, o el personal que la atiende). Las fotos antiguas que son URL redirigen a esa URL.
+     */
+    @GetMapping("/{id}/foto")
+    public ResponseEntity<Resource> foto(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal) {
+        var mascota = mascotaService.buscarPorId(id);
+        accesoPacienteService.verificar(mascota, principal);
+        if (FotoMascotaService.esUrl(mascota.getFoto())) {
+            return ResponseEntity.status(302).location(URI.create(mascota.getFoto())).build();
+        }
+        return fotoMascotaService.archivoLocal(mascota)
+                .map(path -> ResponseEntity.ok()
+                        .contentType(FotoMascotaService.tipoDe(path))
+                        .header("Cache-Control", "private, max-age=3600")
+                        .body((Resource) new FileSystemResource(path)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private void validarFoto(MultipartFile archivoFoto, BindingResult result) {
+        try {
+            fotoMascotaService.validar(archivoFoto);
+        } catch (IllegalArgumentException e) {
+            result.rejectValue("foto", "fotoInvalida", e.getMessage());
+        }
     }
 
     private void cargarCatalogos(Model model) {

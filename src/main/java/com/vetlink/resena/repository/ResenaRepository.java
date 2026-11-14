@@ -13,6 +13,10 @@ public interface ResenaRepository extends JpaRepository<Resena, Integer> {
 
     List<Resena> findByTutor_IdUsuarioOrderByFechaPublicacionDesc(Integer idTutor);
 
+    /** VL-28: promedio general de todas las reseñas (null si no hay ninguna). */
+    @Query("select avg(r.calificacion.valor) from Resena r")
+    Double promedioGeneral();
+
     @Query("select avg(r.calificacion.valor) from Resena r where r.veterinaria.idVeterinaria = :idVeterinaria")
     Double promedioDeVeterinaria(@Param("idVeterinaria") Integer idVeterinaria);
 
@@ -20,7 +24,10 @@ public interface ResenaRepository extends JpaRepository<Resena, Integer> {
            select count(c) > 0 from Cita c
            where c.veterinaria.idVeterinaria = :idVeterinaria
              and c.mascota.tutor.idUsuario = :idTutor
-             and c.estado <> com.vetlink.cita.model.EstadoCita.CANCELADA
+             and c.estado = com.vetlink.cita.model.EstadoCita.ATENDIDA
            """)
     boolean tutorTuvoCitaEnVeterinaria(@Param("idVeterinaria") Integer idVeterinaria, @Param("idTutor") Integer idTutor);
+
+    /** VL-10: una sola reseña por dueño y clínica. */
+    boolean existsByTutor_IdUsuarioAndVeterinaria_IdVeterinaria(Integer idTutor, Integer idVeterinaria);
 }

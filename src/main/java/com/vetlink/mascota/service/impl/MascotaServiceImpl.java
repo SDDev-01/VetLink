@@ -100,6 +100,6 @@ public class MascotaServiceImpl implements MascotaService {
         mascota.setGenero(form.getGenero());
         mascota.setFechaNacimiento(form.getFechaNacimiento());
         mascota.setPeso(form.getPeso());
-        mascota.setFoto(form.getFoto());
+        // VL-22: la foto ya no viene como texto del formulario; solo la cambia FotoMascotaService al subir un archivo.
     }
 }

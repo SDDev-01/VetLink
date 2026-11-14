@@ -2,6 +2,7 @@ package com.vetlink.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,7 +38,9 @@ public class SecurityConfig {
         http
             .authenticationProvider(authProvider)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/registro", "/login", "/directorio/**", "/css/**", "/js/**", "/resource/**", "/uploads/**", "/api/catalogos/**").permitAll()
+                .requestMatchers("/", "/registro", "/login", "/directorio/**", "/css/**", "/js/**", "/resource/**", "/api/catalogos/**").permitAll()
+                // VL-22: la foto también la ve el personal que atiende a la mascota (lo verifica AccesoPacienteService).
+                .requestMatchers(HttpMethod.GET, "/mascotas/*/foto").authenticated()
                 .requestMatchers("/mascotas/**", "/citas/mias/**").hasRole("TUTOR")
                 .requestMatchers("/recepcion/**", "/citas/recepcion/**").hasRole("RECEPCIONISTA")
                 .requestMatchers("/historial/mias", "/historial/mascota/**").hasAnyRole("TUTOR", "VETERINARIO", "RECEPCIONISTA")
@@ -45,6 +48,8 @@ public class SecurityConfig {
                 .requestMatchers("/historial/pacientes").hasAnyRole("VETERINARIO", "RECEPCIONISTA")
                 .requestMatchers("/veterinarias/admin/**", "/reportes/**").hasAnyRole("RECEPCIONISTA", "VETERINARIO")
                 .requestMatchers("/dashboard/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/carnet/**").hasRole("VETERINARIO")
+                .requestMatchers("/citas/mascota/**", "/citas/agendar/**").hasRole("TUTOR")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
