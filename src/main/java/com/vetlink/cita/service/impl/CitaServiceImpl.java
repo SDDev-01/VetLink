@@ -63,6 +63,10 @@ public class CitaServiceImpl implements CitaService {
         if (!mascota.getTutor().getIdUsuario().equals(idTutor)) {
             throw new SecurityException("Esta mascota no te pertenece");
         }
+        // VL-16: no se agenda a una mascota eliminada (estado = 0).
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            throw new IllegalStateException("La mascota no está activa");
+        }
         return crearCitaValidada(form, mascota);
     }
 
@@ -74,6 +78,10 @@ public class CitaServiceImpl implements CitaService {
         }
         Mascota mascota = mascotaRepository.findById(form.getIdMascota())
                 .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
+        // VL-06: no se agenda a mascotas dadas de baja.
+        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
+            throw new IllegalStateException("La mascota no está activa");
+        }
         return crearCitaValidada(form, mascota);
     }
 
@@ -148,30 +156,72 @@ public class CitaServiceImpl implements CitaService {
         }
         cita.setEstado(EstadoCita.CANCELADA);
         citaRepository.save(cita);
+
+        // VL-11: si la hora aún no ha pasado, vuelve a quedar disponible como un cupo nuevo.
+        // La cita cancelada se conserva como historia. Si el veterinario ya tiene un cupo
+        // DISPONIBLE a esa misma fecha y hora, no se duplica.
+        boolean esFutura = java.time.LocalDateTime.of(cita.getFecha(), cita.getHora())
+                .isAfter(java.time.LocalDateTime.now());
+        boolean yaHayCupo = citaRepository.existsByVeterinario_IdUsuarioAndFechaAndHoraAndEstado(
+                cita.getVeterinario().getIdUsuario(), cita.getFecha(), cita.getHora(), EstadoCita.DISPONIBLE);
+        if (esFutura && !yaHayCupo) {
+            Cita cupo = new Cita();
+            cupo.setVeterinario(cita.getVeterinario());
+            cupo.setServicio(cita.getServicio());
+            cupo.setVeterinaria(cita.getVeterinaria());
+            cupo.setFecha(cita.getFecha());
+            cupo.setHora(cita.getHora());
+            cupo.setEstado(EstadoCita.DISPONIBLE);
+            citaRepository.save(cupo);
+        }
     }
 
     @Override
     @Transactional
-    public Cita reagendarComoRecepcionista(Integer idCita, java.time.LocalDate nuevaFecha, java.time.LocalTime nuevaHora,
-                                            Integer idVeterinariaRecepcionista) {
+    public Cita reagendarComoRecepcionista(Integer idCita, Integer idCupoNuevo, Integer idVeterinariaRecepcionista) {
         Cita cita = citaRepository.findById(idCita)
                 .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
         verificarCitaDeSuVeterinaria(cita, idVeterinariaRecepcionista);
-        if (cita.getEstado() != EstadoCita.AGENDADA) {
+        if (cita.getEstado() != EstadoCita.AGENDADA || cita.getMascota() == null) {
             throw new IllegalStateException("Solo se pueden reagendar citas que están agendadas");
         }
-        if (citaRepository.existsByVeterinario_IdUsuarioAndFechaAndHoraAndEstado(
-                cita.getVeterinario().getIdUsuario(), nuevaFecha, nuevaHora, EstadoCita.AGENDADA)) {
-            throw new IllegalStateException("El veterinario ya tiene una cita en ese horario");
+        Cita cupo = citaRepository.findById(idCupoNuevo)
+                .orElseThrow(() -> new IllegalArgumentException("Cupo no encontrado"));
+        // VL-23: el cupo nuevo debe ser de la misma clínica, estar DISPONIBLE y ser futuro.
+        if (!cupo.getVeterinaria().getIdVeterinaria().equals(idVeterinariaRecepcionista)) {
+            throw new IllegalArgumentException("El cupo elegido no pertenece a tu veterinaria");
         }
-        cita.setFecha(nuevaFecha);
-        cita.setHora(nuevaHora);
-        return citaRepository.save(cita);
+        if (cupo.getEstado() != EstadoCita.DISPONIBLE) {
+            throw new IllegalStateException("El cupo elegido ya no está disponible");
+        }
+        validarNoEsPasado(cupo.getFecha(), cupo.getHora());
+        Mascota mascota = cita.getMascota();
+        if (citaRepository.existsByMascota_IdMascotaAndFechaAndHoraAndEstado(
+                mascota.getIdMascota(), cupo.getFecha(), cupo.getHora(), EstadoCita.AGENDADA)) {
+            throw new IllegalStateException("La mascota ya tiene otra cita a esa fecha y hora");
+        }
+        // El cupo nuevo pasa a AGENDADA con la mascota; el horario original vuelve a quedar libre.
+        cupo.setMascota(mascota);
+        cupo.setEstado(EstadoCita.AGENDADA);
+        cita.setMascota(null);
+        cita.setEstado(EstadoCita.DISPONIBLE);
+        citaRepository.save(cita);
+        return citaRepository.save(cupo);
+    }
+
+    @Override
+    public List<Cita> cuposParaReagendar(Integer idCita, Integer idVeterinariaRecepcionista) {
+        Cita cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+        verificarCitaDeSuVeterinaria(cita, idVeterinariaRecepcionista);
+        return citaRepository.cuposDisponiblesFuturos(idVeterinariaRecepcionista, cita.getServicio().getIdServicio(),
+                java.time.LocalDate.now(), java.time.LocalTime.now());
     }
 
     @Override
     @Transactional
     public Cita ofertarCupo(com.vetlink.cita.dto.OfertarCitaForm form, Integer idVeterinariaRecepcionista) {
+        validarNoEsPasado(form.getFecha(), form.getHora()); // VL-15
         Usuario veterinario = usuarioRepository.findById(form.getIdVeterinario())
                 .orElseThrow(() -> new IllegalArgumentException("Veterinario no encontrado"));
         Servicio servicio = servicioRepository.findById(form.getIdServicio())
@@ -200,6 +250,14 @@ public class CitaServiceImpl implements CitaService {
         cupo.setServicio(servicio);
         cupo.setVeterinaria(veterinaria);
         return citaRepository.save(cupo);
+    }
+
+    /** VL-15: misma regla que ValidadorFechaFutura, comparando fecha y hora. */
+    private void validarNoEsPasado(java.time.LocalDate fecha, java.time.LocalTime hora) {
+        if (fecha != null && hora != null
+                && java.time.LocalDateTime.of(fecha, hora).isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalStateException("No se permiten citas en horas pasadas.");
+        }
     }
 
     private void verificarCitaDeSuVeterinaria(Cita cita, Integer idVeterinariaRecepcionista) {

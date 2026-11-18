@@ -11,6 +11,8 @@ import com.vetlink.veterinaria.repository.VeterinariaRepository;
 import com.vetlink.usuario.service.UsuarioService;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -79,6 +81,18 @@ public class AuthController {
 
     @PostMapping("/registro")
     public String registrar(@Valid @ModelAttribute("form") RegistroUsuarioForm form, BindingResult result, Model model) {
+        // VL-01: el registro público solo crea dueños o clínicas nuevas. Unirse a una
+        // clínica existente como veterinario o recepcionista se hace desde su panel.
+        String rol = form.getRol() == null ? "" : form.getRol().trim().toUpperCase();
+        boolean esDuenio = rol.equals("TUTOR") || rol.equals("DUEÑO");
+        boolean esClinicaNueva = (rol.equals("VETERINARIA") || rol.equals("RECEPCIONISTA"))
+                && form.getNuevaVeterinaria() != null;
+        if (!esDuenio && !esClinicaNueva) {
+            throw new AccessDeniedException("Tipo de registro no permitido");
+        }
+        form.setIdVeterinaria(null);
+        form.setIdVeterinariaRecepcion(null);
+
         if (!form.passwordsCoinciden()) {
             result.rejectValue("confirmarPassword", "mismatch", "Las contraseñas no coinciden");
         }
@@ -97,6 +111,18 @@ public class AuthController {
         boolean esVeterinaria = ("RECEPCIONISTA".equals(form.getRol()) || "VETERINARIA".equals(form.getRol()))
                 && form.getNuevaVeterinaria() != null;
         return "redirect:/login?registrado" + (esVeterinaria ? "Vet" : "");
+    }
+
+    /**
+     * VL-01: quien se registra es anónimo, y Spring Security convierte un
+     * AccessDeniedException de un anónimo en redirección a /login. Aquí se
+     * responde 403 con la página de acceso denegado.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public String registroNoPermitido(AccessDeniedException ex, Model model) {
+        model.addAttribute("mensaje", ex.getMessage());
+        return "error/403";
     }
 
     private void validarVeterinariaSiCorresponde(RegistroUsuarioForm form, BindingResult result) {

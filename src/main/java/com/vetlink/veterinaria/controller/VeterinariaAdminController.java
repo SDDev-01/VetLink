@@ -18,6 +18,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -66,14 +67,16 @@ public class VeterinariaAdminController {
     public String actualizarInfo(@AuthenticationPrincipal VetlinkUserPrincipal principal,
                                   @RequestParam String nombre, @RequestParam(required = false) String descripcion,
                                    @RequestParam(required = false) String paginaWeb, @RequestParam(required = false) String logo,
-                                   Model model) {
+                                   RedirectAttributes redirectAttributes) {
         exigirRecepcionistaPrincipal(principal);
         Veterinaria veterinaria = miVeterinaria(principal);
         try {
             veterinariaService.actualizarInfo(veterinaria.getIdVeterinaria(), principal.getUsuario().getIdUsuario(),
                     nombre, descripcion, paginaWeb, logo);
         } catch (RuntimeException e) {
-            return "redirect:/veterinarias/admin?error=" + e.getMessage();
+            // VL-21: el mensaje va como atributo flash, no en la URL (tildes, espacios o & lo cortaban).
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/veterinarias/admin";
         }
         return "redirect:/veterinarias/admin?actualizada";
     }
@@ -91,7 +94,7 @@ public class VeterinariaAdminController {
         form.setIdVeterinaria(veterinaria.getIdVeterinaria());
         form.setConfirmarPassword(form.getPassword());
 
-        if (result.hasErrors() || (form.getLicencia() == null || form.getLicencia().isBlank())) {
+        if (hayErroresDelUsuario(result) || (form.getLicencia() == null || form.getLicencia().isBlank())) {
             if (form.getLicencia() == null || form.getLicencia().isBlank()) {
                 result.rejectValue("licencia", "licencia.requerida", "La licencia profesional es obligatoria");
             }
@@ -119,14 +122,49 @@ public class VeterinariaAdminController {
 
     @PostMapping("/recepcionistas")
     public String registrarRecepcionista(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                                         @Valid @ModelAttribute("formEquipo") RegistroUsuarioForm form, BindingResult result) {
+                                         @Valid @ModelAttribute("formEquipo") RegistroUsuarioForm form, BindingResult result,
+                                         Model model) {
         exigirRecepcionistaPrincipal(principal);
         Veterinaria veterinaria = miVeterinaria(principal);
         form.setRol("RECEPCIONISTA"); form.setIdVeterinariaRecepcion(veterinaria.getIdVeterinaria());
+        // VL-08: desde el panel nunca se crea una clínica nueva, así la recepcionista queda con esPrincipal = false.
+        form.setNuevaVeterinaria(null);
         form.setConfirmarPassword(form.getPassword()); if (form.getTurno() == null || form.getTurno().isBlank()) form.setTurno("MAÑANA");
-        if (result.hasErrors()) return "redirect:/veterinarias/admin?error=Datos+de+recepcionista+incompletos";
-        usuarioService.registrar(form);
+        // VL-21: con errores de validación se vuelve a la vista mostrando qué campo falló.
+        if (hayErroresDelUsuario(result)) {
+            cargarPanelConError(model, principal, veterinaria, "Revisa los datos de la recepcionista.");
+            return "veterinarias/admin";
+        }
+        // VL-21: un correo o documento repetido ya no termina en error 500.
+        try {
+            usuarioService.registrar(form);
+        } catch (RuntimeException e) {
+            cargarPanelConError(model, principal, veterinaria, e.getMessage());
+            return "veterinarias/admin";
+        }
         return "redirect:/veterinarias/admin?recepcionistaCreada";
+    }
+
+    /**
+     * VL-21: el panel no envía "rol" ni "confirmarPassword" (los fija este controlador),
+     * pero RegistroUsuarioForm los marca @NotBlank y la validación corre antes de fijarlos.
+     * Sin este filtro, registrar personal desde el panel fallaba siempre.
+     */
+    private static final java.util.Set<String> CAMPOS_FIJADOS_POR_EL_SERVIDOR = java.util.Set.of("rol", "confirmarPassword");
+
+    private static boolean hayErroresDelUsuario(BindingResult result) {
+        return result.hasGlobalErrors() || result.getFieldErrors().stream()
+                .anyMatch(e -> !CAMPOS_FIJADOS_POR_EL_SERVIDOR.contains(e.getField()));
+    }
+
+    private void cargarPanelConError(Model model, VetlinkUserPrincipal principal, Veterinaria veterinaria, String mensaje) {
+        cargarShell(model, principal);
+        model.addAttribute("veterinaria", veterinaria);
+        model.addAttribute("equipo", veterinarioRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
+        model.addAttribute("recepcionistas", recepcionistaRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
+        model.addAttribute("tiposDocumento", tipoDocumentoRepository.findAll());
+        model.addAttribute("especialidades", especialidadVeterinarioRepository.findAll());
+        model.addAttribute("errorRecepcion", mensaje);
     }
 
     private Veterinaria miVeterinaria(VetlinkUserPrincipal principal) {

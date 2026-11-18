@@ -319,8 +319,87 @@ function validateStep4() {
     }
     errEl.innerText = "";
 
+    // VL-14: cada rango abierto debe tener apertura < cierre (el servidor también lo valida).
+    const errHorarios = document.getElementById('err-horarios');
+    const errorHorario = validarRangosHorario();
+    if (errorHorario) {
+        if (errHorarios) errHorarios.innerText = errorHorario;
+        return;
+    }
+    if (errHorarios) errHorarios.innerText = "";
+
     initMap();
     nextStep(5);
+}
+
+/* =========================
+   VL-14: varios rangos por día
+   Cada rango extra se envía como otra entrada de nuevaVeterinaria.horarios[N]
+   con el mismo idDiaSemana. Los índices deben ser consecutivos (un hueco haría que
+   Spring cree un horario vacío que no pasa la validación), por eso al quitar un
+   rango se renumeran todos los rangos extra.
+========================= */
+function indiceBaseHorarios() {
+    return document.querySelectorAll('#days-grid .day-card > input[name$=".idDiaSemana"]').length;
+}
+
+function renumerarRangosExtra() {
+    let i = indiceBaseHorarios();
+    document.querySelectorAll('#days-grid .extra-range').forEach(function (fila) {
+        fila.querySelectorAll('input[name^="nuevaVeterinaria.horarios["]').forEach(function (input) {
+            input.name = input.name.replace(/horarios\[\d+\]/, 'horarios[' + i + ']');
+        });
+        i++;
+    });
+}
+
+function removeRange(btn) {
+    btn.closest('.extra-range').remove();
+    renumerarRangosExtra();
+}
+
+function addRange(btn) {
+    const card = btn.closest('.day-card');
+    const cont = card.querySelector('.extra-ranges');
+    const base = 'nuevaVeterinaria.horarios[0]'; // el índice real lo pone renumerarRangosExtra()
+    const fila = document.createElement('div');
+    fila.className = 'hours extra-range';
+    fila.innerHTML =
+        '<input type="hidden" name="' + base + '.idDiaSemana" value="' + cont.dataset.idDia + '">' +
+        '<input type="hidden" name="' + base + '.abierto" value="true">' +
+        '<div class="time-group"><small>Apertura</small><input type="time" name="' + base + '.horaApertura" value="14:00" class="open"></div>' +
+        '<div class="time-group"><small>Cierre</small><input type="time" name="' + base + '.horaCierre" value="18:00" class="close"></div>' +
+        '<button type="button" class="btn-remove-range" title="Quitar este horario" onclick="removeRange(this)">' +
+        '<i class="fas fa-trash"></i></button>';
+    cont.appendChild(fila);
+    renumerarRangosExtra();
+}
+
+function validarRangosHorario() {
+    const cards = document.querySelectorAll('#days-grid .day-card');
+    for (const card of cards) {
+        const check = card.querySelector('.day-toggle input[type="checkbox"]');
+        if (!check || !check.checked) continue;
+        const dia = card.dataset.dia;
+        const rangos = [];
+        card.querySelectorAll('.hours').forEach(function (fila) {
+            const open = fila.querySelector('input.open');
+            const close = fila.querySelector('input.close');
+            if (open && close) rangos.push([open.value, close.value]);
+        });
+        for (const [a, c] of rangos) {
+            if (!a || !c || a >= c) {
+                return 'El ' + dia + ', la hora de apertura debe ser anterior a la de cierre.';
+            }
+        }
+        const ordenados = rangos.slice().sort((x, y) => x[0].localeCompare(y[0]));
+        for (let k = 1; k < ordenados.length; k++) {
+            if (ordenados[k][0] < ordenados[k - 1][1]) {
+                return 'El ' + dia + ' tiene horarios que se cruzan.';
+            }
+        }
+    }
+    return null;
 }
 
 /* =========================
@@ -426,13 +505,21 @@ function toggleDay(checkbox) {
     const hours = card.querySelector('.hours');
     const status = card.querySelector('.day-status');
 
+    const extra = card.querySelector('.extra-ranges');
+    const addBtn = card.querySelector('.btn-add-range');
+
     if (checkbox.checked) {
+        if (extra) extra.classList.remove('hidden');
+        if (addBtn) addBtn.classList.remove('hidden');
         hours.classList.remove('hidden');
         status.innerText = "Abierto";
         status.style.color = "#22c55e";
         card.style.background = "#f0f7ff";
         card.style.borderColor = "var(--primary)";
     } else {
+        // Al cerrar el día se quitan sus rangos adicionales.
+        if (extra) { extra.innerHTML = ''; extra.classList.add('hidden'); renumerarRangosExtra(); }
+        if (addBtn) addBtn.classList.add('hidden');
         hours.classList.add('hidden');
         status.innerText = "Cerrado";
         status.style.color = "#ef4444";

@@ -55,6 +55,16 @@ public class CarnetVacunaServiceImpl implements CarnetVacunaService {
         Usuario usuario = usuarioRepository.findById(idUsuarioQueAplica)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
+        // VL-03: validaciones de negocio antes de guardar.
+        if (!vacuna.getEspecie().getIdEspecie().equals(mascota.getEspecie().getIdEspecie())) {
+            throw new IllegalArgumentException("La vacuna no corresponde a la especie de la mascota");
+        }
+        if (lote.getFechaVencimiento().isBefore(fechaAplicacion)) {
+            throw new IllegalArgumentException("El lote está vencido para esa fecha");
+        }
+        if (fechaAplicacion.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("La fecha de aplicación no puede ser futura");
+        }
         if (proximaDosis.isBefore(fechaAplicacion)) {
             throw new IllegalArgumentException("La próxima dosis no puede ser antes de la fecha de aplicación");
         }

@@ -4,6 +4,7 @@ import com.vetlink.chat.model.Conversacion;
 import com.vetlink.chat.model.MensajeChat;
 import com.vetlink.chat.repository.ConversacionRepository;
 import com.vetlink.chat.repository.MensajeChatRepository;
+import com.vetlink.chat.service.ContactosChatService;
 import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.usuario.repository.UsuarioRepository;
@@ -18,24 +19,34 @@ import java.time.LocalDateTime;
 public class ChatController {
     private final ConversacionRepository conversaciones; private final MensajeChatRepository mensajes;
     private final UsuarioRepository usuarios;
-    public ChatController(ConversacionRepository conversaciones, MensajeChatRepository mensajes, UsuarioRepository usuarios) {
+    private final ContactosChatService contactosChat;
+    public ChatController(ConversacionRepository conversaciones, MensajeChatRepository mensajes, UsuarioRepository usuarios,
+                          ContactosChatService contactosChat) {
         this.conversaciones = conversaciones; this.mensajes = mensajes; this.usuarios = usuarios;
+        this.contactosChat = contactosChat;
     }
     @GetMapping
     public String inicio(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         shell(model, principal); Integer id = principal.getUsuario().getIdUsuario();
         model.addAttribute("conversaciones", conversaciones.findByUsuarioA_IdUsuarioOrUsuarioB_IdUsuarioOrderByCreadaEnDesc(id, id));
-        model.addAttribute("contactos", usuarios.findAll().stream().filter(u -> !u.getIdUsuario().equals(id)).toList());
+        // VL-07: solo los contactos con los que hay relación clínica.
+        model.addAttribute("contactos", contactosChat.contactosPermitidos(principal.getUsuario()));
         return "chat/lista";
     }
     @PostMapping("/nuevo/{idContacto}")
     public String abrir(@PathVariable Integer idContacto, @AuthenticationPrincipal VetlinkUserPrincipal principal) {
         Integer yo = principal.getUsuario().getIdUsuario();
         if (yo.equals(idContacto)) throw new IllegalArgumentException("No puedes iniciar un chat contigo mismo");
+        // VL-07: no se le puede escribir a cualquiera.
+        var contacto = usuarios.findById(idContacto)
+            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        if (!contactosChat.puedeEscribir(principal.getUsuario(), contacto)) {
+            throw new org.springframework.security.access.AccessDeniedException("No puedes iniciar una conversación con este usuario");
+        }
         Conversacion c = conversaciones.findByUsuarioA_IdUsuarioAndUsuarioB_IdUsuario(yo, idContacto)
             .or(() -> conversaciones.findByUsuarioA_IdUsuarioAndUsuarioB_IdUsuario(idContacto, yo)).orElseGet(() -> {
                 Conversacion nueva = new Conversacion(); nueva.setUsuarioA(principal.getUsuario());
-                nueva.setUsuarioB(usuarios.findById(idContacto).orElseThrow()); nueva.setCreadaEn(LocalDateTime.now()); return conversaciones.save(nueva); });
+                nueva.setUsuarioB(contacto); nueva.setCreadaEn(LocalDateTime.now()); return conversaciones.save(nueva); });
         return "redirect:/chat/" + c.getIdConversacion();
     }
     @GetMapping("/{id}")

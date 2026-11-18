@@ -40,25 +40,54 @@ public class PerfilController {
         form.setApellido(usuario.getApellido());
         var telefonos = telefonoRepository.findByUsuario_IdUsuario(usuario.getIdUsuario());
         form.setTelefono(telefonos.isEmpty() ? "" : telefonos.get(0).getNumeroTelefono());
+        form.setCorreo(usuarioService.correoPrincipal(usuario.getIdUsuario()));
         model.addAttribute("form", form);
-
-        var correos = correoRepository.findByUsuario_IdUsuario(usuario.getIdUsuario());
-        model.addAttribute("correo", correos.isEmpty() ? "" : correos.get(0).getCorreo());
+        model.addAttribute("correo", form.getCorreo());
 
         return "perfil/ver";
     }
 
     @PostMapping("/perfil")
     public String actualizar(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                              @Valid @ModelAttribute("form") PerfilForm form, BindingResult result, Model model) {
+                              @Valid @ModelAttribute("form") PerfilForm form, BindingResult result, Model model,
+                              HttpServletRequest request) {
         var usuario = principal.getUsuario();
+        String correoActual = usuarioService.correoPrincipal(usuario.getIdUsuario());
+
+        // VL-20: reglas de contraseña y correo, con el error en su campo.
+        if (form.cambiaPassword()) {
+            if (form.getNuevaPassword().length() < 8) {
+                result.rejectValue("nuevaPassword", "corta", "La nueva contraseña debe tener al menos 8 caracteres");
+            }
+            if (!usuarioService.passwordCoincide(usuario.getIdUsuario(), form.getPasswordActual())) {
+                result.rejectValue("passwordActual", "incorrecta", "La contraseña actual no es correcta");
+            }
+        }
+        boolean cambiaCorreo = form.getCorreo() != null && !form.getCorreo().trim().equalsIgnoreCase(correoActual);
+        if (cambiaCorreo && !result.hasFieldErrors("correo")
+                && correoRepository.existsByCorreoIgnoreCase(form.getCorreo().trim())) {
+            result.rejectValue("correo", "enUso", "Ese correo ya está en uso por otra cuenta");
+        }
+
         if (result.hasErrors()) {
             cargarModeloComun(model, usuario);
-            var correos = correoRepository.findByUsuario_IdUsuario(usuario.getIdUsuario());
-            model.addAttribute("correo", correos.isEmpty() ? "" : correos.get(0).getCorreo());
+            model.addAttribute("correo", correoActual);
             return "perfil/ver";
         }
-        usuarioService.actualizarPerfil(usuario.getIdUsuario(), form);
+        try {
+            usuarioService.actualizarPerfil(usuario.getIdUsuario(), form);
+        } catch (IllegalArgumentException e) {
+            cargarModeloComun(model, usuario);
+            model.addAttribute("correo", correoActual);
+            model.addAttribute("errorGeneral", e.getMessage());
+            return "perfil/ver";
+        }
+
+        // El correo es el usuario de login, y la contraseña la credencial: si cambian, se inicia sesión de nuevo.
+        if (cambiaCorreo || form.cambiaPassword()) {
+            try { request.logout(); } catch (jakarta.servlet.ServletException e) { throw new IllegalStateException(e); }
+            return cambiaCorreo ? "redirect:/login?correoActualizado" : "redirect:/login?passwordActualizada";
+        }
         return "redirect:/perfil?actualizado";
     }
 

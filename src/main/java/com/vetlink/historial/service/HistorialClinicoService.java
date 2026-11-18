@@ -13,12 +13,12 @@ public interface HistorialClinicoService {
     /** Necesario para poder editar/eliminar un registro puntual. */
     HistorialClinico buscarPorId(Integer numeroHistorial);
 
-    /** RF0041 — solo quien lo creó puede editarlo. */
+    /** RF0041 — solo quien lo creó puede editarlo, y solo durante las 24 horas siguientes (VL-19). */
     HistorialClinico actualizar(Integer numeroHistorial, HistorialClinicoForm form, Integer idUsuarioActual);
 
-    /** RF0042 — solo quien lo creó, y solo dentro de los primeros 20 minutos. */
-    void eliminar(Integer numeroHistorial, Integer idUsuarioActual);
-
-    /** Para la interfaz: cuántos minutos le quedan a este registro para poder eliminarse (o -1 si ya no aplica). */
-    long minutosRestantesParaEliminar(HistorialClinico historial);
+    /**
+     * VL-19: un registro médico no se borra. Solo su autor lo puede editar durante las
+     * 24 horas siguientes a fechaRegistro; los registros antiguos (sin fechaRegistro) no se editan.
+     */
+    boolean esEditable(HistorialClinico historial, Integer idUsuarioActual);
 }

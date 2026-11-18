@@ -21,6 +21,7 @@ public interface CarnetVacunaRepository extends JpaRepository<CarnetVacuna, Inte
     @Query("""
            select cv from CarnetVacuna cv
            where cv.mascota.tutor.idUsuario = :idTutor
+             and cv.mascota.estado = 1
              and cv.proximaDosis between current_date and :limite
            order by cv.proximaDosis asc
            """)

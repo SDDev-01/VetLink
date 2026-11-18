@@ -21,8 +21,8 @@
 
             <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
                 <div class="vl-profile-avatar-lg">
-                    <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
-                    <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                    <img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt="">
+                    <i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i>
                 </div>
                 <div>
                     <h2 th:text="${mascota.nombre}">Nombre</h2>
@@ -66,8 +66,8 @@
                     <div class="vl-carnet">
                         <div class="vl-carnet-top">
                             <div class="vl-carnet-photo">
-                                <img th:if="${mascota.foto}" th:src="@{'/uploads/' + ${mascota.foto}}" alt="">
-                                <i th:unless="${mascota.foto}" class="fas fa-paw"></i>
+                                <img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt="">
+                                <i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i>
                             </div>
                             <div>
                                 <div class="vl-carnet-label">Carnet de vacunación</div>
@@ -94,11 +94,11 @@
                         <div class="vl-timeline-item" th:each="h : ${historial}">
                             <div class="vl-timeline-dot"></div>
                             <div class="vl-timeline-content">
-                                <span class="vl-timeline-date" th:text="'Año ' + ${h.fechaConsulta} + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
+                                <span class="vl-timeline-date" th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
                                 <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
                                 <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
                                 <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
-                                <p style="color:#94a3b8; font-size:0.78rem; margin-top:6px;">Próxima cita sugerida: <span th:text="${h.proximaCita}"></span></p>
+                                <p style="color:#94a3b8; font-size:0.78rem; margin-top:6px;">Próxima cita sugerida: <span th:text="${h.proximaCita != null ? h.proximaCita : 'Sin control programado'}"></span></p>
                             </div>
                         </div>
                     </div>

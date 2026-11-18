@@ -34,7 +34,8 @@ public class HistorialClinico {
     @Column(columnDefinition = "LONGTEXT")
     private String observaciones;
 
-    @Column(nullable = false)
+    /** VL-17: opcional; null = sin control programado. */
+    @Column(nullable = true)
     private LocalDate proximaCita;
 
     /** Marca de tiempo de creación, usada para la regla de negocio "solo se puede
