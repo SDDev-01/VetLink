@@ -568,3 +568,26 @@ body.dashboard-body { padding-top: 0 !important; letter-spacing: normal !importa
     outline-offset: 2px;
     border-radius: 4px;
 }
+
+/* ===== Compartir historial (pasaporte de salud) ===== */
+.vl-pasaporte-head { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #1d4ed8) 100%); color: #fff; border-radius: 22px; padding: 22px 24px; margin-bottom: 18px; }
+.vl-pasaporte-head h2 { margin: 0 0 6px; font-size: 1.3rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.vl-pasaporte-head p { margin: 0; opacity: .92; font-size: .9rem; max-width: 720px; }
+.vl-pasaporte-alerta { display: flex; gap: 10px; align-items: flex-start; border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; font-size: .9rem; font-weight: 600; }
+.vl-pasaporte-alerta.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.vl-pasaporte-alerta.ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.vl-pasaporte-creado { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid #bfdbfe; border-radius: 18px; padding: 18px; margin-bottom: 18px; }
+.vl-pasaporte-creado img { border-radius: 12px; border: 1px solid #e2e8f0; max-width: 100%; height: auto; }
+.vl-pasaporte-creado > div { flex: 1 1 220px; min-width: 0; }
+.vl-pasaporte-creado p { margin: 6px 0 10px; font-size: .88rem; color: #475569; }
+.vl-pasaporte-url { width: 100%; min-width: 0; border: 1.5px solid #e2e8f0; border-radius: 11px; padding: 9px 12px; font-family: inherit; font-size: .82rem; color: #0f172a; background: #f8fafc; }
+.vl-pasaporte-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; background: #fff; border: 1px solid #f1f5f9; border-radius: 18px; padding: 18px; }
+.vl-pasaporte-form .vl-field { flex: 1 1 200px; margin: 0; }
+.vl-pasaporte-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.vl-pasaporte-item { background: #fff; border: 1px solid #f1f5f9; border-radius: 16px; padding: 14px 16px; }
+.vl-pasaporte-item-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vl-pasaporte-aperturas { font-size: .82rem; color: #64748b; display: inline-flex; gap: 6px; align-items: center; }
+.vl-pasaporte-fechas { font-size: .82rem; color: #64748b; margin-top: 6px; }
+.vl-pasaporte-activo { display: flex; gap: 14px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.vl-pasaporte-activo img { border-radius: 10px; border: 1px solid #e2e8f0; }
+.vl-pasaporte-acciones { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }

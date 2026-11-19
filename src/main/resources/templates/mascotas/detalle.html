@@ -51,6 +51,7 @@
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
                         <a th:href="@{'/mascotas/' + ${mascota.idMascota} + '/editar'}" class="vl-btn vl-btn-ghost"><i class="fas fa-pen"></i> Editar mascota</a>
                         <a th:href="@{'/citas/agendar/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary" sec:authorize="hasRole('TUTOR')"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                        <a th:href="@{'/mascotas/' + ${mascota.idMascota} + '/pasaporte'}" class="vl-btn vl-btn-ghost" sec:authorize="hasRole('TUTOR')"><i class="fas fa-qrcode"></i> Compartir historial</a>
                     </div>
 
                     <div class="vl-form-section-title" style="margin-top:22px;"><i class="fas fa-calendar-check"></i> Próximas citas</div>
