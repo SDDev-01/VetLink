@@ -194,9 +194,6 @@ public class MascotaController {
 
     private void verificarPropietario(com.vetlink.mascota.model.Mascota mascota,
                                       VetlinkUserPrincipal principal) {
-        if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "No tienes permiso sobre esta mascota");
-        }
+        accesoPacienteService.verificarPropietario(mascota, principal);
     }
 }
