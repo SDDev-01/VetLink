@@ -1,0 +1,74 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+  environment:
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    MYSQL_DATABASE: ${MYSQL_DATABASE}
+    MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+    MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/database:ro,Z
+      - ./database/init/00-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro,Z
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  spring:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: vetlink_spring
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_THYMELEAF_CACHE: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      VETLINK_UPLOADS_DIR: /app/uploads
+    volumes:
+      - vetlink_uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.30-alpine
+    restart: unless-stopped
+
+    environment:
+      # Rellena ${NGINX_LOCAL_RESOLVERS} con el DNS de la red de Compose
+      # (válido para Docker y Podman).
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      # La plantilla se renderiza como /etc/nginx/nginx.conf completo.
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+
+    # Único puerto publicado al exterior. Podman rootless no puede usar
+    # puertos < 1024 sin ajustar net.ipv4.ip_unprivileged_port_start:
+    # en ese caso define NGINX_HTTP_PORT (p. ej. 8081) en .env.
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro,Z
+
+    # Nginx resuelve los backends en cada petición, así que basta con que
+    # Spring esté creado; mientras arranca, Nginx responde 502.
+    # Cuando exista el servicio "fastapi", añadirlo aquí también.
+    depends_on:
+      spring:
+        condition: service_started
+
+volumes:
+  mysql_data:
+  vetlink_uploads:
+
