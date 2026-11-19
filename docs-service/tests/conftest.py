@@ -18,9 +18,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture
 def conn():
+    """Conexión de la prueba con autocommit: cada consulta ve lo que la API acaba de escribir."""
     from app.db import conexion
 
     with conexion() as c:
+        c.autocommit(True)
         yield c
 
 
