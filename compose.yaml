@@ -2,17 +2,20 @@ services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
-  environment:
-    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    MYSQL_DATABASE: ${MYSQL_DATABASE}
-    MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
-    MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
-    ports:
-      - "${MYSQL_PORT:-3307}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+      MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
+      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
+    # Sin puertos publicados: solo Nginx sale al exterior.
+    # Para depurar desde el equipo: docker compose -f compose.yaml -f compose.debug.yaml up
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database:/database:ro,Z
       - ./database/init/00-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro,Z
+    networks:
+      - vetlink_net
     healthcheck:
       test:
         - CMD-SHELL
@@ -35,8 +38,44 @@ services:
       SPRING_THYMELEAF_CACHE: "true"
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       VETLINK_UPLOADS_DIR: /app/uploads
+      VETLINK_DOCS_BASE_URL: http://fastapi:8000
+      VETLINK_DOCS_INTERNAL_TOKEN: ${INTERNAL_TOKEN}
     volumes:
       - vetlink_uploads:/app/uploads
+    networks:
+      - vetlink_net
+    # Spring no espera a FastAPI: si el servicio de pasaportes falla,
+    # el resto de la aplicación sigue funcionando.
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  fastapi:
+    build:
+      context: ./docs-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: vetlink_fast
+      DB_PASSWORD: ${MYSQL_FAST_PASSWORD}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # Dirección que va dentro del QR. Para la demo con celular: la IP del portátil.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+    networks:
+      - vetlink_net
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       mysql:
         condition: service_healthy
@@ -61,14 +100,20 @@ services:
     volumes:
       - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro,Z
 
+    networks:
+      - vetlink_net
+
     # Nginx resuelve los backends en cada petición, así que basta con que
-    # Spring esté creado; mientras arranca, Nginx responde 502.
-    # Cuando exista el servicio "fastapi", añadirlo aquí también.
+    # Spring y FastAPI estén creados; mientras arrancan, Nginx responde 502.
     depends_on:
       spring:
         condition: service_started
+      fastapi:
+        condition: service_started
+
+networks:
+  vetlink_net:
 
 volumes:
   mysql_data:
   vetlink_uploads:
-
