@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}{{ mascota.nombre }} · Pasaporte de salud · VetLink{% endblock %}
+{% block contenido %}
+  <section class="tarjeta">
+    <h1>{{ mascota.nombre }}</h1>
+    <div class="tenue">{{ mascota.especie }} · {{ mascota.raza }}</div>
+    <dl class="datos">
+      <div><dt>Sexo</dt><dd>{{ "Hembra" if mascota.genero == "H" else "Macho" }}</dd></div>
+      <div><dt>Nacimiento</dt><dd>{{ mascota.fechaNacimiento.strftime("%d/%m/%Y") }}</dd></div>
+      <div><dt>Peso</dt><dd>{{ "%g"|format(mascota.peso) }} kg</dd></div>
+    </dl>
+    {% if expira_en %}
+      <p class="tenue">Enlace válido hasta el {{ expira_en.strftime("%d/%m/%Y a las %H:%M") }}.</p>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2>Vacunas</h2>
+    {% if vacunas %}
+      <ul class="lista">
+        {% for v in vacunas %}
+          <li>
+            <strong>{{ v.vacuna }}</strong> <span class="tenue">· {{ v.dosis }}</span><br>
+            <span class="tenue">Aplicada el {{ v.fechaAplicacion.strftime("%d/%m/%Y") }}
+            · próxima dosis {{ v.proximaDosis.strftime("%d/%m/%Y") }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="tenue">No hay vacunas registradas.</p>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2>Últimas atenciones</h2>
+    {% if atenciones %}
+      <ul class="lista">
+        {% for a in atenciones %}
+          <li>
+            <span class="etiqueta">
+              {%- if a.fechaRegistro %}{{ a.fechaRegistro.strftime("%d/%m/%Y") }}{% else %}{{ a.fechaConsulta }}{% endif -%}
+            </span>
+            <div><strong>{{ a.motivoConsulta }}</strong></div>
+            <div>Diagnóstico: {{ a.diagnostico }}</div>
+            {% if a.medicamentos %}
+              <div class="tenue">Medicamentos:
+                {% for m in a.medicamentos %}{{ m.medicamento }} ({{ m.cantidad }}){% if not loop.last %}, {% endif %}{% endfor %}
+              </div>
+            {% endif %}
+            <div class="tenue">Atendió: {{ a.veterinario }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="tenue">No hay atenciones registradas.</p>
+    {% endif %}
+  </section>
+{% endblock %}
