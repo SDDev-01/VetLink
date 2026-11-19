@@ -39,4 +39,11 @@ public class AccesoPacienteService {
             throw new AccessDeniedException("No tienes permiso para consultar esta mascota");
         }
     }
+
+    /** Solo el dueño: para editar la mascota o compartir su pasaporte de salud. */
+    public void verificarPropietario(Mascota mascota, VetlinkUserPrincipal principal) {
+        if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
+            throw new AccessDeniedException("No tienes permiso sobre esta mascota");
+        }
+    }
 }
