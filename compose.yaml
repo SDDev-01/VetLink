@@ -8,6 +8,8 @@ services:
       MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
       MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
       RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
+      # Hora de Colombia para NOW()/CURRENT_TIMESTAMP (Spring y FastAPI trabajan en esa zona).
+      TZ: America/Bogota
     # Sin puertos publicados: solo Nginx sale al exterior.
     # Para depurar desde el equipo: docker compose -f compose.yaml -f compose.debug.yaml up
     volumes:
@@ -40,6 +42,9 @@ services:
       VETLINK_UPLOADS_DIR: /app/uploads
       VETLINK_DOCS_BASE_URL: http://fastapi:8000
       VETLINK_DOCS_INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # Sin esto el JVM corre en UTC: LocalDate.now() se adelanta 5 h y las reglas
+      # de citas (horas pasadas, atender solo hoy, edición 24 h) fallan desde las 19:00.
+      TZ: America/Bogota
     volumes:
       - vetlink_uploads:/app/uploads
     networks:
