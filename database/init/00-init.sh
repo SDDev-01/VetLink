@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
@@ -33,15 +32,19 @@ echo "======================================"
 echo " Inicializando base de datos VetLink"
 echo "======================================"
 
-echo "[1/4] Importando estructura y datos iniciales..."
+echo "[1/5] Importando estructura y datos iniciales..."
 
 mysql_exec < "${DATABASE_DIR}/mydb.sql"
 
-echo "[2/4] Aplicando correcciones V5..."
+echo "[2/5] Aplicando correcciones V5..."
 
 mysql_exec < "${DATABASE_DIR}/migrations/V5_correcciones.sql"
 
-echo "[3/4] Creando usuarios y asignando permisos..."
+echo "[3/5] Creando tablas del pasaporte (V7)..."
+
+mysql_exec < "${DATABASE_DIR}/migrations/V7_pasaporte.sql"
+
+echo "[4/5] Creando usuarios y asignando permisos..."
 
 mysql_exec --execute="
     CREATE USER IF NOT EXISTS 'vetlink_spring'@'%'
@@ -74,15 +77,37 @@ done < <(
     "
 )
 
-echo "Usuario vetlink_fast creado sin privilegios pendientes de definir."
+echo "Asignando permisos a vetlink_fast..."
 
-echo "[4/4] Comprobando datos de demostración..."
+# FastAPI escribe solo en sus dos tablas (sin DELETE) y lee únicamente lo que
+# muestra el pasaporte. Columnas leídas: docs/contrato-documentos.md, sección 5.
+# GRANT falla si una tabla no existe, así que también sirve de comprobación.
+mysql_exec --execute="
+    GRANT SELECT, INSERT, UPDATE ON \`${MYSQL_DATABASE}\`.\`pasaporte\` TO 'vetlink_fast'@'%';
+    GRANT SELECT, INSERT, UPDATE ON \`${MYSQL_DATABASE}\`.\`pasaporte_acceso\` TO 'vetlink_fast'@'%';
+
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`mascota\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`especie\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`raza\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`carnet_vacuna\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`vacuna\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`historial_clinico\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`historial_medicamento\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`medicamento\` TO 'vetlink_fast'@'%';
+    GRANT SELECT ON \`${MYSQL_DATABASE}\`.\`veterinaria\` TO 'vetlink_fast'@'%';
+
+    -- Solo el nombre del veterinario; idUsuario hace falta para unirlo con historial_clinico.
+    GRANT SELECT (idUsuario, nombre, apellido) ON \`${MYSQL_DATABASE}\`.\`usuario\` TO 'vetlink_fast'@'%';
+"
+
+echo "[5/5] Comprobando datos de demostración..."
 
 if [[ "${RUN_DEMO_SEED:-false}" == "true" ]]; then
-    echo "Aplicando V6..."
+    echo "Aplicando V6 y pasaportes DEMO..."
     mysql_exec < "${DATABASE_DIR}/migrations/V6_datos_demo.sql"
+    mysql_exec < "${DATABASE_DIR}/migrations/V7_pasaporte_demo.sql"
 else
-    echo "V6 omitida."
+    echo "Datos de demostración omitidos."
 fi
 
 unset MYSQL_PWD
