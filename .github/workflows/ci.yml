@@ -1,0 +1,120 @@
+# Pruebas automáticas en cada Pull Request (y en cada push a main/development).
+#   - spring: ./mvnw test (perfil test con H2, no necesita MySQL ni Python).
+#   - fastapi: pytest dentro de docs-service/, con las pruebas de integración
+#     contra el mismo MySQL 8.4 de compose.yaml (mydb.sql + V2..V7 + usuarios).
+name: Pruebas
+
+on:
+  pull_request:
+  push:
+    branches: [main, development]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spring:
+    name: Spring Boot (./mvnw test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # mvnw no tiene bit de ejecución en el repositorio.
+      - name: Pruebas
+        run: sh ./mvnw -B test
+
+      - name: Resumen de pruebas
+        if: always()
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import glob, re
+          t = f = e = s = 0
+          for x in glob.glob("target/surefire-reports/TEST-*.xml"):
+              h = open(x, encoding="utf-8").read(4000)
+              n = lambda k: int(re.search(k + r'="(\d+)"', h).group(1))
+              t += n("tests"); f += n("failures"); e += n("errors"); s += n("skipped")
+          print(f"### Spring Boot\n\n{t} pruebas, {f} fallos, {e} errores, {s} omitidas")
+          EOF
+
+      - name: Guardar reportes si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+
+  fastapi:
+    name: FastAPI (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # .env de usar y tirar: contraseñas aleatorias en cada ejecución.
+      - name: Crear .env
+        run: |
+          {
+            echo "MYSQL_DATABASE=mydb"
+            echo "MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "MYSQL_SPRING_PASSWORD=$(openssl rand -hex 32)"
+            echo "MYSQL_FAST_PASSWORD=$(openssl rand -hex 32)"
+            echo "INTERNAL_TOKEN=$(openssl rand -hex 32)"
+            echo "PUBLIC_BASE_URL=http://localhost"
+            echo "MYSQL_PORT=3307"
+            echo "RUN_DEMO_SEED=false"
+          } > .env
+
+      # Solo el servicio mysql, publicado en 127.0.0.1:3307 con compose.debug.yaml.
+      # --wait espera a que el healthcheck esté en verde (scripts de inicio terminados).
+      - name: Levantar MySQL con los scripts de database/
+        run: docker compose -f compose.yaml -f compose.debug.yaml up -d --wait mysql
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: docs-service/requirements*.txt
+
+      - name: Instalar dependencias
+        working-directory: docs-service
+        run: pip install -r requirements-dev.txt
+
+      - name: Pruebas
+        working-directory: docs-service
+        run: |
+          set -a; . ../.env; set +a
+          export DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME="$MYSQL_DATABASE"
+          export DB_USER=vetlink_fast DB_PASSWORD="$MYSQL_FAST_PASSWORD"
+          export DB_ADMIN_USER=root DB_ADMIN_PASSWORD="$MYSQL_ROOT_PASSWORD"
+          python -m pytest -rs --junitxml=pytest-report.xml
+
+      - name: Resumen de pruebas
+        if: always()
+        working-directory: docs-service
+        run: |
+          [ -f pytest-report.xml ] || exit 0
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import re
+          h = open("pytest-report.xml", encoding="utf-8").read(2000)
+          n = lambda k: int(re.search(k + r'="(\d+)"', h).group(1))
+          print(f"### FastAPI\n\n{n('tests')} pruebas, {n('failures')} fallos, "
+                f"{n('errors')} errores, {n('skipped')} omitidas")
+          EOF
+
+      - name: Logs de MySQL si falla
+        if: failure()
+        run: docker compose logs mysql
