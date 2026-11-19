@@ -85,3 +85,6 @@ replay_pid*
 # Archivos subidos por los usuarios (fotos, adjuntos clínicos) y temporales locales
 uploads/
 .tmp/
+
+### Secretos ###
+.env
