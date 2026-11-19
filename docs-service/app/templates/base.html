@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>{% block titulo %}Pasaporte de salud · VetLink{% endblock %}</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --borde: #bfdbfe;
+      --texto: #1e293b;
+      --tenue: #64748b;
+      --fondo: #f8fafc;
+      --blanco: #ffffff;
+      --verde: #047857;
+      --verde-fondo: #ecfdf5;
+      --radio: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--texto);
+      background: var(--fondo);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--primary);
+      color: var(--blanco);
+      padding: 16px;
+    }
+    header .marca { font-weight: 800; font-size: 1.1rem; letter-spacing: .5px; }
+    header .sub { opacity: .9; font-size: .9rem; }
+    main { max-width: 720px; margin: 0 auto; padding: 16px; }
+    .tarjeta {
+      background: var(--blanco);
+      border: 1px solid var(--borde);
+      border-radius: var(--radio);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; color: var(--primary); }
+    .tenue { color: var(--tenue); font-size: .9rem; }
+    dl.datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 12px 0 0; }
+    dl.datos dt { color: var(--tenue); font-size: .8rem; }
+    dl.datos dd { margin: 0; font-weight: 600; }
+    ul.lista { list-style: none; margin: 0; padding: 0; }
+    ul.lista li { padding: 10px 0; border-top: 1px solid var(--primary-light); }
+    ul.lista li:first-child { border-top: 0; padding-top: 0; }
+    .etiqueta { display: inline-block; background: var(--verde-fondo); color: var(--verde); border-radius: 999px; padding: 2px 10px; font-size: .8rem; font-weight: 600; }
+    footer { text-align: center; color: var(--tenue); font-size: .8rem; padding: 8px 16px 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="marca">VetLink</div>
+    <div class="sub">Pasaporte de salud veterinario</div>
+  </header>
+  <main>
+    {% block contenido %}{% endblock %}
+  </main>
+  <footer>Información compartida por el dueño de la mascota a través de VetLink.</footer>
+</body>
+</html>

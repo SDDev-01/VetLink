@@ -4,9 +4,12 @@ import com.vetlink.mascota.repository.MascotaRepository;
 import com.vetlink.resena.repository.ResenaRepository;
 import com.vetlink.usuario.repository.VeterinarioRepository;
 import com.vetlink.veterinaria.repository.VeterinariaRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,7 +43,12 @@ public class PaginasPublicasController {
         return "index";
     }
 
-    @GetMapping("/403")
+    /**
+     * Spring Security reenvía aquí (forward) conservando el método original: si fue un POST
+     * denegado, con solo @GetMapping la respuesta acababa en 405 en vez de 403.
+     */
+    @RequestMapping("/403")
+    @ResponseStatus(HttpStatus.FORBIDDEN)
     public String accesoDenegado() {
         return "error/403";
     }
