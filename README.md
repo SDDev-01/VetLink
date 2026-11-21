@@ -48,6 +48,36 @@ RUN_DEMO_SEED=true
 EOF
 ```
 
+para windows coloquen esto en el powershell
+
+```bash
+function New-HexSecret([int]$Bytes) {
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $buffer = New-Object byte[] $Bytes
+        $rng.GetBytes($buffer)
+        ([System.BitConverter]::ToString($buffer) -replace '-', '').ToLowerInvariant()
+    }
+    finally {
+        $rng.Dispose()
+    }
+}
+
+$envContent = @"
+MYSQL_DATABASE=mydb
+MYSQL_ROOT_PASSWORD=$(New-HexSecret 16)
+MYSQL_SPRING_PASSWORD=$(New-HexSecret 32)
+MYSQL_FAST_PASSWORD=$(New-HexSecret 32)
+INTERNAL_TOKEN=$(New-HexSecret 32)
+PUBLIC_BASE_URL=http://localhost
+NGINX_HTTP_PORT=80
+MYSQL_PORT=3307
+RUN_DEMO_SEED=true
+"@
+
+[System.IO.File]::WriteAllText((Join-Path $PWD ".env"), $envContent, (New-Object System.Text.UTF8Encoding($false)))
+```
+
 Si prefieres llenarlo a mano, copia `.env.example` como `.env`. Ahí está explicada cada variable. Las dos contraseñas de aplicación (`MYSQL_SPRING_PASSWORD` y `MYSQL_FAST_PASSWORD`) **deben** tener 64 caracteres hexadecimales; si no, MySQL no arranca.
 
 ### Levantar todo
