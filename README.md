@@ -36,7 +36,7 @@ El `.env` guarda las contraseñas. **No se sube a GitHub** (está en `.gitignore
 
 ```bash
 cat > .env <<EOF
-MYSQL_DATABASE=mydb
+MYSQL_DATABASE=vetlink
 MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)
 MYSQL_SPRING_PASSWORD=$(openssl rand -hex 32)
 MYSQL_FAST_PASSWORD=$(openssl rand -hex 32)
@@ -64,7 +64,7 @@ function New-HexSecret([int]$Bytes) {
 }
 
 $envContent = @"
-MYSQL_DATABASE=mydb
+MYSQL_DATABASE=vetlink
 MYSQL_ROOT_PASSWORD=$(New-HexSecret 16)
 MYSQL_SPRING_PASSWORD=$(New-HexSecret 32)
 MYSQL_FAST_PASSWORD=$(New-HexSecret 32)
