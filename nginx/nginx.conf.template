@@ -1,0 +1,111 @@
+# =====================================================================
+# VetLink - Nginx como proxy inverso (punto de entrada público, HTTP)
+#
+# Este archivo es una PLANTILLA de la imagen oficial de nginx:
+#   - Se monta en /etc/nginx/templates/nginx.conf.template (solo lectura).
+#   - Al arrancar, el entrypoint de la imagen sustituye ${NGINX_LOCAL_RESOLVERS}
+#     y escribe el resultado en /etc/nginx/nginx.conf
+#     (NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx en compose.yaml).
+#   - Solo se sustituyen variables de entorno DEFINIDAS; las variables de
+#     nginx ($host, $remote_addr...) no se tocan.
+#
+# Rutas:
+#   /internal/  -> 404 desde Nginx (nunca llega a los backends)
+#   /p/         -> FastAPI  (fastapi:8000), conservando el prefijo /p/
+#   /           -> Spring Boot (spring:8080)
+# =====================================================================
+
+worker_processes auto;
+
+# En la imagen oficial estos ficheros son enlaces a stderr/stdout.
+error_log /var/log/nginx/error.log notice;
+pid       /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    access_log /var/log/nginx/access.log;
+
+    sendfile          on;
+    keepalive_timeout 65;
+    server_tokens     off;
+
+    # DNS interno de la red de Compose. El entrypoint lo lee de
+    # /etc/resolv.conf, así vale tanto para Docker (127.0.0.11) como
+    # para Podman/aardvark-dns (IP de la puerta de enlace de la red).
+    # Resolver en cada petición (con caché de 10 s) permite:
+    #   - que Nginx arranque aunque "fastapi" aún no exista;
+    #   - seguir funcionando si un contenedor se recrea con otra IP.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+    resolver_timeout 5s;
+
+    # Igual que spring.servlet.multipart.max-request-size=10MB.
+    # (El valor por defecto de Nginx, 1 MB, rompería la subida de fotos.)
+    client_max_body_size 10m;
+
+    # Host tal como lo escribió el cliente (incluido el puerto si no es el 80,
+    # p. ej. "localhost:8081"). Así Spring construye redirecciones hacia el
+    # puerto público real y nunca hacia el 8080 interno.
+    map $http_host $vetlink_public_host {
+        ""      $host;
+        default $http_host;
+    }
+
+    server {
+        listen      80 default_server;
+        server_name _;
+
+        # Nombres de servicio de Compose. Al ir en variables, proxy_pass
+        # resuelve en tiempo de petición y reenvía la URI original sin
+        # modificarla (el prefijo /p/ se conserva).
+        set $spring_upstream  http://spring:8080;
+        set $fastapi_upstream http://fastapi:8000;
+
+        # --- Encabezados hacia los backends (heredados por todas las location) ---
+        proxy_http_version 1.1;
+        proxy_set_header Host               $vetlink_public_host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        # Nginx es el borde: NO se encadena un X-Forwarded-For enviado por el
+        # cliente (con forward-headers-strategy=framework Spring lo usaría
+        # como IP remota y sería falsificable).
+        proxy_set_header X-Forwarded-For    $remote_addr;
+        proxy_set_header X-Forwarded-Proto  $scheme;
+        proxy_set_header X-Forwarded-Host   $vetlink_public_host;
+
+        # ForwardedHeaderFilter (strategy=framework) también interpreta estos
+        # encabezados. Se vacían para que un cliente no pueda inyectarlos y
+        # alterar las URLs/redirecciones que genera Spring.
+        proxy_set_header Forwarded          "";
+        proxy_set_header X-Forwarded-Port   "";
+        proxy_set_header X-Forwarded-Prefix "";
+        proxy_set_header X-Forwarded-Ssl    "";
+
+        # Red de seguridad: si algún backend devolviera un Location absoluto
+        # con su nombre/puerto interno, se reescribe a relativo.
+        # absolute_redirect off evita que Nginx lo vuelva absoluto con SU
+        # puerto de escucha (80), que no coincide si se publica en otro puerto.
+        absolute_redirect off;
+        proxy_redirect http://spring:8080/  /;
+        proxy_redirect http://fastapi:8000/ /;
+
+        # --- Rutas internas: bloqueadas desde el exterior ---
+        location ~ ^/internal(/|$) {
+            return 404;
+        }
+
+        # --- Pasaportes digitales (FastAPI) ---
+        location ^~ /p/ {
+            proxy_pass $fastapi_upstream;
+        }
+
+        # --- Aplicación principal (Spring Boot) ---
+        location / {
+            proxy_pass $spring_upstream;
+        }
+    }
+}

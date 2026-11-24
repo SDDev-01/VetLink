@@ -45,8 +45,14 @@ public class DashboardController {
             case TUTOR -> {
                 Integer idTutor = usuario.getIdUsuario();
                 List<Mascota> mascotas = mascotaRepository.findByTutor_IdUsuarioAndEstado(idTutor, (byte) 1);
-                List<Cita> proximas = citaRepository.findByMascota_Tutor_IdUsuarioAndEstadoOrderByFechaAscHoraAsc(idTutor, EstadoCita.AGENDADA);
-                List<Cita> todasCitas = citaRepository.findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(idTutor);
+                // VL-13: solo citas agendadas que no han pasado, de mascotas activas.
+                List<Cita> proximas = citaRepository.proximasAgendadasDeTutor(idTutor, LocalDate.now(), java.time.LocalTime.now());
+                // Calendario: el historial (atendidas, pendientes...) más las próximas agendadas.
+                // Una cita AGENDADA que ya pasó no se pinta como próxima.
+                List<Cita> todasCitas = new ArrayList<>(proximas);
+                citaRepository.findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(idTutor).stream()
+                        .filter(c -> c.getEstado() != EstadoCita.AGENDADA)
+                        .forEach(todasCitas::add);
                 var vacunasPendientes = carnetVacunaRepository.pendientesDeTutorHasta(idTutor, LocalDate.now().plusDays(30));
 
                 model.addAttribute("navItems", navTutor());

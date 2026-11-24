@@ -1,0 +1,16 @@
+# Solo para depurar en el equipo de desarrollo. NO se usa en la demostración.
+# Se llama compose.debug.yaml (y no compose.override.yaml) a propósito:
+# Compose carga compose.override.yaml automáticamente, y entonces estos
+# puertos quedarían publicados siempre.
+#
+# Uso: docker compose -f compose.yaml -f compose.debug.yaml up --build
+services:
+  mysql:
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3307}:3306"
+  spring:
+    ports:
+      - "127.0.0.1:8080:8080"
+  fastapi:
+    ports:
+      - "127.0.0.1:8000:8000"

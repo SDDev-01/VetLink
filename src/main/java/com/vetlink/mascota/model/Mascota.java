@@ -51,6 +51,17 @@ public class Mascota {
     @JoinColumn(name = "Tutor_idUsuario", nullable = false)
     private Usuario tutor;
 
+    /**
+     * VL-22: dirección para mostrar la foto. Las fotos antiguas que son URL se usan tal cual;
+     * las subidas se sirven por /mascotas/{id}/foto (con control de acceso). null = sin foto.
+     */
+    @Transient
+    public String getFotoUrl() {
+        if (foto == null || foto.isBlank()) return null;
+        if (foto.regionMatches(true, 0, "http", 0, 4)) return foto;
+        return "/mascotas/" + idMascota + "/foto";
+    }
+
     @Transient
     public int getEdad() {
         if (fechaNacimiento == null) return 0;

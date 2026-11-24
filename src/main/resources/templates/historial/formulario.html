@@ -41,7 +41,7 @@
                             <textarea th:field="*{observaciones}" rows="2"></textarea>
                         </div>
                         <div class="vl-field">
-                            <label>Próxima cita sugerida</label>
+                            <label>Próxima cita sugerida (opcional)</label>
                             <input type="date" th:field="*{proximaCita}">
                             <small class="vl-error" th:if="${#fields.hasErrors('proximaCita')}" th:errors="*{proximaCita}"></small>
                         </div>

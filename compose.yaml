@@ -1,0 +1,124 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+      MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
+      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
+      # Hora de Colombia para NOW()/CURRENT_TIMESTAMP (Spring y FastAPI trabajan en esa zona).
+      TZ: America/Bogota
+    # Sin puertos publicados: solo Nginx sale al exterior.
+    # Para depurar desde el equipo: docker compose -f compose.yaml -f compose.debug.yaml up
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/database:ro,Z
+      - ./database/init/00-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro,Z
+    networks:
+      - vetlink_net
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  spring:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: vetlink_spring
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_THYMELEAF_CACHE: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      VETLINK_UPLOADS_DIR: /app/uploads
+      VETLINK_DOCS_BASE_URL: http://fastapi:8000
+      VETLINK_DOCS_INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # Sin esto el JVM corre en UTC: LocalDate.now() se adelanta 5 h y las reglas
+      # de citas (horas pasadas, atender solo hoy, edición 24 h) fallan desde las 19:00.
+      TZ: America/Bogota
+    volumes:
+      - vetlink_uploads:/app/uploads
+    networks:
+      - vetlink_net
+    # Spring no espera a FastAPI: si el servicio de pasaportes falla,
+    # el resto de la aplicación sigue funcionando.
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  fastapi:
+    build:
+      context: ./docs-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: vetlink_fast
+      DB_PASSWORD: ${MYSQL_FAST_PASSWORD}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # Dirección que va dentro del QR. Para la demo con celular: la IP del portátil.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+    networks:
+      - vetlink_net
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.30-alpine
+    restart: unless-stopped
+
+    environment:
+      # Rellena ${NGINX_LOCAL_RESOLVERS} con el DNS de la red de Compose
+      # (válido para Docker y Podman).
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      # La plantilla se renderiza como /etc/nginx/nginx.conf completo.
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+
+    # Único puerto publicado al exterior. Podman rootless no puede usar
+    # puertos < 1024 sin ajustar net.ipv4.ip_unprivileged_port_start:
+    # en ese caso define NGINX_HTTP_PORT (p. ej. 8081) en .env.
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro,Z
+
+    networks:
+      - vetlink_net
+
+    # Nginx resuelve los backends en cada petición, así que basta con que
+    # Spring y FastAPI estén creados; mientras arrancan, Nginx responde 502.
+    depends_on:
+      spring:
+        condition: service_started
+      fastapi:
+        condition: service_started
+
+networks:
+  vetlink_net:
+
+volumes:
+  mysql_data:
+  vetlink_uploads:

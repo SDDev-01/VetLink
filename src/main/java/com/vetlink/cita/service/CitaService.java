@@ -17,6 +17,10 @@ public interface CitaService {
     /* ---- Operaciones de RECEPCIONISTA sobre las citas de SU veterinaria ---- */
     Cita agendarComoRecepcionista(AgendarCitaForm form, Integer idVeterinariaRecepcionista);
     void cancelarComoRecepcionista(Integer idCita, Integer idVeterinariaRecepcionista);
-    Cita reagendarComoRecepcionista(Integer idCita, java.time.LocalDate nuevaFecha, java.time.LocalTime nuevaHora, Integer idVeterinariaRecepcionista);
+    /** VL-23: mueve la cita a otro cupo DISPONIBLE de la misma clínica y libera el horario original. */
+    Cita reagendarComoRecepcionista(Integer idCita, Integer idCupoNuevo, Integer idVeterinariaRecepcionista);
+
+    /** VL-23: cupos a los que se puede mover la cita (mismo servicio, misma clínica, futuros). */
+    List<Cita> cuposParaReagendar(Integer idCita, Integer idVeterinariaRecepcionista);
     Cita ofertarCupo(OfertarCitaForm form, Integer idVeterinariaRecepcionista);
 }

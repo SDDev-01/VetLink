@@ -9,4 +9,10 @@ public interface UsuarioService {
     boolean documentoEnUso(String numeroDocumento);
     Usuario actualizarPerfil(Integer idUsuario, com.vetlink.usuario.dto.PerfilForm form);
     void desactivarCuenta(Integer idUsuario, String passwordActual);
+
+    /** VL-20: ¿la contraseña escrita es la contraseña actual del usuario? */
+    boolean passwordCoincide(Integer idUsuario, String password);
+
+    /** VL-20: correo principal del usuario (el de login), o cadena vacía si no tiene. */
+    String correoPrincipal(Integer idUsuario);
 }

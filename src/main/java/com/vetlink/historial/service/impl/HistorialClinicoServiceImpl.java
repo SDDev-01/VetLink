@@ -17,6 +17,9 @@ import java.util.List;
 @Service
 public class HistorialClinicoServiceImpl implements HistorialClinicoService {
 
+    /** VL-19: plazo de edición de una historia clínica para su autor. */
+    static final long HORAS_EDICION = 24;
+
     private final HistorialClinicoRepository historialRepository;
     private final MascotaRepository mascotaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -30,12 +33,12 @@ public class HistorialClinicoServiceImpl implements HistorialClinicoService {
 
     @Override
     public List<HistorialClinico> listarPorMascota(Integer idMascota) {
-        return historialRepository.findByMascota_IdMascotaOrderByNumeroHistorialDesc(idMascota);
+        return historialRepository.listarPorMascotaRecientes(idMascota);
     }
 
     @Override
     public List<HistorialClinico> listarPorTutor(Integer idTutor) {
-        return historialRepository.findByMascota_Tutor_IdUsuarioOrderByNumeroHistorialDesc(idTutor);
+        return historialRepository.listarPorTutorRecientes(idTutor);
     }
 
     @Override
@@ -68,6 +71,9 @@ public class HistorialClinicoServiceImpl implements HistorialClinicoService {
     @Transactional
     public HistorialClinico actualizar(Integer numeroHistorial, HistorialClinicoForm form, Integer idUsuarioActual) {
         HistorialClinico historial = obtenerYVerificarAutor(numeroHistorial, idUsuarioActual);
+        if (!esEditable(historial, idUsuarioActual)) {
+            throw new SecurityException("La historia ya no se puede editar");
+        }
         historial.setMotivoConsulta(form.getMotivoConsulta());
         historial.setDiagnostico(form.getDiagnostico());
         historial.setObservaciones(form.getObservaciones());
@@ -76,27 +82,17 @@ public class HistorialClinicoServiceImpl implements HistorialClinicoService {
     }
 
     @Override
-    @Transactional
-    public void eliminar(Integer numeroHistorial, Integer idUsuarioActual) {
-        HistorialClinico historial = obtenerYVerificarAutor(numeroHistorial, idUsuarioActual);
-        if (minutosRestantesParaEliminar(historial) <= 0) {
-            throw new IllegalStateException("Ya pasaron los 20 minutos permitidos para eliminar este historial.");
-        }
-        historialRepository.delete(historial);
-    }
-
-    @Override
-    public long minutosRestantesParaEliminar(HistorialClinico historial) {
-        if (historial.getFechaRegistro() == null) return -1; // registro anterior a esta regla: no editable por tiempo
-        long transcurridos = java.time.Duration.between(historial.getFechaRegistro(), java.time.LocalDateTime.now()).toMinutes();
-        return 20 - transcurridos;
+    public boolean esEditable(HistorialClinico historial, Integer idUsuarioActual) {
+        return historial.getVeterinario().getIdUsuario().equals(idUsuarioActual)
+                && historial.getFechaRegistro() != null
+                && java.time.LocalDateTime.now().isBefore(historial.getFechaRegistro().plusHours(HORAS_EDICION));
     }
 
     private HistorialClinico obtenerYVerificarAutor(Integer numeroHistorial, Integer idUsuarioActual) {
         HistorialClinico historial = historialRepository.findById(numeroHistorial)
                 .orElseThrow(() -> new IllegalArgumentException("Historial no encontrado"));
         if (!historial.getVeterinario().getIdUsuario().equals(idUsuarioActual)) {
-            throw new SecurityException("Solo quien registró este historial puede modificarlo o eliminarlo.");
+            throw new SecurityException("Solo quien registró este historial puede modificarlo.");
         }
         return historial;
     }

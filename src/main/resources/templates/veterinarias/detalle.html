@@ -51,20 +51,20 @@
 
     <div class="vl-table-wrap" style="padding:24px;" sec:authorize="hasRole('TUTOR')">
         <h3 style="font-size:1rem; margin-bottom:6px;">Deja tu reseña</h3>
-        <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:14px;">Solo puedes opinar si has tenido una cita en esta veterinaria.</p>
+        <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:14px;">Solo puedes opinar si ya fuiste atendido en esta veterinaria, y una sola vez.</p>
         <form th:action="@{/resenas/nueva}" method="post">
             <input type="hidden" name="idVeterinaria" th:value="${veterinaria.idVeterinaria}">
             <div class="vl-form-grid">
                 <div class="vl-field">
                     <label>Calificación</label>
-                    <select name="valor" required>
-                        <option value="">Selecciona</option>
-                        <option value="5">5 - Excelente</option>
-                        <option value="4">4 - Bueno</option>
-                        <option value="3">3 - Regular</option>
-                        <option value="2">2 - Malo</option>
-                        <option value="1">1 - Muy malo</option>
-                    </select>
+                    <!-- VL-10: 5 estrellas clicables (radio buttons + CSS, ver .vl-estrellas en app.css) -->
+                    <div class="vl-estrellas" role="radiogroup" aria-label="Calificación de 1 a 5 estrellas">
+                        <input type="radio" id="estrella5" name="valor" value="5" required><label for="estrella5" title="5 - Excelente">★</label>
+                        <input type="radio" id="estrella4" name="valor" value="4"><label for="estrella4" title="4 - Bueno">★</label>
+                        <input type="radio" id="estrella3" name="valor" value="3"><label for="estrella3" title="3 - Regular">★</label>
+                        <input type="radio" id="estrella2" name="valor" value="2"><label for="estrella2" title="2 - Malo">★</label>
+                        <input type="radio" id="estrella1" name="valor" value="1"><label for="estrella1" title="1 - Muy malo">★</label>
+                    </div>
                 </div>
                 <div class="vl-field vl-full">
                     <label>Comentario (opcional)</label>

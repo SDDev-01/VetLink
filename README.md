@@ -1,106 +1,189 @@
-# 🚀 Guía Git & GitHub para el Equipo | VetLink
+# VetLink
 
-¡Hola a todos! 👋 Esta guía está diseñada para que trabajemos en equipo de forma ordenada, evitemos enredos con el código y todos sepamos exactamente cómo subir nuestros avances. 
+Plataforma para clínicas veterinarias: dueños, veterinarios y recepcionistas gestionan mascotas, citas, historia clínica, vacunas, chat y emergencias. El dueño también puede compartir un **pasaporte de salud** con un enlace y un código QR.
+
+Todo se levanta con un solo comando de Docker. No necesitas instalar Java, Python ni MySQL.
+
+| Contenedor | Qué hace | Puerto |
+|---|---|---|
+| `nginx` | Única entrada desde el navegador. `/p/...` va a FastAPI y todo lo demás a Spring | **80** (el único publicado) |
+| `spring` | La aplicación principal (Spring Boot 4, Java 21, Thymeleaf) | 8080, solo interno |
+| `fastapi` | El pasaporte de salud y su QR (Python 3.12) | 8000, solo interno |
+| `mysql` | La base `mydb` (MySQL 8.4). Se crea sola la primera vez | 3306, solo interno |
 
 ---
 
-## 🛠️ Requisito previo
-Asegúrate de tener **Git Bash** instalado en tu equipo. Si aún no lo tienes, puedes descargarlo e instalarlo antes de continuar.
+## 1. Requisitos
 
----
+- **Git**. En Windows usa **Git Bash** para todos los comandos de esta guía.
+- **Docker Desktop** (Windows o Mac) o **Docker Engine** con el plugin Compose (Linux). Comprueba que funciona:
+  ```bash
+  docker compose version
+  ```
+  También sirve **Podman** (`podman compose ...`); mira la sección [Podman](#podman).
 
-## 1. 📥 Clonar el proyecto (Solo la primera vez)
-
-Si es tu primera vez trabajando en el proyecto, descarga el repositorio a tu máquina:
+## 2. Primera vez
 
 ```bash
-cd Documents/
 git clone https://github.com/SDDev-01/VetLink.git
-cd VetLink/
+cd VetLink
+git checkout development
 ```
 
----
+### Crear el archivo `.env`
 
-## 2. 🔄 Preparar tu entorno antes de programar
-
-Antes de empezar a escribir código o crear nuevas funciones, **SIEMPRE** asegúrate de tener la versión más reciente del proyecto:
+El `.env` guarda las contraseñas. **No se sube a GitHub** (está en `.gitignore`); cada uno crea el suyo. Pega esto en Git Bash o en la terminal, desde la carpeta `VetLink`:
 
 ```bash
-cd Documents/VetLink/
-git checkout main
-git pull origin main
+cat > .env <<EOF
+MYSQL_DATABASE=vetlink
+MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)
+MYSQL_SPRING_PASSWORD=$(openssl rand -hex 32)
+MYSQL_FAST_PASSWORD=$(openssl rand -hex 32)
+INTERNAL_TOKEN=$(openssl rand -hex 32)
+PUBLIC_BASE_URL=http://localhost
+NGINX_HTTP_PORT=80
+MYSQL_PORT=3307
+RUN_DEMO_SEED=true
+EOF
 ```
 
-💡 *Tip: Hacer esto siempre antes de trabajar evita que te aparezcan conflictos de código más adelante.*
-
----
-
-## 3. 🌿 Crear tu propia rama
-
-Para trabajar tranquilos sin afectar el código de los demás, cada tarea se realiza en su propia rama:
+para windows coloquen esto en el powershell
 
 ```bash
-git checkout -b nombre-de-tu-rama
+function New-HexSecret([int]$Bytes) {
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $buffer = New-Object byte[] $Bytes
+        $rng.GetBytes($buffer)
+        ([System.BitConverter]::ToString($buffer) -replace '-', '').ToLowerInvariant()
+    }
+    finally {
+        $rng.Dispose()
+    }
+}
+
+$envContent = @"
+MYSQL_DATABASE=vetlink
+MYSQL_ROOT_PASSWORD=$(New-HexSecret 16)
+MYSQL_SPRING_PASSWORD=$(New-HexSecret 32)
+MYSQL_FAST_PASSWORD=$(New-HexSecret 32)
+INTERNAL_TOKEN=$(New-HexSecret 32)
+PUBLIC_BASE_URL=http://localhost
+NGINX_HTTP_PORT=80
+MYSQL_PORT=3307
+RUN_DEMO_SEED=true
+"@
+
+[System.IO.File]::WriteAllText((Join-Path $PWD ".env"), $envContent, (New-Object System.Text.UTF8Encoding($false)))
 ```
 
-### 🏷️ Convenciones para nombrar ramas:
-* **Nuevas funcionalidades:** `feature/nombre-tarea` (Ej: `feature/login`)
-* **Corrección de errores:** `fix/nombre-bug` (Ej: `fix/error-login`)
-* **Diseño / Estilos:** `style/componente` (Ej: `style/navbar`)
-* **Documentación:** `docs/tema` (Ej: `docs/diagrama-bd`)
+Si prefieres llenarlo a mano, copia `.env.example` como `.env`. Ahí está explicada cada variable. Las dos contraseñas de aplicación (`MYSQL_SPRING_PASSWORD` y `MYSQL_FAST_PASSWORD`) **deben** tener 64 caracteres hexadecimales; si no, MySQL no arranca.
 
----
-
-## 4. 💻 Desarrollo y guardado local
-
-Una vez estés en tu rama, trabaja normalmente en tus archivos. Cuando termines o quieras guardar un avance significativo:
-
-1. Prepara los archivos:
-   ```bash
-   git add .
-   ```
-2. Guarda el punto de control con un mensaje claro:
-   ```bash
-   git commit -m "Explicación breve de lo que hiciste"
-   ```
-   *Ejemplo:* `git commit -m "Agrega validación al formulario de registro"`
-
----
-
-## 5. 📤 Subir tus cambios a GitHub
-
-Cuando tus cambios estén listos y probados localmente, súbelos a tu rama en GitHub:
+### Levantar todo
 
 ```bash
-git push origin nombre-de-tu-rama
+docker compose up -d --build
 ```
 
-> ⚠️ **Importante:** Sube siempre a tu rama personal (`origin tu-rama`). La rama `main` la actualizamos únicamente a través de Pull Requests.
+La primera vez tarda varios minutos: descarga las imágenes, compila Spring y crea la base. Para ver cómo va:
+
+```bash
+docker compose ps              # los 4 servicios deben estar "Up" (mysql y fastapi "healthy")
+docker compose logs -f spring  # listo cuando aparece "Started VetlinkApplication"
+```
+
+Abre **http://localhost** en el navegador. Mientras Spring termina de arrancar, Nginx puede responder **502**; espera unos segundos y recarga.
+
+## 3. Uso diario
+
+| Quiero… | Comando |
+|---|---|
+| Encender | `docker compose up -d` |
+| Apagar (los datos se conservan) | `docker compose down` |
+| Ver logs de un servicio | `docker compose logs -f spring` (o `fastapi`, `mysql`, `nginx`) |
+| Aplicar cambios de código tras un `git pull` | `docker compose up -d --build` |
+| **Borrar la base y crearla de cero** | `docker compose down -v` y luego `docker compose up -d --build` |
+
+Los scripts de `database/` **solo corren cuando el volumen de MySQL está vacío**. Si alguien agrega o cambia un `.sql`, tienes que ejecutar `docker compose down -v`; si no, tu base seguirá con la versión vieja. Ojo: `down -v` también borra las fotos subidas.
+
+## 4. Probar el pasaporte desde un celular
+
+1. Averigua la IP de tu computador en la red Wi-Fi (`ipconfig` en Windows; `ip addr` o `ifconfig` en Linux o Mac), por ejemplo `192.168.1.50`.
+2. En `.env`, pon `PUBLIC_BASE_URL=http://192.168.1.50` (agrega `:8081` si cambiaste el puerto).
+3. Ejecuta `docker compose up -d` para aplicarlo.
+4. Entra como dueño, abre una mascota, pulsa **Compartir historial** y escanea el QR con el celular, que debe estar en la misma red.
+
+Si la red no deja que el celular vea tu computador, abre el enlace del pasaporte en una ventana de incógnito.
+
+## 5. Problemas frecuentes
+
+| Síntoma | Solución |
+|---|---|
+| `port 80 is already allocated`, o el puerto 80 no se puede usar | En `.env`, pon `NGINX_HTTP_PORT=8081` y `PUBLIC_BASE_URL=http://localhost:8081`, ejecuta `docker compose up -d` y abre http://localhost:8081 |
+| `mysql` nunca queda `healthy` | `docker compose logs mysql`. Si dice que las contraseñas deben tener 64 caracteres hexadecimales, corrige el `.env` y ejecuta `docker compose down -v` |
+| Spring se reinicia y en los logs aparece `Schema-validation` | Tu base es de una versión anterior: `docker compose down -v` y `docker compose up -d --build` |
+| **502 Bad Gateway** | Spring o FastAPI todavía están arrancando. Espera y recarga; si sigue, revisa `docker compose logs spring` |
+| "El servicio de pasaportes no está disponible" | FastAPI está caído: `docker compose logs fastapi`. El resto de la aplicación sigue funcionando |
+| En Windows, errores raros en `00-init.sh` | Clonaste con finales de línea de Windows. Borra la carpeta y vuelve a clonar (el repositorio ya obliga a usar LF en los `.sh`) |
+
+### Podman
+
+Los mismos comandos sirven cambiando `docker compose` por `podman compose`. En Linux con Podman *rootless* no se puede publicar el puerto 80: usa `NGINX_HTTP_PORT=8081` (como en la tabla anterior).
+
+### Depurar con los puertos internos abiertos
+
+Solo para desarrollo, nunca para la demostración. Publica Spring (8080), FastAPI (8000) y MySQL (`MYSQL_PORT`, por defecto 3307) en `127.0.0.1`:
+
+```bash
+docker compose -f compose.yaml -f compose.debug.yaml up -d --build
+```
+
+Con eso puedes conectarte a MySQL desde DBeaver o Workbench en `127.0.0.1:3307`, y ver la documentación de FastAPI en http://localhost:8000/docs.
+
+## 6. Pruebas
+
+GitHub Actions corre las dos suites en cada Pull Request. Para correrlas en tu máquina sin instalar Java:
+
+```bash
+# Spring (perfil de pruebas con H2, no necesita MySQL)
+docker run --rm -v "$PWD":/app -w /app eclipse-temurin:21-jdk sh ./mvnw test
+```
+
+Para FastAPI, mira el job `fastapi` en `.github/workflows/ci.yml`: levanta solo `mysql` y corre `pytest` dentro de `docs-service/`.
+
+## 7. Estructura del repositorio
+
+```
+src/                    Aplicación Spring Boot
+docs-service/           Servicio FastAPI del pasaporte (app/, tests/, Dockerfile)
+database/mydb.sql       Esquema y datos base
+database/migrations/    Cambios de esquema (V5, V7) y datos de demostración (V6, V7_demo)
+database/init/00-init.sh  Crea la base, los usuarios MySQL y sus permisos al primer arranque
+nginx/                  Configuración del proxy inverso
+docs/                   Contrato entre Spring y FastAPI
+compose.yaml            Los cuatro servicios
+.env.example            Plantilla de variables (sin secretos)
+```
 
 ---
 
-## 6. 🔀 Crear un Pull Request (PR)
+## 8. Cómo trabajamos con Git
 
-1. Ve a la página del repositorio en [GitHub](https://github.com/SDDev-01/VetLink).
-2. Verás un mensaje emergente con el botón **"Compare & pull request"**. Haz clic en él.
-3. Escribe un resumen de los cambios que realizaste.
-4. Confirma la creación del PR y avísale al equipo para revisarlo e integrarlo a `main`.
+La rama de integración es **`development`**. `main` solo se actualiza para las entregas.
 
----
+```bash
+git checkout development
+git pull origin development
+git checkout -b feat/mi-tarea          # o fix/..., docs/..., style/...
+# ...trabajar...
+git add <archivos>
+git commit -m "feat: qué hiciste"
+git push -u origin feat/mi-tarea
+```
 
-## 💡 Consejos para un flujo sin problemas
+En GitHub, abre el Pull Request con **base: `development`**. Si eliges `main`, el PR mostrará cambios de todo el equipo que no son tuyos. Otra persona lo revisa y lo fusiona: nadie fusiona su propio PR.
 
-* **Mantén tus ramas enfocadas:** Es mejor hacer ramas pequeñas para tareas específicas que una sola rama gigante con muchos cambios.
-* **Mensajes de commit descriptivos:** Ayudan a todo el equipo a entender rápido qué se cambió.
-* **Si te surge una duda o error de Git:** ¡No te preocupes! Escribe por el grupo del equipo antes de forzar comandos y lo resolvemos juntos.
-
----
-
-### ⚡ Resumen rápido diario
-1. Actualiza `main`: `git checkout main` ➡️ `git pull origin main`
-2. Crea tu rama: `git checkout -b feature/tu-tarea`
-3. Trabaja y guarda: `git add .` ➡️ `git commit -m "tu mensaje"`
-4. Subir a GitHub: `git push origin feature/tu-tarea`
-5. Abre el **Pull Request** en la web de GitHub.
-67. supremo toronto huila
-8. TripleT
+- **Nunca subas el `.env`** ni contraseñas.
+- Ramas pequeñas, una por tarea, con mensajes de commit claros.
+- Si Git te da un error que no entiendes, pregunta en el grupo antes de forzar algo (`--force`, `reset --hard`).
