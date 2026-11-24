@@ -1,1 +1,72 @@
-<!DOCTYPE html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chat | VetLink</title><link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}"></head><body class="dashboard-body"><aside th:replace="~{layout/dashboard-shell :: sidebar('VetLink', ${navItems}, ${seccionActiva})}"></aside><main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar contacto...')}"></header><section class="container"><div class="vl-section vl-section-active"><div class="vl-section-head"><div><h1>Chat</h1><p>Comunícate de forma segura dentro de VetLink.</p></div></div><div class="vl-card-grid"><article class="vl-entity-card" th:each="c:${conversaciones}"><div class="vl-entity-top"><div class="vl-entity-avatar">💬</div><div><div class="vl-entity-name" th:text="${c.usuarioA.idUsuario == usuario.idUsuario ? c.usuarioB.nombre + ' ' + c.usuarioB.apellido : c.usuarioA.nombre + ' ' + c.usuarioA.apellido}"></div><div class="vl-entity-sub">Conversación activa</div></div></div><a class="vl-btn vl-btn-primary" th:href="@{'/chat/'+${c.idConversacion}}">Abrir chat</a></article></div><div class="vl-table-wrap" style="padding:24px;margin-top:24px"><div class="vl-form-section-title">Iniciar conversación</div><div class="vl-card-grid"><th:block th:each="u:${contactos}"><form th:if="${u.rol != null}" th:action="@{'/chat/nuevo/'+${u.idUsuario}}" method="post"><button class="vl-btn vl-btn-ghost" type="submit" th:text="${u.nombre+' '+u.apellido+' · '+(u.rol.name()=='VETERINARIO' ? 'Veterinario' : (u.rol.name()=='RECEPCIONISTA' ? 'Recepción' : 'Dueño'))}"></button></form></th:block></div><p th:if="${#lists.isEmpty(contactos)}" style="color:#64748b">Aún no tienes contactos disponibles. Aparecen cuando hay una cita de por medio.</p></div></div></section></main><div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('VetLink', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar conversación...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Chat</h1>
+                    <p th:switch="${usuario.rol.name()}">
+                        <span th:case="'TUTOR'">Escribe a tus veterinarias. Solo ves tus conversaciones.</span>
+                        <span th:case="'VETERINARIO'">Conversaciones con los tutores de pacientes que has atendido.</span>
+                        <span th:case="*">Conversaciones con tutores y personal de tu clínica.</span>
+                    </p></div>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+                <div th:replace="~{chat/fragmentos :: bandeja}"></div>
+                <div class="vl-panel">
+                    <th:block th:if="${usuario.rol.name() == 'TUTOR'}">
+                        <h3><i class="fas fa-hospital" aria-hidden="true"></i> Contactar una veterinaria</h3>
+                        <div class="vl-field" style="margin-bottom:10px">
+                            <label for="filtro-vets" class="vl-sr-only">Buscar veterinaria</label>
+                            <input type="search" id="filtro-vets" placeholder="Buscar veterinaria…">
+                        </div>
+                        <div class="vl-stack" id="lista-vets" style="max-height:380px;overflow:auto">
+                            <form th:each="v : ${veterinarias}" th:action="@{'/chat/veterinaria/' + ${v.idVeterinaria}}" method="post" th:attr="data-nombre=${#strings.toLowerCase(v.nombre)}">
+                                <button type="submit" class="vl-choice"><span class="ico"><i class="fas fa-hospital" aria-hidden="true"></i></span>
+                                    <span><strong th:text="${v.nombre}"></strong><small>Escribir a recepción</small></span></button>
+                            </form>
+                            <p class="vl-muted" th:if="${#lists.isEmpty(veterinarias)}">No hay veterinarias disponibles para chat.</p>
+                        </div>
+                    </th:block>
+                    <h3 th:if="${!#lists.isEmpty(contactos)}" style="margin-top:14px"><i class="fas fa-user-plus" aria-hidden="true"></i>
+                        <span th:text="${usuario.rol.name() == 'TUTOR'} ? 'Veterinarios que atendieron a tus mascotas' : 'Iniciar conversación'"></span></h3>
+                    <div class="vl-stack">
+                        <form th:each="u : ${contactos}" th:action="@{'/chat/nuevo/' + ${u.idUsuario}}" method="post">
+                            <button class="vl-choice" type="submit"><span class="ico"><i class="fas fa-user" aria-hidden="true"></i></span>
+                                <span><strong th:text="${u.nombre + ' ' + u.apellido}"></strong>
+                                    <small th:text="${u.rol.name() == 'VETERINARIO'} ? 'Veterinario' : (${u.rol.name() == 'RECEPCIONISTA'} ? 'Recepción' : 'Tutor')"></small></span></button>
+                        </form>
+                    </div>
+                    <p class="vl-muted" th:if="${usuario.rol.name() != 'TUTOR' and #lists.isEmpty(contactos)}">Aún no tienes contactos disponibles. Aparecen cuando hay una atención de por medio.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<script>
+    (function () {
+        var f = document.getElementById('filtro-vets');
+        if (!f) return;
+        f.addEventListener('input', function () {
+            var q = f.value.trim().toLowerCase();
+            document.querySelectorAll('#lista-vets form').forEach(function (x) { x.hidden = q && x.dataset.nombre.indexOf(q) === -1; });
+        });
+    })();
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

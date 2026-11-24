@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transferencias | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Transferencias de mascotas</h1><p>La propiedad solo cambia cuando el nuevo tutor acepta. Todo queda registrado.</p></div>
+                <a th:href="@{/mascotas}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Mis mascotas</a>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-err" role="alert" th:if="${errorMascota}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span th:text="${errorMascota}"></span></div>
+
+            <div class="vl-grid-2">
+                <div class="vl-panel">
+                    <h3><i class="fas fa-inbox" aria-hidden="true"></i> Recibidas</h3>
+                    <div class="vl-stack">
+                        <div th:each="t : ${recibidas}" class="vl-cita-card" style="grid-template-columns:minmax(0,1fr) auto" th:classappend="${t.estado.name() == 'PENDIENTE'} ? 'st-PENDIENTE' : 'st-REPROGRAMADA'">
+                            <div class="vl-cita-main">
+                                <div class="vl-cita-titulo" th:text="${t.mascota.nombre} + ' · de ' + ${t.tutorOrigen.nombre} + ' ' + ${t.tutorOrigen.apellido}"></div>
+                                <div class="vl-cita-meta">
+                                    <span th:text="${t.mascota.especie.nombreEspecie} + ' · ' + ${t.mascota.raza.nombreRaza}"></span>
+                                    <span th:text="'Solicitada: ' + ${@fmt.fechaHora(t.creadaEn)}"></span>
+                                    <span th:if="${t.resueltaEn}" th:text="'Resuelta: ' + ${@fmt.fechaHora(t.resueltaEn)}"></span>
+                                </div>
+                                <div class="vl-small vl-muted" th:if="${t.mensaje}" th:text="'«' + ${t.mensaje} + '»'"></div>
+                            </div>
+                            <div class="vl-cita-side">
+                                <span class="vl-badge" th:text="${t.estado.etiqueta}"></span>
+                                <div class="vl-row" th:if="${t.estado.name() == 'PENDIENTE'}">
+                                    <form th:action="@{'/mascotas/transferencias/' + ${t.idTransferencia} + '/rechazar'}" method="post"
+                                          data-confirm="La mascota seguirá con su tutor actual." data-confirm-title="¿Rechazar la transferencia?" data-confirm-ok="Rechazar" data-confirm-tipo="peligro">
+                                        <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Rechazar</button>
+                                    </form>
+                                    <form th:action="@{'/mascotas/transferencias/' + ${t.idTransferencia} + '/aceptar'}" method="post"
+                                          th:attr="data-confirm=${'Pasarás a ser el tutor de ' + t.mascota.nombre + ' y recibirás su historial clínico y vacunas.'},data-confirm-title=${'¿Aceptar a ' + t.mascota.nombre + '?'}"
+                                          data-confirm-ok="Aceptar">
+                                        <button type="submit" class="vl-btn vl-btn-success vl-btn-sm">Aceptar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(recibidas)}">No has recibido solicitudes.</p>
+                    </div>
+                </div>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviadas</h3>
+                    <div class="vl-stack">
+                        <div th:each="t : ${enviadas}" class="vl-cita-card" style="grid-template-columns:minmax(0,1fr) auto" th:classappend="${t.estado.name() == 'PENDIENTE'} ? 'st-PENDIENTE' : 'st-REPROGRAMADA'">
+                            <div class="vl-cita-main">
+                                <div class="vl-cita-titulo" th:text="${t.mascota.nombre} + ' · para ' + ${t.tutorDestino.nombre} + ' ' + ${t.tutorDestino.apellido}"></div>
+                                <div class="vl-cita-meta">
+                                    <span th:text="'Solicitada: ' + ${@fmt.fechaHora(t.creadaEn)}"></span>
+                                    <span th:if="${t.resueltaEn}" th:text="'Resuelta: ' + ${@fmt.fechaHora(t.resueltaEn)}"></span>
+                                </div>
+                            </div>
+                            <div class="vl-cita-side">
+                                <span class="vl-badge" th:text="${t.estado.etiqueta}"></span>
+                                <form th:if="${t.estado.name() == 'PENDIENTE'}" th:action="@{'/mascotas/transferencias/' + ${t.idTransferencia} + '/cancelar'}" method="post"
+                                      data-confirm="La solicitud se anulará y la mascota seguirá contigo." data-confirm-title="¿Cancelar la transferencia?" data-confirm-ok="Cancelar solicitud">
+                                    <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Cancelar</button>
+                                </form>
+                            </div>
+                        </div>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(enviadas)}">No has enviado solicitudes.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

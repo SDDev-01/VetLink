@@ -54,21 +54,42 @@ class VL07ChatContactosTest extends PruebaWebBase {
     }
 
     @Test
-    void duenioConCitaVeALaRecepcionistaYPuedeAbrirChat() throws Exception {
+    void duenioIniciaConversacionConUnaVeterinariaYVeAlVeterinarioQueLoAtendio() throws Exception {
         var clinicaA = crearClinica();
-        var recepcionA = crearRecepcionista(clinicaA, false);
+        var recepcionA = crearRecepcionista(clinicaA, true);
         var vetA = crearVeterinario(clinicaA);
-        var recepcionB = crearRecepcionista(crearClinica(), false);
+        var vetSinAtender = crearVeterinario(clinicaA);
         var duenio = crearDuenio();
-        crearCita(crearMascota(duenio), vetA, clinicaA);
+        crearCita(crearMascota(duenio), vetA, clinicaA, LocalDate.now().minusDays(3), LocalTime.of(9, 0), EstadoCita.ATENDIDA);
         sincronizar();
 
         var contactos = ids(contactosChat.contactosPermitidos(usuarioRepository.findById(duenio.getIdUsuario()).orElseThrow()));
-        assertThat(contactos).contains(recepcionA.getIdUsuario(), vetA.getIdUsuario())
-                .doesNotContain(recepcionB.getIdUsuario(), duenio.getIdUsuario());
+        assertThat(contactos).contains(vetA.getIdUsuario())
+                .doesNotContain(vetSinAtender.getIdUsuario(), duenio.getIdUsuario());
 
-        mockMvc.perform(post("/chat/nuevo/" + recepcionA.getIdUsuario()).with(csrf()).with(como(duenio)))
+        mockMvc.perform(post("/chat/veterinaria/" + clinicaA.getIdVeterinaria()).with(csrf()).with(como(duenio)))
                 .andExpect(redirectedUrlPattern("/chat/*"));
+        sincronizar();
+        var conv = conversacionRepository.findByUsuarioA_IdUsuarioAndUsuarioB_IdUsuario(duenio.getIdUsuario(), recepcionA.getIdUsuario());
+        assertThat(conv).isPresent();
+        assertThat(conv.get().getVeterinaria().getIdVeterinaria()).isEqualTo(clinicaA.getIdVeterinaria());
+    }
+
+    @Test
+    void laBandejaSoloMuestraConversacionesPropias() throws Exception {
+        var clinica = crearClinica();
+        crearRecepcionista(clinica, true);
+        var duenio = crearDuenio();
+        var otro = crearDuenio();
+        mockMvc.perform(post("/chat/veterinaria/" + clinica.getIdVeterinaria()).with(csrf()).with(como(otro)));
+        sincronizar();
+
+        var modelo = mockMvc.perform(get("/chat").with(como(duenio))).andReturn().getModelAndView().getModel();
+        assertThat((Collection<?>) modelo.get("bandeja")).isEmpty();
+        var conv = conversacionRepository.findAll().stream()
+                .filter(c -> c.participa(otro.getIdUsuario())).findFirst().orElseThrow();
+        mockMvc.perform(get("/chat/" + conv.getIdConversacion()).with(como(duenio)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -101,9 +122,14 @@ class VL07ChatContactosTest extends PruebaWebBase {
         assertThat(deRecepcion).contains(duenioConCita.getIdUsuario(), vet.getIdUsuario(), vet2.getIdUsuario())
                 .doesNotContain(duenioSinCita.getIdUsuario(), recepcion.getIdUsuario(), inactivo.getIdUsuario());
 
+        // El veterinario solo ve a tutores de pacientes que ha atendido (no a todo el personal ni a cualquier dueño).
+        var deVet = ids(contactosChat.contactosPermitidos(usuarioRepository.findById(vet.getIdUsuario()).orElseThrow()));
+        assertThat(deVet).doesNotContain(duenioConCita.getIdUsuario(), recepcion.getIdUsuario(), vet2.getIdUsuario());
+        var duenioAtendido = crearDuenio();
+        crearCita(crearMascota(duenioAtendido), vet2, clinica, LocalDate.now().minusDays(1), LocalTime.of(10, 0), EstadoCita.ATENDIDA);
+        sincronizar();
         var deVet2 = ids(contactosChat.contactosPermitidos(usuarioRepository.findById(vet2.getIdUsuario()).orElseThrow()));
-        assertThat(deVet2).contains(recepcion.getIdUsuario(), vet.getIdUsuario())
-                .doesNotContain(duenioConCita.getIdUsuario());
+        assertThat(deVet2).containsExactly(duenioAtendido.getIdUsuario());
     }
 
     @Test

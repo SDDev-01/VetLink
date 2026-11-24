@@ -1,0 +1,252 @@
+/* =========================================================
+   VETLINK · COMPONENTES DE FLUJOS CLÍNICOS
+   Estados de cita, tarjetas de agenda, carpetas de expedientes,
+   documento clínico, asistente de agendamiento, mini calendario,
+   modales de confirmación y validación de formularios.
+   Se carga desde app.css; reutiliza los tokens de color existentes.
+   ========================================================= */
+
+:root {
+    --vl-azul: #2563eb;
+    --vl-azul-suave: #dbeafe;
+    --vl-gris: #e2e8f0;
+    --vl-gris-texto: #94a3b8;
+    --vl-texto: #0f172a;
+    --vl-texto-2: #475569;
+    --vl-borde: #e5e9f0;
+    --vl-fondo: #f8fafc;
+    --vl-ok: #15803d;
+    --vl-ok-bg: #dcfce7;
+    --vl-warn: #b45309;
+    --vl-warn-bg: #fef3c7;
+    --vl-err: #b91c1c;
+    --vl-err-bg: #fee2e2;
+    --vl-violeta: #6d28d9;
+    --vl-violeta-bg: #ede9fe;
+    --vl-radio: 16px;
+}
+
+/* ---------- Estados de cita (texto + icono + color: nunca solo color) ---------- */
+.vl-st {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    font-size: .78rem; font-weight: 700; line-height: 1.3; white-space: nowrap; border: 1px solid transparent;
+}
+.vl-st-disponible { background: var(--vl-azul-suave); color: #1e40af; }
+.vl-st-pendiente { background: var(--vl-warn-bg); color: var(--vl-warn); border-color: #fde68a; }
+.vl-st-confirmada { background: var(--vl-ok-bg); color: var(--vl-ok); }
+.vl-st-atencion { background: var(--vl-violeta-bg); color: var(--vl-violeta); }
+.vl-st-atendida { background: #e0f2fe; color: #0369a1; }
+.vl-st-cancelada, .vl-st-rechazada { background: var(--vl-err-bg); color: var(--vl-err); }
+.vl-st-noasistio, .vl-st-reprogramada { background: #f1f5f9; color: #475569; }
+
+.vl-alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; margin: 0 0 16px; font-weight: 600; font-size: .92rem; }
+.vl-alert i { margin-top: 2px; }
+.vl-alert-ok { background: var(--vl-ok-bg); color: var(--vl-ok); }
+.vl-alert-err { background: var(--vl-err-bg); color: var(--vl-err); }
+.vl-alert-warn { background: var(--vl-warn-bg); color: var(--vl-warn); }
+.vl-alert-info { background: var(--vl-azul-suave); color: #1e40af; }
+
+.vl-muted { color: var(--vl-texto-2); }
+.vl-small { font-size: .84rem; }
+.vl-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.vl-row-between { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.vl-stack > * + * { margin-top: 12px; }
+.vl-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.vl-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.vl-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 1000px) { .vl-grid-3, .vl-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .vl-grid-2, .vl-grid-3, .vl-grid-4 { grid-template-columns: 1fr; } }
+
+.vl-panel { background: #fff; border: 1px solid var(--vl-borde); border-radius: var(--vl-radio); padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); min-width: 0; }
+.vl-panel h3, .vl-panel h2 { margin: 0 0 12px; font-size: 1.02rem; color: var(--vl-texto); display: flex; align-items: center; gap: 8px; }
+.vl-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.vl-panel-head h3 { margin: 0; }
+
+/* ---------- KPI ---------- */
+.vl-kpi { background: #fff; border: 1px solid var(--vl-borde); border-radius: var(--vl-radio); padding: 16px 18px; display: flex; gap: 14px; align-items: center; text-decoration: none; color: inherit; transition: box-shadow .15s, transform .15s; }
+a.vl-kpi:hover { box-shadow: 0 6px 18px rgba(37,99,235,.10); transform: translateY(-1px); }
+.vl-kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0; }
+.vl-kpi-num { font-size: 1.6rem; font-weight: 800; color: var(--vl-texto); line-height: 1; }
+.vl-kpi-lbl { color: var(--vl-texto-2); font-size: .84rem; margin-top: 4px; }
+
+/* ---------- Tarjetas de cita (agenda) ---------- */
+.vl-cita-list { display: flex; flex-direction: column; gap: 10px; }
+.vl-cita-card {
+    display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 14px; align-items: center;
+    background: #fff; border: 1px solid var(--vl-borde); border-left: 4px solid var(--vl-azul);
+    border-radius: 14px; padding: 12px 14px; text-decoration: none; color: inherit;
+}
+.vl-cita-card:hover { box-shadow: 0 6px 16px rgba(15,23,42,.07); }
+.vl-cita-card.st-PENDIENTE { border-left-color: #f59e0b; }
+.vl-cita-card.st-CONFIRMADA { border-left-color: #16a34a; }
+.vl-cita-card.st-EN_ATENCION { border-left-color: #7c3aed; }
+.vl-cita-card.st-ATENDIDA { border-left-color: #0284c7; }
+.vl-cita-card.st-CANCELADA, .vl-cita-card.st-RECHAZADA { border-left-color: #dc2626; opacity: .85; }
+.vl-cita-card.st-NO_ASISTIO, .vl-cita-card.st-REPROGRAMADA { border-left-color: #94a3b8; opacity: .85; }
+.vl-cita-card.st-DISPONIBLE { border-left-style: dashed; background: #fbfdff; }
+.vl-cita-hora { font-weight: 800; color: var(--vl-texto); font-size: .98rem; line-height: 1.2; }
+.vl-cita-hora small { display: block; font-weight: 600; color: var(--vl-gris-texto); font-size: .74rem; margin-top: 2px; }
+.vl-cita-main { min-width: 0; }
+.vl-cita-titulo { font-weight: 800; color: var(--vl-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vl-cita-meta { color: var(--vl-texto-2); font-size: .84rem; display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; }
+.vl-cita-meta span { display: inline-flex; gap: 5px; align-items: center; }
+.vl-cita-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+@media (max-width: 640px) {
+    .vl-cita-card { grid-template-columns: 64px minmax(0, 1fr); }
+    .vl-cita-side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }
+}
+
+/* ---------- Ficha / detalle con definiciones ---------- */
+.vl-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 22px; margin: 0; }
+.vl-dl > div { min-width: 0; }
+.vl-dl dt { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: var(--vl-gris-texto); font-weight: 700; }
+.vl-dl dd { margin: 3px 0 0; color: var(--vl-texto); font-weight: 600; overflow-wrap: anywhere; }
+.vl-dl .full { grid-column: 1 / -1; }
+@media (max-width: 640px) { .vl-dl { grid-template-columns: 1fr; } }
+
+.vl-trace { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--vl-borde); }
+.vl-trace li { position: relative; padding: 0 0 14px 18px; }
+.vl-trace li::before { content: ""; position: absolute; left: -7px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid var(--vl-azul); }
+.vl-trace .when { font-size: .78rem; color: var(--vl-gris-texto); }
+
+/* ---------- Asistente de pasos ---------- */
+.vl-steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 18px; overflow-x: auto; }
+.vl-steps li { flex: 1; min-width: 92px; text-align: center; font-size: .76rem; font-weight: 700; color: var(--vl-gris-texto); }
+.vl-steps li .dot { display: grid; place-items: center; width: 30px; height: 30px; margin: 0 auto 6px; border-radius: 50%; background: var(--vl-gris); color: #64748b; font-weight: 800; }
+.vl-steps li.done .dot { background: var(--vl-ok-bg); color: var(--vl-ok); }
+.vl-steps li.current { color: var(--vl-azul); }
+.vl-steps li.current .dot { background: var(--vl-azul); color: #fff; box-shadow: 0 0 0 4px var(--vl-azul-suave); }
+.vl-step-pane[hidden] { display: none !important; }
+.vl-step-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.vl-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.vl-choice { position: relative; display: flex; gap: 12px; align-items: center; padding: 14px; border: 2px solid var(--vl-borde); border-radius: 14px; background: #fff; cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+.vl-choice:hover { border-color: #93c5fd; }
+.vl-choice[aria-pressed="true"], .vl-choice.selected { border-color: var(--vl-azul); background: #eff6ff; box-shadow: 0 0 0 3px var(--vl-azul-suave); }
+.vl-choice img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: var(--vl-fondo); flex-shrink: 0; }
+.vl-choice .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--vl-azul-suave); color: var(--vl-azul); flex-shrink: 0; }
+.vl-choice strong { display: block; color: var(--vl-texto); }
+.vl-choice small { color: var(--vl-texto-2); }
+.vl-loading { display: flex; align-items: center; gap: 10px; color: var(--vl-texto-2); padding: 14px 0; }
+.vl-spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--vl-gris); border-top-color: var(--vl-azul); animation: vlspin .8s linear infinite; }
+@keyframes vlspin { to { transform: rotate(360deg); } }
+
+/* ---------- Mini calendario de disponibilidad ---------- */
+.vl-minical { max-width: 380px; background: #fff; border: 1px solid var(--vl-borde); border-radius: 18px; padding: 14px; }
+.vl-minical-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.vl-minical-head h4 { margin: 0; text-transform: capitalize; font-size: 1rem; }
+.vl-minical-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.vl-minical-dow { text-align: center; font-size: .7rem; font-weight: 800; color: var(--vl-gris-texto); padding: 4px 0; }
+.vl-minical-day {
+    position: relative; aspect-ratio: 1; border: none; border-radius: 12px; font: inherit; font-weight: 700; font-size: .9rem;
+    background: #f1f5f9; color: #94a3b8; cursor: not-allowed;
+}
+.vl-minical-day.libre { background: var(--vl-azul); color: #fff; cursor: pointer; }
+.vl-minical-day.libre:hover { background: #1d4ed8; }
+.vl-minical-day.hoy { outline: 2px solid #0f172a; outline-offset: 1px; }
+.vl-minical-day.sel { background: #0f172a; color: #fff; box-shadow: 0 0 0 3px #93c5fd; }
+.vl-minical-day.vacio { background: transparent; cursor: default; }
+.vl-minical-day.libre::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #bfdbfe; }
+.vl-minical-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: .76rem; color: var(--vl-texto-2); }
+.vl-minical-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; }
+.vl-hours { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.vl-hour { padding: 10px; border: 2px solid var(--vl-borde); border-radius: 12px; background: #fff; font: inherit; font-weight: 700; cursor: pointer; color: var(--vl-texto); }
+.vl-hour small { display: block; font-weight: 600; color: var(--vl-texto-2); font-size: .72rem; }
+.vl-hour:hover { border-color: #93c5fd; }
+.vl-hour[aria-pressed="true"] { border-color: var(--vl-azul); background: #eff6ff; color: var(--vl-azul); }
+
+/* ---------- Gestor de expedientes ---------- */
+.vl-folders { display: flex; flex-direction: column; gap: 14px; }
+.vl-folder { background: #fff; border: 1px solid var(--vl-borde); border-radius: 18px; overflow: hidden; }
+.vl-folder > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.vl-folder > summary::-webkit-details-marker { display: none; }
+.vl-folder > summary .tab { width: 52px; height: 42px; border-radius: 8px 12px 10px 10px; background: linear-gradient(180deg, #fcd34d, #f59e0b); position: relative; flex-shrink: 0; display: grid; place-items: center; color: #78350f; }
+.vl-folder > summary .tab::before { content: ""; position: absolute; top: -6px; left: 0; width: 22px; height: 8px; background: #fbbf24; border-radius: 6px 6px 0 0; }
+.vl-folder[open] > summary { border-bottom: 1px solid var(--vl-borde); background: #fffbeb; }
+.vl-folder > summary .name { font-weight: 800; font-size: 1.05rem; color: var(--vl-texto); }
+.vl-folder > summary .chev { margin-left: auto; transition: transform .2s; color: var(--vl-gris-texto); }
+.vl-folder[open] > summary .chev { transform: rotate(90deg); }
+.vl-docs { list-style: none; margin: 0; padding: 6px 10px 12px; }
+.vl-doc { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; }
+.vl-doc:hover { background: var(--vl-fondo); }
+.vl-doc .ico { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; background: var(--vl-azul-suave); color: var(--vl-azul); font-size: 1.05rem; }
+.vl-doc .ico.fa-file-pdf, .vl-doc .ico .fa-file-pdf { color: #b91c1c; }
+.vl-doc a.titulo { font-weight: 800; color: var(--vl-texto); text-decoration: none; overflow-wrap: anywhere; }
+.vl-doc a.titulo:hover { text-decoration: underline; }
+.vl-doc .meta { font-size: .8rem; color: var(--vl-texto-2); display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .vl-doc { grid-template-columns: 38px minmax(0, 1fr); } .vl-doc .acciones { grid-column: 2; } }
+
+/* ---------- Documento clínico tipo expediente ---------- */
+.vl-expediente { background: #fff; border: 1px solid var(--vl-borde); border-radius: 18px; max-width: 920px; margin: 0 auto; box-shadow: 0 10px 30px rgba(15,23,42,.06); overflow: hidden; }
+.vl-exp-head { display: flex; gap: 16px; align-items: center; padding: 22px 26px; border-bottom: 3px solid var(--vl-azul); flex-wrap: wrap; }
+.vl-exp-head img { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; background: var(--vl-fondo); }
+.vl-exp-head h1 { font-size: 1.25rem; margin: 0; }
+.vl-exp-head .doc-id { margin-left: auto; text-align: right; font-size: .82rem; color: var(--vl-texto-2); }
+.vl-exp-sec { padding: 18px 26px; border-bottom: 1px solid #eef2f7; }
+.vl-exp-sec:last-child { border-bottom: none; }
+.vl-exp-sec h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--vl-azul); margin: 0 0 12px; display: flex; gap: 8px; align-items: center; }
+.vl-exp-text { white-space: pre-line; color: var(--vl-texto); line-height: 1.55; }
+.vl-vitals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.vl-vital { background: var(--vl-fondo); border-radius: 12px; padding: 12px; text-align: center; }
+.vl-vital b { display: block; font-size: 1.15rem; color: var(--vl-texto); }
+.vl-vital span { font-size: .74rem; color: var(--vl-texto-2); }
+@media (max-width: 640px) { .vl-vitals { grid-template-columns: repeat(2, 1fr); } .vl-exp-head .doc-id { margin-left: 0; text-align: left; } }
+@media print { .sidebar, .top-bar, .vl-no-print { display: none !important; } .main-content { margin: 0 !important; } .vl-expediente { box-shadow: none; border: none; } }
+
+/* ---------- Validación de formularios ---------- */
+.vl-field-error { display: block; color: var(--vl-err); font-size: .8rem; font-weight: 600; margin-top: 6px; }
+.vl-field-error:empty { display: none; }
+input.vl-invalid, select.vl-invalid, textarea.vl-invalid, [aria-invalid="true"] { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important; }
+input.vl-valid, select.vl-valid, textarea.vl-valid { border-color: #16a34a !important; }
+
+/* ---------- Modal de confirmación ---------- */
+.vl-cmodal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 3000; }
+.vl-cmodal-overlay[hidden] { display: none; }
+.vl-cmodal { background: #fff; border-radius: 20px; width: 100%; max-width: 460px; padding: 24px; box-shadow: 0 30px 60px rgba(15,23,42,.3); }
+.vl-cmodal h2 { margin: 0 0 8px; font-size: 1.15rem; display: flex; gap: 10px; align-items: center; }
+.vl-cmodal p { color: var(--vl-texto-2); line-height: 1.5; margin: 0 0 12px; }
+.vl-cmodal .vl-cmodal-extra textarea, .vl-cmodal .vl-cmodal-extra input { width: 100%; border: 1px solid var(--vl-borde); border-radius: 12px; padding: 10px 12px; font: inherit; }
+.vl-cmodal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.vl-cmodal.peligro h2 i { color: #dc2626; }
+
+/* ---------- Campana de notificaciones ---------- */
+.vl-bell { position: relative; }
+.vl-bell button.action-circle { border: none; cursor: pointer; }
+.vl-notif-item form { margin: 0; }
+.vl-notif-item button.vl-notif-link { all: unset; cursor: pointer; display: block; width: 100%; }
+.vl-notif-item.no-leida { background: #eff6ff; }
+.vl-notif-item .t { font-weight: 700; color: var(--vl-texto); font-size: .86rem; }
+.vl-notif-item .m { color: var(--vl-texto-2); font-size: .8rem; }
+
+/* ---------- Directorio ---------- */
+.vl-search-card { background: #fff; border: 1px solid var(--vl-borde); border-radius: 22px; padding: 24px; box-shadow: 0 10px 30px rgba(15,23,42,.06); }
+.vl-vet-card { background: #fff; border: 1px solid var(--vl-borde); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
+.vl-vet-card .img { height: 120px; background: linear-gradient(135deg, #dbeafe, #eff6ff); display: grid; place-items: center; }
+.vl-vet-card .img img { max-height: 92px; max-width: 70%; object-fit: contain; }
+.vl-vet-card .body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.vl-vet-card .acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+.vl-chip { display: inline-block; padding: 3px 9px; border-radius: 999px; background: var(--vl-fondo); color: var(--vl-texto-2); font-size: .74rem; font-weight: 600; margin: 0 4px 4px 0; }
+.vl-emergencia-tag { background: var(--vl-err-bg); color: var(--vl-err); }
+
+/* ---------- Varios ---------- */
+.vl-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.vl-week-day { background: var(--vl-fondo); border-radius: 12px; padding: 8px; min-height: 96px; }
+.vl-week-day.hoy { background: #eff6ff; outline: 2px solid var(--vl-azul); }
+.vl-week-day h5 { margin: 0 0 6px; font-size: .74rem; text-transform: capitalize; color: var(--vl-texto-2); }
+.vl-week-day a { display: block; font-size: .74rem; padding: 4px 6px; border-radius: 8px; background: #fff; margin-bottom: 4px; text-decoration: none; color: var(--vl-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { .vl-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vl-hero { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #0ea5e9 100%); color: #fff; border-radius: 22px; padding: 22px 26px; display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
+.vl-hero h1 { margin: 0; font-size: 1.45rem; color: #fff; }
+.vl-hero p { margin: 4px 0 0; opacity: .9; }
+.vl-hero .vl-btn { background: #fff; color: #1d4ed8; }
+.vl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.vl-sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.vl-empty-state { text-align: center; padding: 30px 16px; color: var(--vl-texto-2); }
+.vl-empty-state i { font-size: 2rem; color: #cbd5e1; display: block; margin-bottom: 8px; }
+.vl-btn[disabled], .vl-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.vl-menu { position: relative; display: inline-block; }
+.vl-menu > summary { list-style: none; cursor: pointer; }
+.vl-menu > summary::-webkit-details-marker { display: none; }
+.vl-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--vl-borde); border-radius: 14px; box-shadow: 0 14px 34px rgba(15,23,42,.14); padding: 6px; min-width: 230px; z-index: 50; }
+.vl-menu-pop button, .vl-menu-pop a { display: flex; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: none; background: none; text-align: left; font: inherit; font-weight: 600; color: var(--vl-texto); border-radius: 10px; cursor: pointer; text-decoration: none; }
+.vl-menu-pop button:hover, .vl-menu-pop a:hover { background: var(--vl-fondo); }
+.vl-menu-pop .peligro { color: var(--vl-err); }

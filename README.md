@@ -6,9 +6,9 @@ Todo se levanta con un solo comando de Docker. No necesitas instalar Java, Pytho
 
 | Contenedor | Qué hace | Puerto |
 |---|---|---|
-| `nginx` | Única entrada desde el navegador. `/p/...` va a FastAPI y todo lo demás a Spring | **80** (el único publicado) |
+| `nginx` | Única entrada desde el navegador. `/p/...` y `/api/reportes/...` van a FastAPI (los reportes, tras validar la sesión con Spring) y todo lo demás a Spring | **80** (el único publicado) |
 | `spring` | La aplicación principal (Spring Boot 4, Java 21, Thymeleaf) | 8080, solo interno |
-| `fastapi` | El pasaporte de salud y su QR (Python 3.12) | 8000, solo interno |
+| `fastapi` | El pasaporte de salud y su QR, y los reportes clínicos en PDF (Python 3.12) | 8000, solo interno |
 | `mysql` | La base `mydb` (MySQL 8.4). Se crea sola la primera vez | 3306, solo interno |
 
 ---
@@ -105,16 +105,46 @@ Abre **http://localhost** en el navegador. Mientras Spring termina de arrancar, 
 | Aplicar cambios de código tras un `git pull` | `docker compose up -d --build` |
 | **Borrar la base y crearla de cero** | `docker compose down -v` y luego `docker compose up -d --build` |
 
+### Actualizar una base que ya existía (migración V8)
+
+Si tu base se creó antes de esta versión, aplica la migración V8 **sin borrar datos** (hace un respaldo
+en `respaldos/` antes de tocar nada):
+
+```bash
+bash database/aplicar_V8.sh
+docker compose up -d --build spring fastapi nginx
+```
+
+V8 agrega estados de cita, disponibilidad de veterinarios, transferencias, notificaciones, auditoría y
+reportes. Renombra el estado `AGENDADA` a `CONFIRMADA` y siembra el horario de cada veterinario a partir
+del de su clínica. Al arrancar, la tarea de expiración pasa a «Rechazada» las reservas pendientes cuya
+hora ya pasó (queda en el historial de estados de cada cita).
+
 Los scripts de `database/` **solo corren cuando el volumen de MySQL está vacío**. Si alguien agrega o cambia un `.sql`, tienes que ejecutar `docker compose down -v`; si no, tu base seguirá con la versión vieja. Ojo: `down -v` también borra las fotos subidas.
 
-## 4. Probar el pasaporte desde un celular
+## 4. QR accesible desde Internet
 
-1. Averigua la IP de tu computador en la red Wi-Fi (`ipconfig` en Windows; `ip addr` o `ifconfig` en Linux o Mac), por ejemplo `192.168.1.50`.
-2. En `.env`, pon `PUBLIC_BASE_URL=http://192.168.1.50` (agrega `:8081` si cambiaste el puerto).
-3. Ejecuta `docker compose up -d` para aplicarlo.
-4. Entra como dueño, abre una mascota, pulsa **Compartir historial** y escanea el QR con el celular, que debe estar en la misma red.
+El QR y los enlaces del pasaporte usan `PUBLIC_BASE_URL`. Con `http://localhost` o una IP privada
+(`192.168.x.x`) el QR **solo abre en este equipo o en la misma Wi-Fi**; la aplicación lo advierte en
+«Compartir historial» y en `docker compose logs fastapi`.
 
-Si la red no deja que el celular vea tu computador, abre el enlace del pasaporte en una ventana de incógnito.
+Opciones para que abra desde datos móviles o cualquier red:
+
+1. **Producción**: publica Nginx con un dominio y HTTPS y pon `PUBLIC_BASE_URL=https://tu-dominio` y
+   `VETLINK_ENTORNO=produccion`.
+2. **Pruebas sin dominio (túnel HTTPS gratuito)**:
+   ```bash
+   docker compose --profile tunel up -d tunel
+   docker compose logs tunel | grep trycloudflare   # copia la URL https://....trycloudflare.com
+   # pon esa URL en PUBLIC_BASE_URL dentro de .env y luego:
+   docker compose up -d fastapi spring
+   ```
+   La URL del túnel rápido cambia cada vez que se reinicia el contenedor `tunel`; los QR creados con una
+   URL anterior dejan de abrir. Para una URL fija usa un túnel con nombre (cuenta de Cloudflare) o un dominio.
+3. **Solo misma Wi-Fi** (demostración rápida): `PUBLIC_BASE_URL=http://<IP del portátil>`.
+
+Por privacidad, la página pública del pasaporte no muestra diagnósticos ni medicamentos
+(`PASAPORTE_DETALLE_CLINICO=false`).
 
 ## 5. Problemas frecuentes
 
@@ -143,6 +173,8 @@ Con eso puedes conectarte a MySQL desde DBeaver o Workbench en `127.0.0.1:3307`,
 
 ## 6. Pruebas
 
+Resultados de la última ejecución: `PRUEBAS_RESULTADOS.md`.
+
 GitHub Actions corre las dos suites en cada Pull Request. Para correrlas en tu máquina sin instalar Java:
 
 ```bash
@@ -151,6 +183,7 @@ docker run --rm -v "$PWD":/app -w /app eclipse-temurin:21-jdk sh ./mvnw test
 ```
 
 Para FastAPI, mira el job `fastapi` en `.github/workflows/ci.yml`: levanta solo `mysql` y corre `pytest` dentro de `docs-service/`.
+Con los contenedores encendidos también puedes correrlo contra la base de Compose (ver `API_REPORTES.md`).
 
 ## 7. Estructura del repositorio
 
@@ -158,17 +191,38 @@ Para FastAPI, mira el job `fastapi` en `.github/workflows/ci.yml`: levanta solo 
 src/                    Aplicación Spring Boot
 docs-service/           Servicio FastAPI del pasaporte (app/, tests/, Dockerfile)
 database/mydb.sql       Esquema y datos base
-database/migrations/    Cambios de esquema (V5, V7) y datos de demostración (V6, V7_demo)
+database/migrations/    Cambios de esquema (V5, V7, V8) y datos de demostración (V6, V7_demo)
+database/aplicar_V8.sh  Aplica V8 a una base existente (con respaldo)
 database/init/00-init.sh  Crea la base, los usuarios MySQL y sus permisos al primer arranque
 nginx/                  Configuración del proxy inverso
 docs/                   Contrato entre Spring y FastAPI
+PLAN_IMPLEMENTACION.md  Plan y estado de las tareas
+REGLAS_NEGOCIO.md       Estados de cita, disponibilidad, permisos, transferencias, emergencias
+API_REPORTES.md         Servicio de reportes PDF (FastAPI + Nginx)
+CAMBIOS_REALIZADOS.md   Qué cambió y en qué archivos
+PRUEBAS_RESULTADOS.md   Pruebas ejecutadas y pendientes
 compose.yaml            Los cuatro servicios
 .env.example            Plantilla de variables (sin secretos)
 ```
 
 ---
 
-## 8. Cómo trabajamos con Git
+## 8. Variables de entorno
+
+| Variable | Para qué |
+|---|---|
+| `MYSQL_DATABASE`, `MYSQL_ROOT_PASSWORD`, `MYSQL_SPRING_PASSWORD`, `MYSQL_FAST_PASSWORD` | Base y usuarios de aplicación |
+| `INTERNAL_TOKEN` | Token interno Spring/Nginx → FastAPI |
+| `PUBLIC_BASE_URL` | URL pública de enlaces y QR (ver sección 4) |
+| `VETLINK_ENTORNO` | `desarrollo` o `produccion` (exige HTTPS en la URL pública) |
+| `PASAPORTE_DETALLE_CLINICO` | `true` para mostrar diagnósticos en el pasaporte público (por defecto `false`) |
+| `NGINX_HTTP_PORT`, `MYSQL_PORT` | Puertos |
+| `RUN_DEMO_SEED` | Datos de demostración |
+
+Las reglas de negocio (anticipación, margen de atención, expiración de reservas, horizonte de agenda,
+tamaños de archivo…) están en `application.properties` bajo `vetlink.reglas.*`; ver `REGLAS_NEGOCIO.md`.
+
+## 9. Cómo trabajamos con Git
 
 La rama de integración es **`development`**. `main` solo se actualiza para las entregas.
 

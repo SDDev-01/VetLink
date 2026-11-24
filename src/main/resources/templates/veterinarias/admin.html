@@ -27,33 +27,44 @@
             <p class="form-message" style="color:#16a34a" th:if="${param.recepcionistaCreada}">Recepcionista adicional registrada.</p>
             <p class="form-message" style="color:#dc2626" th:if="${error}" th:text="${error}"></p>
             <p class="form-message" style="color:#dc2626" th:if="${errorEquipo}" th:text="${errorEquipo}"></p>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${mensajeOk}"><i class="fas fa-circle-check" aria-hidden="true"></i><span th:text="${mensajeOk}"></span></div>
 
             <!-- INFORMACIÓN DE LA VETERINARIA -->
             <div class="vl-table-wrap" style="padding:26px; margin-bottom:28px;">
                 <div class="vl-form-section-title"><i class="fas fa-hospital"></i> Información de la veterinaria</div>
-                <form th:action="@{/veterinarias/admin/info}" method="post">
+                <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)">
+                <form th:action="@{/veterinarias/admin/info}" method="post"
+                      data-confirm="Se actualizará la información pública de la veterinaria en el directorio." data-confirm-title="¿Guardar los cambios?" data-confirm-ok="Guardar">
                     <div class="vl-form-grid">
                         <div class="vl-field vl-full">
-                            <label>Nombre</label>
-                            <input type="text" name="nombre" th:value="${veterinaria.nombre}" required>
+                            <label for="vet-nombre">Nombre *</label>
+                            <input type="text" id="vet-nombre" name="nombre" th:value="${veterinaria.nombre}" required maxlength="50">
                         </div>
                         <div class="vl-field vl-full">
-                            <label>Descripción</label>
-                            <textarea name="descripcion" th:text="${veterinaria.descripcion}"></textarea>
+                            <label for="vet-desc">Descripción</label>
+                            <textarea id="vet-desc" name="descripcion" maxlength="2000" th:text="${veterinaria.descripcion}"></textarea>
                         </div>
                         <div class="vl-field">
-                            <label>Página web</label>
-                            <input type="text" name="paginaWeb" th:value="${veterinaria.paginaWeb}">
-                        </div>
-                        <div class="vl-field">
-                            <label>Logo (nombre de archivo o URL)</label>
-                            <input type="text" name="logo" th:value="${veterinaria.logo}">
+                            <label for="vet-web">Página web</label>
+                            <input type="text" id="vet-web" name="paginaWeb" th:value="${veterinaria.paginaWeb}" maxlength="50"
+                                   pattern="^(https?://)?[A-Za-z0-9.\-]+\.[A-Za-z]{2,}(/\S*)?$" data-msg-pattern="Ingresa una página web válida, p. ej. www.miclinica.com">
                         </div>
                     </div>
                     <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar cambios</button>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check" aria-hidden="true"></i> Guardar cambios</button>
                     </div>
                 </form>
+                <form th:action="@{/veterinarias/admin/logo}" method="post" enctype="multipart/form-data" class="vl-panel" style="text-align:center"
+                      data-confirm="La imagen reemplazará la actual en el directorio y en las vistas de la veterinaria." data-confirm-title="¿Actualizar la imagen?" data-confirm-ok="Subir imagen">
+                    <h3 style="justify-content:center"><i class="fas fa-image" aria-hidden="true"></i> Imagen de la veterinaria</h3>
+                    <img id="logo-previa" th:src="@{${logoUrl}}" alt="Imagen actual de la veterinaria" style="width:140px;height:140px;object-fit:contain;border-radius:18px;background:#eff6ff">
+                    <div class="vl-field" style="margin-top:10px;text-align:left">
+                        <label for="logoArchivo" th:text="'Nueva imagen (PNG o JPG, máx. ' + ${tamanoMaximoImagenMb} + ' MB)'">Nueva imagen</label>
+                        <input type="file" id="logoArchivo" name="logoArchivo" required accept=".png,.jpg,.jpeg,image/png,image/jpeg" th:attr="data-max-mb=${tamanoMaximoImagenMb}">
+                    </div>
+                    <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-upload" aria-hidden="true"></i> Subir imagen</button>
+                </form>
+                </div>
             </div>
 
             <div class="vl-table-wrap" style="padding:26px; margin-top:28px;">
@@ -66,18 +77,18 @@
                     <div class="vl-form-grid">
                         <div class="vl-field"><label>Tipo documento</label><select th:field="*{idTipoDocumento}"><option value="">Selecciona</option><option th:each="t:${tiposDocumento}" th:value="${t.idTipoDocumento}" th:text="${t.nombreTipo}"></option></select>
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('idTipoDocumento')}" th:errors="*{idTipoDocumento}"></small></div>
-                        <div class="vl-field"><label>Número</label><input th:field="*{numeroDocumento}">
+                        <div class="vl-field"><label>Número</label><input th:field="*{numeroDocumento}" required pattern="[A-Za-z0-9]{5,15}" data-msg-pattern="Ingresa un número de identificación válido (5 a 15 letras o números)">
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('numeroDocumento')}" th:errors="*{numeroDocumento}"></small></div>
-                        <div class="vl-field"><label>Nombres</label><input th:field="*{nombre}">
+                        <div class="vl-field"><label>Nombres</label><input th:field="*{nombre}" required maxlength="50">
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('nombre')}" th:errors="*{nombre}"></small></div>
-                        <div class="vl-field"><label>Apellidos</label><input th:field="*{apellido}">
+                        <div class="vl-field"><label>Apellidos</label><input th:field="*{apellido}" required maxlength="50">
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('apellido')}" th:errors="*{apellido}"></small></div>
-                        <div class="vl-field"><label>Correo</label><input type="email" th:field="*{correo}">
+                        <div class="vl-field"><label>Correo</label><input type="email" th:field="*{correo}" required maxlength="100">
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('correo')}" th:errors="*{correo}"></small></div>
-                        <div class="vl-field"><label>Teléfono</label><input th:field="*{telefono}">
+                        <div class="vl-field"><label>Teléfono</label><input type="tel" th:field="*{telefono}" required>
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('telefono')}" th:errors="*{telefono}"></small></div>
                         <div class="vl-field"><label>Turno</label><select th:field="*{turno}"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option></select></div>
-                        <div class="vl-field"><label>Contraseña temporal</label><input type="password" th:field="*{password}">
+                        <div class="vl-field"><label>Contraseña temporal</label><input type="password" th:field="*{password}" required data-tipo="password" autocomplete="new-password">
                             <small class="vl-error" th:if="${mostrar and #fields.hasErrors('password')}" th:errors="*{password}"></small></div>
                     </div>
                     </th:block>
@@ -123,31 +134,31 @@
                         </div>
                         <div class="vl-field">
                             <label>Número de documento</label>
-                            <input type="text" th:field="*{numeroDocumento}">
+                            <input type="text" th:field="*{numeroDocumento}" required pattern="[A-Za-z0-9]{5,15}" data-msg-pattern="Ingresa un número de identificación válido (5 a 15 letras o números)">
                         </div>
                         <div class="vl-field">
                             <label>Nombres</label>
-                            <input type="text" th:field="*{nombre}">
+                            <input type="text" th:field="*{nombre}" required maxlength="50">
                         </div>
                         <div class="vl-field">
                             <label>Apellidos</label>
-                            <input type="text" th:field="*{apellido}">
+                            <input type="text" th:field="*{apellido}" required maxlength="50">
                         </div>
                         <div class="vl-field vl-full">
                             <label>Correo</label>
-                            <input type="email" th:field="*{correo}">
+                            <input type="email" th:field="*{correo}" required maxlength="100">
                         </div>
                         <div class="vl-field">
                             <label>Teléfono</label>
-                            <input type="text" th:field="*{telefono}">
+                            <input type="tel" th:field="*{telefono}" required>
                         </div>
                         <div class="vl-field">
                             <label>Contraseña temporal</label>
-                            <input type="password" th:field="*{password}">
+                            <input type="password" th:field="*{password}" required data-tipo="password" autocomplete="new-password">
                         </div>
                         <div class="vl-field">
                             <label>Licencia profesional</label>
-                            <input type="text" th:field="*{licencia}">
+                            <input type="text" th:field="*{licencia}" required maxlength="45">
                         </div>
                         <div class="vl-field">
                             <label>Especialidad</label>
@@ -165,6 +176,17 @@
         </div>
     </section>
 </main>
+<script>
+    (function () {
+        var input = document.getElementById('logoArchivo'), img = document.getElementById('logo-previa');
+        if (!input || !img) return;
+        var original = img.src;
+        input.addEventListener('change', function () {
+            var f = input.files && input.files[0];
+            img.src = f && /^image\/(png|jpeg)$/.test(f.type) ? URL.createObjectURL(f) : original;
+        });
+    })();
+</script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

@@ -48,6 +48,16 @@ public class CarnetVacuna {
     @JoinColumn(name = "idMascota", nullable = false)
     private Mascota mascota;
 
+    /** Cita (de vacunación) durante la que se aplicó. Null en registros anteriores a V8. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idCita")
+    private com.vetlink.cita.model.Cita cita;
+
+    /** Establecimiento donde se aplicó. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idVeterinaria")
+    private com.vetlink.veterinaria.model.Veterinaria veterinaria;
+
     /** Clasificación visual de la próxima dosis, usada por la ficha de mascota (pestaña Carnet). */
     @Transient
     public String getEstadoBadgeClase() {

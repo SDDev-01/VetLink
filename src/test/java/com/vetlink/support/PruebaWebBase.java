@@ -254,10 +254,56 @@ public abstract class PruebaWebBase {
         return citaRepository.save(c);
     }
 
-    /** Cita AGENDADA para mañana a las 10:00. */
+    /** Cita CONFIRMADA para mañana a las 10:00. */
     protected Cita crearCita(Mascota mascota, Usuario veterinario, Veterinaria clinica) {
         return crearCita(mascota, veterinario, clinica, LocalDate.now().plusDays(1),
-                LocalTime.of(10, 0), EstadoCita.AGENDADA);
+                LocalTime.of(10, 0), EstadoCita.CONFIRMADA);
+    }
+
+    /** Autoriza (APROBADO) al veterinario para atender el servicio. */
+    protected void autorizarServicio(Usuario veterinario, Servicio servicio) {
+        var vs = new com.vetlink.disponibilidad.model.VeterinarioServicio();
+        vs.setVeterinario(veterinario);
+        vs.setServicio(servicio);
+        vs.setEstado(com.vetlink.disponibilidad.model.EstadoAprobacion.APROBADO);
+        vs.setCreadoEn(java.time.LocalDateTime.now());
+        em.persist(vs);
+    }
+
+    /** Horario APROBADO del veterinario: todos los días entre las horas dadas. */
+    protected void horarioAprobado(Usuario veterinario, LocalTime inicio, LocalTime fin) {
+        for (int d = 1; d <= 7; d++) {
+            var h = new com.vetlink.disponibilidad.model.HorarioVeterinario();
+            h.setVeterinario(veterinario);
+            h.setDiaSemana(d);
+            h.setHoraInicio(inicio);
+            h.setHoraFin(fin);
+            h.setEstado(com.vetlink.disponibilidad.model.EstadoAprobacion.APROBADO);
+            h.setCreadoEn(java.time.LocalDateTime.now());
+            em.persist(h);
+        }
+    }
+
+    /** Servicio con el tipo de registro clínico indicado. */
+    protected Servicio crearServicio(String nombre, Servicio.TipoRegistro tipo) {
+        Servicio s = crearServicio(nombre);
+        s.setTipoRegistro(tipo);
+        return servicioRepository.save(s);
+    }
+
+    /** Cita de hoy, iniciada hace unos minutos y EN_ATENCION con el veterinario. */
+    protected Cita citaEnAtencion(Mascota mascota, Usuario veterinario, Veterinaria clinica, Servicio servicio) {
+        java.time.LocalDateTime hace = java.time.LocalDateTime.now().minusMinutes(5).withSecond(0).withNano(0);
+        Cita c = new Cita();
+        c.setMascota(mascota);
+        c.setVeterinario(veterinario);
+        c.setVeterinaria(clinica);
+        c.setServicio(servicio);
+        c.setFecha(hace.toLocalDate());
+        c.setHora(hace.toLocalTime());
+        c.setEstado(EstadoCita.EN_ATENCION);
+        c.setInicioAtencion(hace);
+        return citaRepository.save(c);
     }
 
     /** Historia clínica con la fecha de registro dada (null = registro antiguo, solo con año). */

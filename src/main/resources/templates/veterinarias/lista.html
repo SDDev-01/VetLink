@@ -1,62 +1,203 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Directorio - VetLink</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" th:href="@{/css/directorio.css}">
     <link rel="stylesheet" th:href="@{/css/color_global.css}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .dir-wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 60px; }
+        .dir-results { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+        .dir-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        #map { height: 520px; border-radius: 18px; position: sticky; top: 100px; }
+        @media (max-width: 900px) { .dir-results { grid-template-columns: 1fr; } #map { height: 320px; position: static; } }
+    </style>
 </head>
 <body>
 <nav th:replace="~{layout/navbar :: navbar}"></nav>
 
-<main class="directory-layout">
-<section class="directory-content">
-    <header class="directory-header">
+<main class="dir-wrap">
+    <header style="margin-bottom:18px">
         <span class="badge-top">Directorio VetLink</span>
-        <h1>Encuentra servicios <br><span>Veterinarios</span></h1>
-
-        <div class="search-bar-premium">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="¿Qué servicio buscas hoy?" onkeyup="filtrarDirectorio()">
-        </div>
-
-        <div class="vl-filter-bar" style="margin-top:14px;">
-            <div class="vl-field" style="min-width:220px; margin-bottom:0;">
-                <select id="filterServicio" onchange="filtrarDirectorio()">
-                    <option value="">Cualquier servicio</option>
-                    <option th:each="s : ${todosLosServicios}" th:value="${s.nombreServicio}" th:text="${s.nombreServicio}"></option>
-                </select>
-            </div>
-            <div class="vl-field" style="min-width:180px; margin-bottom:0;">
-                <input type="date" id="filterFecha" onchange="filtrarDirectorio()">
-            </div>
-        </div>
+        <h1 style="margin:8px 0 4px">Encuentra la veterinaria <span style="color:#2563eb">que necesitas</span></h1>
+        <p class="vl-muted" th:unless="${buscando}">Cuéntanos qué buscas y te mostramos solo las veterinarias que cumplen.</p>
     </header>
 
-    <div class="directory-grid" id="directoryGrid"></div>
-</section>
-
-<aside class="map-sticky-wrapper">
-    <div class="map-frame">
-        <div id="map"></div>
-        <div class="map-overlay-info">
-            <i class="fas fa-map-marked-alt"></i> Explorando Bogotá
+    <!-- Formulario de personalización (siempre visible; se precarga con la búsqueda actual) -->
+    <form id="form-busqueda" class="vl-search-card" th:action="@{/directorio}" method="get" th:classappend="${buscando} ? 'vl-small' : ''">
+        <input type="hidden" name="buscar" value="1">
+        <input type="hidden" name="lat" id="lat" th:value="${f.lat()}">
+        <input type="hidden" name="lng" id="lng" th:value="${f.lng()}">
+        <div class="vl-grid-3">
+            <div class="vl-field">
+                <label>Ubicación</label>
+                <div class="vl-row">
+                    <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-ubicacion"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> Usar mi ubicación</button>
+                    <span class="vl-small" id="estado-ubicacion" aria-live="polite" th:text="${f.tieneUbicacion()} ? 'Ubicación actual en uso' : ''"></span>
+                </div>
+                <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-quitar-ubicacion" th:hidden="${!f.tieneUbicacion()}" style="margin-top:6px">Quitar ubicación</button>
+            </div>
+            <div class="vl-field">
+                <label for="idCiudad">Ciudad (manual)</label>
+                <select id="idCiudad" name="idCiudad">
+                    <option value="">Cualquier ciudad</option>
+                    <option th:each="c : ${ciudades}" th:value="${c.idCiudad}" th:text="${c.nombre}" th:selected="${f.idCiudad() == c.idCiudad}"></option>
+                </select>
+            </div>
+            <div class="vl-field">
+                <label for="idLocalidad">Localidad</label>
+                <select id="idLocalidad" name="idLocalidad">
+                    <option value="">Cualquier localidad</option>
+                    <option th:each="l : ${localidades}" th:value="${l.id}" th:text="${l.nombre}" th:attr="data-ciudad=${l.ciudad}"
+                            th:selected="${f.idLocalidad() != null and f.idLocalidad() == l.id}"></option>
+                </select>
+            </div>
+            <div class="vl-field">
+                <label for="idServicio">Servicio requerido</label>
+                <select id="idServicio" name="idServicio">
+                    <option value="">Cualquier servicio</option>
+                    <option th:each="s : ${todosLosServicios}" th:value="${s.idServicio}" th:text="${s.nombreServicio}" th:selected="${f.idServicio() == s.idServicio}"></option>
+                </select>
+            </div>
+            <div class="vl-field">
+                <label for="fecha">Fecha deseada (opcional)</label>
+                <input type="date" id="fecha" name="fecha" th:value="${f.fecha()}" th:min="${hoy}" data-no-pasado>
+            </div>
+            <div class="vl-field">
+                <label for="hora">Hora deseada (opcional)</label>
+                <input type="time" id="hora" name="hora" th:value="${f.hora() != null} ? ${#temporals.format(f.hora(), 'HH:mm')} : ''">
+            </div>
+            <div class="vl-field">
+                <label for="q">Nombre (opcional)</label>
+                <input type="search" id="q" name="q" th:value="${q}" maxlength="50" placeholder="Ej.: Huellitas">
+            </div>
+            <div class="vl-field" style="grid-column:span 2">
+                <label class="vl-row" style="gap:8px;font-weight:700;color:#b91c1c">
+                    <input type="checkbox" name="emergencia" value="true" th:checked="${f.emergencia()}">
+                    <span><i class="fas fa-truck-medical" aria-hidden="true"></i> Es una emergencia (muestra solo clínicas con urgencias y veterinarios disponibles ahora, por cercanía)</span>
+                </label>
+            </div>
         </div>
-    </div>
-</aside>
+        <div class="vl-row" style="justify-content:flex-end">
+            <a th:if="${buscando}" th:href="@{/directorio}" class="vl-btn vl-btn-ghost">Nueva búsqueda</a>
+            <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Buscar veterinarias</button>
+        </div>
+    </form>
+
+    <section th:if="${buscando}" style="margin-top:22px" aria-live="polite">
+        <div class="vl-alert vl-alert-err" th:if="${errorFiltros}" th:text="${errorFiltros}" role="alert"></div>
+        <div class="vl-alert vl-alert-warn" th:if="${f.emergencia()}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <span>Modo emergencia: llama a la clínica antes de desplazarte. Enviar una solicitud no garantiza la atención hasta que la clínica la confirme.</span></div>
+        <div class="vl-row-between" style="margin-bottom:12px">
+            <h2 style="margin:0;font-size:1.15rem" th:text="${#lists.size(veterinarias)} + (${#lists.size(veterinarias) == 1} ? ' veterinaria encontrada' : ' veterinarias encontradas')"></h2>
+        </div>
+        <div class="dir-results">
+            <div class="dir-cards">
+                <article class="vl-vet-card" th:each="v : ${veterinarias}">
+                    <div class="img"><img th:src="@{${v.logoUrl()}}" th:alt="'Imagen de ' + ${v.nombre()}"></div>
+                    <div class="body">
+                        <div class="vl-row-between">
+                            <h3 style="margin:0;font-size:1.05rem" th:text="${v.nombre()}"></h3>
+                            <span class="vl-small"><i class="fas fa-star" style="color:#f59e0b" aria-hidden="true"></i> <span th:text="${v.rating()}"></span></span>
+                        </div>
+                        <div class="vl-small vl-muted" th:if="${!#strings.isEmpty(v.direccion())}"><i class="fas fa-location-dot" aria-hidden="true"></i> <span th:text="${v.direccion()}"></span></div>
+                        <div class="vl-small" th:if="${v.distanciaKm() != null}"><i class="fas fa-route" aria-hidden="true"></i> <strong th:text="${v.distanciaKm()} + ' km'"></strong> de ti</div>
+                        <div class="vl-small vl-muted"><i class="far fa-clock" aria-hidden="true"></i> <span th:text="${v.horarioHoy()}"></span></div>
+                        <div class="vl-small" th:style="${v.disponible()} ? 'color:#15803d;font-weight:700' : 'color:#64748b'">
+                            <i th:class="${v.disponible()} ? 'fas fa-circle-check' : 'fas fa-circle-minus'" aria-hidden="true"></i> <span th:text="${v.disponibilidad()}"></span></div>
+                        <div><span class="vl-chip vl-emergencia-tag" th:if="${v.urgencias()}">Urgencias</span>
+                            <span class="vl-chip" th:each="s, i : ${v.servicios()}" th:if="${i.index < 5}" th:text="${s}"></span>
+                            <span class="vl-chip" th:if="${#lists.size(v.servicios()) > 5}" th:text="'+' + ${#lists.size(v.servicios()) - 5}"></span></div>
+                        <div class="vl-small" th:unless="${#lists.isEmpty(v.telefonos())}"><i class="fas fa-phone" aria-hidden="true"></i>
+                            <a th:href="'tel:' + ${v.telefonos()[0]}" th:text="${v.telefonos()[0]}"></a></div>
+                        <div class="acciones">
+                            <a class="vl-btn vl-btn-ghost vl-btn-sm dir-detalle" th:href="@{'/directorio/' + ${v.id()}}">Ver detalle</a>
+                            <a th:unless="${f.emergencia()}" class="vl-btn vl-btn-primary vl-btn-sm" th:href="@{/citas/agendar(idVeterinaria=${v.id()},idServicio=${f.idServicio()})}">
+                                <i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar cita</a>
+                            <a th:if="${f.emergencia()}" class="vl-btn vl-btn-danger vl-btn-sm" th:href="@{/emergencias(idVeterinaria=${v.id()})}">
+                                <i class="fas fa-truck-medical" aria-hidden="true"></i> Solicitar emergencia</a>
+                        </div>
+                    </div>
+                </article>
+                <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(veterinarias)}" style="grid-column:1/-1">
+                    <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                    Ninguna veterinaria cumple estos filtros. Prueba con otra fecha, otro servicio o sin localidad.
+                </div>
+            </div>
+            <div id="map" role="region" aria-label="Mapa de resultados"></div>
+        </div>
+    </section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script th:inline="javascript">
-    /*<![CDATA[*/
     var VETE_DATOS = /*[[${veterinarias}]]*/ [];
-    /*]]>*/
+    var BUSCANDO = /*[[${buscando}]]*/ false;
 </script>
-<script th:src="@{/js/directorio.js}"></script>
+<script>
+(function () {
+    'use strict';
+    var lat = document.getElementById('lat'), lng = document.getElementById('lng');
+    var estado = document.getElementById('estado-ubicacion');
+    var quitar = document.getElementById('btn-quitar-ubicacion');
+    document.getElementById('btn-ubicacion').addEventListener('click', function () {
+        if (!navigator.geolocation) { estado.textContent = 'Tu navegador no permite geolocalización; elige la ciudad manualmente.'; return; }
+        estado.textContent = 'Solicitando permiso…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            lat.value = pos.coords.latitude.toFixed(6);
+            lng.value = pos.coords.longitude.toFixed(6);
+            estado.textContent = 'Ubicación actual en uso';
+            quitar.hidden = false;
+        }, function () {
+            estado.textContent = 'No se pudo obtener tu ubicación. Puedes continuar eligiendo la ciudad manualmente.';
+        }, { timeout: 10000, maximumAge: 300000 });
+    });
+    quitar.addEventListener('click', function () { lat.value = ''; lng.value = ''; estado.textContent = ''; quitar.hidden = true; });
+
+    // Localidades dependientes de la ciudad
+    var ciudad = document.getElementById('idCiudad'), localidad = document.getElementById('idLocalidad');
+    var opciones = Array.prototype.slice.call(localidad.querySelectorAll('option[data-ciudad]'));
+    function filtrarLocalidades() {
+        var c = ciudad.value;
+        opciones.forEach(function (o) { o.hidden = c && o.dataset.ciudad !== c; o.disabled = o.hidden; });
+        if (localidad.selectedOptions[0] && localidad.selectedOptions[0].disabled) localidad.value = '';
+    }
+    ciudad.addEventListener('change', filtrarLocalidades);
+    filtrarLocalidades();
+
+    // Conservar los filtros al ir al detalle y volver
+    var qs = window.location.pathname + window.location.search;
+    document.querySelectorAll('a.dir-detalle').forEach(function (a) {
+        a.href = a.getAttribute('href') + '?volver=' + encodeURIComponent(qs);
+    });
+    if (!BUSCANDO || !document.getElementById('map')) return;
+    var map = L.map('map', { zoomControl: true }).setView([4.65, -74.1], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', maxZoom: 19
+    }).addTo(map);
+    var puntos = [];
+    VETE_DATOS.forEach(function (v) {
+        if (v.lat == null || v.lng == null) return;
+        var m = L.marker([v.lat, v.lng]).addTo(map);
+        var t = document.createElement('div');
+        var b = document.createElement('b'); b.textContent = v.nombre; t.appendChild(b);
+        if (v.distanciaKm != null) { t.appendChild(document.createElement('br')); t.appendChild(document.createTextNode(v.distanciaKm + ' km')); }
+        m.bindPopup(t);
+        puntos.push([v.lat, v.lng]);
+    });
+    if (lat.value && lng.value) {
+        var yo = [Number(lat.value), Number(lng.value)];
+        L.circleMarker(yo, { radius: 8, color: '#2563eb', fillOpacity: .8 }).addTo(map).bindPopup('Tu ubicación');
+        puntos.push(yo);
+    }
+    if (puntos.length) map.fitBounds(puntos, { padding: [30, 30], maxZoom: 14 });
+})();
+</script>
+<script th:src="@{/js/vl-validate.js}"></script>
 </body>
 </html>

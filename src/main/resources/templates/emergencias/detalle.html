@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergencia | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('VetLink', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Emergencias')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="'Emergencia #' + ${e.idEmergencia}">Emergencia</h1><p th:text="${e.motivo}"></p></div>
+                <a th:href="@{/emergencias}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Emergencias</a>
+            </div>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.creada}"><i class="fas fa-circle-check" aria-hidden="true"></i>
+                Solicitud enviada. La clínica debe asignar un veterinario disponible; te avisaremos.</div>
+            <div class="vl-alert vl-alert-warn" th:if="${e.estado.name() == 'PENDIENTE'}"><i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                <span>Pendiente de asignación: todavía no hay un veterinario confirmado.</span></div>
+
+            <div class="vl-grid-2">
+                <div class="vl-panel">
+                    <h3><i class="fas fa-file-medical" aria-hidden="true"></i> Detalle</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Estado</dt><dd th:text="${e.estado.name() == 'PENDIENTE'} ? 'Pendiente de asignación' : (${e.estado.name() == 'ASIGNADA'} ? 'Asignada' : (${e.estado.name() == 'ATENDIDA'} ? 'Atendida' : 'Cancelada'))"></dd></div>
+                        <div><dt>Fecha y hora</dt><dd th:text="${@fmt.fechaHora(e.creadaEn)}"></dd></div>
+                        <div class="full"><dt>Motivo</dt><dd th:text="${e.motivo}"></dd></div>
+                        <div class="full"><dt>Síntomas reportados</dt><dd style="white-space:pre-line" th:text="${e.detalle} ?: 'Sin detalles'"></dd></div>
+                        <div><dt>Veterinario asignado</dt><dd th:text="${e.veterinario != null} ? ${e.veterinario.nombre} + ' ' + ${e.veterinario.apellido} : 'Sin asignar'"></dd></div>
+                        <div><dt>Veterinaria</dt><dd th:text="${e.veterinaria.nombre}"></dd></div>
+                        <div class="full"><dt>Dirección de la clínica</dt><dd th:text="${#strings.isEmpty(direccionClinica)} ? 'No registrada' : ${direccionClinica}"></dd></div>
+                        <div class="full"><dt>Teléfono de la clínica</dt><dd>
+                            <a th:each="t, i : ${telefonosClinica}" th:href="'tel:' + ${t}" th:text="${t} + (${i.last} ? '' : ', ')"></a>
+                            <span th:if="${#lists.isEmpty(telefonosClinica)}">No registrado</span></dd></div>
+                    </dl>
+                    <div class="vl-row" style="margin-top:16px">
+                        <form th:if="${usuario.rol.name() == 'VETERINARIO' and e.estado.name() == 'ASIGNADA'}" th:action="@{'/emergencias/' + ${e.idEmergencia} + '/estado'}" method="post"
+                              data-confirm="La emergencia quedará marcada como atendida y se notificará al tutor." data-confirm-title="¿Marcar como atendida?" data-confirm-ok="Marcar atendida">
+                            <input type="hidden" name="estado" value="ATENDIDA">
+                            <button type="submit" class="vl-btn vl-btn-success">Marcar atendida</button>
+                        </form>
+                        <form th:if="${(usuario.rol.name() == 'TUTOR' and e.estado.name() == 'PENDIENTE') or (usuario.rol.name() == 'RECEPCIONISTA' and (e.estado.name() == 'PENDIENTE' or e.estado.name() == 'ASIGNADA'))}"
+                              th:action="@{'/emergencias/' + ${e.idEmergencia} + '/estado'}" method="post"
+                              data-confirm="La solicitud de emergencia se cancelará." data-confirm-title="¿Cancelar la emergencia?" data-confirm-ok="Cancelar emergencia" data-confirm-tipo="peligro">
+                            <input type="hidden" name="estado" value="CANCELADA">
+                            <button type="submit" class="vl-btn vl-btn-danger">Cancelar</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="vl-stack">
+                    <div class="vl-panel" th:if="${e.mascota != null}">
+                        <h3><i class="fas fa-paw" aria-hidden="true"></i> Paciente y tutor</h3>
+                        <dl class="vl-dl">
+                            <div><dt>Mascota</dt><dd th:text="${e.mascota.nombre}"></dd></div>
+                            <div><dt>Especie / raza</dt><dd th:text="${e.mascota.especie.nombreEspecie} + ' · ' + ${e.mascota.raza.nombreRaza}"></dd></div>
+                            <div><dt>Edad</dt><dd th:text="${e.mascota.edadTexto}"></dd></div>
+                            <div><dt>Peso</dt><dd th:text="${e.mascota.peso} + ' kg'"></dd></div>
+                            <div><dt>Tutor</dt><dd th:text="${e.mascota.tutor.nombre} + ' ' + ${e.mascota.tutor.apellido}"></dd></div>
+                            <div th:if="${telefonosTutor != null}"><dt>Contacto del tutor</dt><dd>
+                                <a th:each="t, i : ${telefonosTutor}" th:href="'tel:' + ${t.numeroTelefono}" th:text="${t.numeroTelefono} + (${i.last} ? '' : ', ')"></a>
+                                <span th:if="${#lists.isEmpty(telefonosTutor)}">No registrado</span></dd></div>
+                        </dl>
+                        <a th:if="${usuario.rol.name() == 'VETERINARIO'}" th:href="@{'/historial/paciente/' + ${e.mascota.idMascota}}" class="vl-btn vl-btn-ghost vl-btn-sm" style="margin-top:10px">
+                            <i class="fas fa-folder-open" aria-hidden="true"></i> Historial del paciente</a>
+                    </div>
+                    <form class="vl-panel" th:if="${usuario.rol.name() == 'RECEPCIONISTA' and (e.estado.name() == 'PENDIENTE' or e.estado.name() == 'ASIGNADA')}"
+                          th:action="@{'/emergencias/' + ${e.idEmergencia} + '/asignar'}" method="post"
+                          data-confirm="Se asignará la emergencia al veterinario elegido y se le notificará, junto con el tutor." data-confirm-title="¿Asignar emergencia?" data-confirm-ok="Asignar">
+                        <h3><i class="fas fa-user-doctor" aria-hidden="true"></i> Asignar veterinario disponible</h3>
+                        <div class="vl-field"><label for="vet-asignar">Veterinario</label>
+                            <select id="vet-asignar" name="idVeterinario" required><option value="">Selecciona</option>
+                                <option th:each="v : ${veterinarios}" th:value="${v.idUsuario}" th:text="${v.nombre} + ' ' + ${v.apellido}"></option></select></div>
+                        <p class="vl-small vl-muted" th:if="${#lists.isEmpty(veterinarios)}">No hay veterinarios disponibles ahora: los que están atendiendo, fuera de turno o con otra emergencia no aparecen.</p>
+                        <button type="submit" class="vl-btn vl-btn-primary" th:disabled="${#lists.isEmpty(veterinarios)}">Asignar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

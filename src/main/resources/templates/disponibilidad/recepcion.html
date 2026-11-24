@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disponibilidad del equipo | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Recepción', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Disponibilidad del equipo</h1><p>Aprueba o rechaza solicitudes de horario, novedades y servicios. Al aprobar se regeneran los cupos afectados.</p></div>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-alert vl-alert-warn" th:unless="${#maps.isEmpty(afectadas)}">
+                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                <span>Hay citas reservadas que quedaron fuera de la disponibilidad aprobada. Revisa la sección «Citas por reprogramar».</span>
+            </div>
+
+            <div class="vl-panel" style="margin-bottom:18px">
+                <h3><i class="fas fa-inbox" aria-hidden="true"></i> Solicitudes pendientes</h3>
+                <div class="vl-stack">
+                    <div class="vl-panel" style="background:#fbfdff" th:each="s : ${pendientes}">
+                        <div class="vl-row-between">
+                            <div>
+                                <strong th:text="${s.veterinario.nombre} + ' ' + ${s.veterinario.apellido}"></strong>
+                                <span class="vl-chip"><i th:class="'fas ' + ${tipoSolicitudClase[s.tipo.name()]}" aria-hidden="true"></i> <span th:text="${s.tipo.etiqueta}"></span></span>
+                                <div class="vl-small vl-muted" th:text="'Enviada ' + ${@fmt.fechaHora(s.creadaEn)} + (${s.descripcion != null} ? ' · ' + ${s.descripcion} : '')"></div>
+                            </div>
+                            <div class="vl-row">
+                                <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/rechazar'}" method="post"
+                                      data-confirm="Se rechazará la solicitud y se notificará al veterinario." data-confirm-title="¿Rechazar?" data-confirm-ok="Rechazar"
+                                      data-confirm-tipo="peligro" data-confirm-input="observacion" data-confirm-input-label="Motivo (opcional)">
+                                    <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Rechazar</button>
+                                </form>
+                                <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/aprobar'}" method="post"
+                                      data-confirm="Se actualizará la disponibilidad, se retirarán los cupos libres que ya no apliquen y se generarán los nuevos. Las citas reservadas no se eliminan: verás las afectadas y alternativas."
+                                      data-confirm-title="¿Aprobar la solicitud?" data-confirm-ok="Aprobar">
+                                    <button type="submit" class="vl-btn vl-btn-success vl-btn-sm">Aprobar</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div th:switch="${s.tipo.name()}" style="margin-top:8px">
+                            <ul th:case="'HORARIO'" class="vl-small" style="margin:0">
+                                <li th:each="h : ${srv.franjasDe(s.idSolicitud)}" th:text="${h.nombreDia} + ': ' + ${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></li>
+                            </ul>
+                            <ul th:case="'AUSENCIA'" class="vl-small" style="margin:0">
+                                <li th:each="a : ${srv.ausenciasDe(s.idSolicitud)}" th:text="${a.tipo.etiqueta} + ': ' + ${@fmt.fechaHora(a.inicio)} + ' – ' + ${@fmt.fechaHora(a.fin)} + (${a.motivo != null} ? ' · ' + ${a.motivo} : '')"></li>
+                            </ul>
+                            <div th:case="'SERVICIOS'"><span class="vl-chip" th:each="v : ${srv.serviciosDe(s.idSolicitud)}" th:text="${v.servicio.nombreServicio}"></span></div>
+                        </div>
+                    </div>
+                    <p class="vl-muted" th:if="${#lists.isEmpty(pendientes)}">No hay solicitudes pendientes.</p>
+                </div>
+            </div>
+
+            <div class="vl-panel" style="margin-bottom:18px" th:unless="${#maps.isEmpty(afectadas)}">
+                <h3><i class="fas fa-calendar-plus" aria-hidden="true"></i> Citas por reprogramar</h3>
+                <div class="vl-cita-list">
+                    <th:block th:each="entry : ${afectadas}">
+                        <a th:each="c : ${entry.value}" th:href="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                            <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
+                            <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
+                                <div class="vl-cita-meta" th:text="'Dr(a). ' + ${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></div></div>
+                            <div class="vl-cita-side"><span class="vl-btn vl-btn-primary vl-btn-sm">Reprogramar</span></div>
+                        </a>
+                    </th:block>
+                </div>
+            </div>
+
+            <div class="vl-grid-2">
+                <form class="vl-panel" th:action="@{/recepcion/disponibilidad/bloqueo}" method="post"
+                      data-confirm="El bloqueo se aplica de inmediato: se retiran los cupos libres del periodo. Las citas reservadas se conservan y aparecerán para reprogramar."
+                      data-confirm-title="¿Bloquear la agenda?" data-confirm-ok="Bloquear" data-confirm-tipo="peligro">
+                    <h3><i class="fas fa-lock" aria-hidden="true"></i> Bloquear agenda de un veterinario</h3>
+                    <div class="vl-form-grid">
+                        <div class="vl-field"><label for="vetB">Veterinario *</label>
+                            <select id="vetB" name="idVeterinario" required><option value="">Selecciona</option>
+                                <option th:each="v : ${equipo}" th:value="${v.idUsuario}" th:text="${v.nombre} + ' ' + ${v.apellido}"></option></select></div>
+                        <div class="vl-field"><label for="motB">Motivo</label><input id="motB" name="motivo" maxlength="500"></div>
+                        <div class="vl-field"><label for="iniB">Desde *</label><input type="datetime-local" id="iniB" name="inicio" required data-no-pasado></div>
+                        <div class="vl-field"><label for="finB">Hasta *</label><input type="datetime-local" id="finB" name="fin" required data-no-pasado></div>
+                    </div>
+                    <button type="submit" class="vl-btn vl-btn-danger"><i class="fas fa-lock" aria-hidden="true"></i> Bloquear</button>
+                </form>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-users" aria-hidden="true"></i> Horarios y servicios aprobados</h3>
+                    <details th:each="v : ${equipo}" style="margin-bottom:8px">
+                        <summary><strong th:text="${v.nombre} + ' ' + ${v.apellido}"></strong></summary>
+                        <ul class="vl-small"><li th:each="h : ${horarios[v.idUsuario]}" th:text="${h.nombreDia} + ': ' + ${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></li></ul>
+                        <p class="vl-small vl-muted" th:if="${#lists.isEmpty(horarios[v.idUsuario])}">Sin horario aprobado.</p>
+                        <span class="vl-chip" th:each="s : ${serviciosEquipo[v.idUsuario]}" th:text="${s.servicio.nombreServicio}"></span>
+                    </details>
+                </div>
+            </div>
+
+            <div class="vl-panel" style="margin-top:18px">
+                <h3><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Historial de solicitudes</h3>
+                <div class="vl-table-wrap">
+                    <table class="vl-table">
+                        <thead><tr><th>Fecha</th><th>Veterinario</th><th>Tipo</th><th>Estado</th><th>Revisó</th></tr></thead>
+                        <tbody>
+                        <tr th:each="s : ${historialSolicitudes}">
+                            <td th:text="${@fmt.fechaHora(s.creadaEn)}"></td>
+                            <td th:text="${s.veterinario.nombre} + ' ' + ${s.veterinario.apellido}"></td>
+                            <td th:text="${s.tipo.etiqueta}"></td>
+                            <td th:text="${s.estado.etiqueta}"></td>
+                            <td th:text="${s.revisadaPor != null} ? ${s.revisadaPor.nombre} + ' · ' + ${@fmt.fechaHora(s.revisadaEn)} : '—'"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

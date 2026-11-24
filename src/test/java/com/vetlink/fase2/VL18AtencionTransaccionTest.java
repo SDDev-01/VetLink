@@ -12,8 +12,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,9 +20,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 
 /**
- * VL-18: si falla el guardado de la cita, la historia tampoco queda.
- * Corre SIN la transacción de prueba (NOT_SUPPORTED) para ver el commit/rollback real,
- * y con un espía sobre CitaRepository que falla al guardar una cita ATENDIDA.
+ * VL-18: finalizar una atención es atómico. Si falla el guardado de la cita ATENDIDA, la cita
+ * sigue EN_ATENCION (no queda una cita «atendida» a medias). Corre SIN la transacción de prueba
+ * (NOT_SUPPORTED) para ver el commit/rollback real.
  */
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class VL18AtencionTransaccionTest extends PruebaWebBase {
@@ -32,12 +31,19 @@ class VL18AtencionTransaccionTest extends PruebaWebBase {
     @Autowired AtencionService atencionService;
 
     @Test
-    void siFallaGuardarLaCitaNoQuedaHistoria() {
+    void siFallaGuardarLaCitaAtendidaLaCitaSigueEnAtencion() {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
-        var cita = crearCita(mascota, vet, clinica, LocalDate.now(), LocalTime.of(10, 0), EstadoCita.AGENDADA);
-        long historiasAntes = historialRepository.count();
+        LocalDateTime inicio = LocalDateTime.now().minusMinutes(3).withSecond(0).withNano(0);
+        Cita cita = crearCita(mascota, vet, clinica, inicio.toLocalDate(), inicio.toLocalTime(), EstadoCita.CONFIRMADA);
+
+        atencionService.iniciar(cita.getIdCita(), vet.getIdUsuario());
+        HistorialClinicoForm form = new HistorialClinicoForm();
+        form.setIdMascota(mascota.getIdMascota());
+        form.setMotivoConsulta("Control");
+        form.setDiagnostico("Sano");
+        atencionService.registrarHistorial(cita.getIdCita(), form, vet.getIdUsuario());
 
         doAnswer(inv -> {
             Cita c = inv.getArgument(0);
@@ -47,15 +53,11 @@ class VL18AtencionTransaccionTest extends PruebaWebBase {
             return inv.callRealMethod();
         }).when(citaRepositorySpy).save(any(Cita.class));
 
-        HistorialClinicoForm form = new HistorialClinicoForm();
-        form.setIdMascota(mascota.getIdMascota());
-        form.setMotivoConsulta("Control");
-        form.setDiagnostico("Sano");
-
-        assertThatThrownBy(() -> atencionService.atender(cita.getIdCita(), form, vet.getIdUsuario()))
+        assertThatThrownBy(() -> atencionService.finalizar(cita.getIdCita(), vet.getIdUsuario()))
                 .hasMessage("Falla simulada al guardar la cita");
 
-        assertThat(historialRepository.count()).isEqualTo(historiasAntes);
-        assertThat(citaRepository.findById(cita.getIdCita()).orElseThrow().getEstado()).isEqualTo(EstadoCita.AGENDADA);
+        Cita recargada = citaRepository.findById(cita.getIdCita()).orElseThrow();
+        assertThat(recargada.getEstado()).isEqualTo(EstadoCita.EN_ATENCION);
+        assertThat(recargada.getFinAtencion()).isNull();
     }
 }

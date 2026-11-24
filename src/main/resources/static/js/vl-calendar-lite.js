@@ -92,7 +92,6 @@ function vlLiteEsc(str) {
 function vlLiteFormatHora(horaStr) {
     if (!horaStr) return '';
     const [h, m] = horaStr.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
 }

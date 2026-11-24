@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -49,4 +50,67 @@ public class Cita {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idMascota")
     private Mascota mascota;
+
+    /** Duración en minutos: el horario ocupado es [hora, hora + duracionMin). */
+    @Column(nullable = false)
+    private Integer duracionMin = 30;
+
+    @Column(length = 500)
+    private String motivo;
+
+    @Column(columnDefinition = "TEXT")
+    private String observaciones;
+
+    @Column(columnDefinition = "TEXT")
+    private String indicacionesPrevias;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacionesAdmin;
+
+    private LocalDateTime creadaEn;
+    private LocalDateTime reservadaEn;
+    /** Una reserva PENDIENTE no confirmada antes de esta hora se rechaza automáticamente. */
+    private LocalDateTime expiraEn;
+    private LocalDateTime inicioAtencion;
+    private LocalDateTime finAtencion;
+
+    /** Si esta cita nació de una reprogramación, la cita original (que queda REPROGRAMADA). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idCitaOrigen")
+    private Cita citaOrigen;
+
+    /** true = cupo creado por el generador automático de agenda. */
+    @Column(nullable = false)
+    private Boolean generadaAuto = false;
+
+    @Version
+    @Column(nullable = false)
+    private Integer version = 0;
+
+    @PrePersist
+    void antesDeCrear() {
+        if (creadaEn == null) creadaEn = LocalDateTime.now();
+        if (duracionMin == null || duracionMin <= 0) duracionMin = 30;
+        if (generadaAuto == null) generadaAuto = false;
+    }
+
+    @Transient
+    public LocalDateTime getInicio() {
+        return LocalDateTime.of(fecha, hora);
+    }
+
+    @Transient
+    public LocalDateTime getFin() {
+        return getInicio().plusMinutes(duracionMin == null ? 30 : duracionMin);
+    }
+
+    @Transient
+    public LocalTime getHoraFin() {
+        return hora.plusMinutes(duracionMin == null ? 30 : duracionMin);
+    }
+
+    /** ¿Se solapa [inicio, fin) con el intervalo dado? */
+    public boolean seSolapaCon(LocalDateTime inicio, LocalDateTime fin) {
+        return getInicio().isBefore(fin) && inicio.isBefore(getFin());
+    }
 }

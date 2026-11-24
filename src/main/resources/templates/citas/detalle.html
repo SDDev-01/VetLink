@@ -1,25 +1,92 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Detalle de cita - VetLink</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de cita | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="dashboard-body">
-<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
-<main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
-<section class="container"><div class="vl-section vl-section-active">
-  <div class="vl-section-head"><div><h1>Detalle de cita</h1><p>Información completa de tu atención programada.</p></div>
-    <a th:href="@{/citas/mias}" class="vl-btn vl-btn-ghost">Volver a mis citas</a></div>
-  <div class="vl-medrecord-grid">
-    <article class="vl-medcard"><strong>Fecha y hora</strong><span th:text="${cita.fecha} + ' · ' + ${cita.hora}"></span></article>
-    <article class="vl-medcard"><strong>Estado</strong><span class="vl-badge" th:text="${cita.estado}"></span></article>
-    <article class="vl-medcard"><strong>Servicio</strong><span th:text="${cita.servicio.nombreServicio}"></span></article>
-    <article class="vl-medcard"><strong>Mascota</strong><span th:text="${cita.mascota.nombre}"></span></article>
-    <article class="vl-medcard"><strong>Veterinaria</strong><span th:text="${cita.veterinaria.nombre}"></span></article>
-    <article class="vl-medcard"><strong>Veterinario</strong><span th:text="${cita.veterinario.nombre + ' ' + cita.veterinario.apellido}"></span></article>
-    <article class="vl-medcard"><strong>Dueño</strong><span th:text="${usuario.nombre + ' ' + usuario.apellido}"></span></article>
-  </div>
-</div></section></main>
-<div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div>
+                    <h1 th:text="'Cita de ' + ${cita.mascota.nombre}">Cita</h1>
+                    <p th:text="${@fmt.fechaLarga(cita.fecha)} + ' · ' + ${@fmt.rango(cita.hora, cita.duracionMin)}"></p>
+                </div>
+                <a th:href="@{/citas/mias}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Mis citas</a>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.cancelada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Cita cancelada.</div>
+            <div class="vl-alert vl-alert-warn" th:if="${cita.estado.name() == 'PENDIENTE'}">
+                <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                <span>Tu horario está reservado y la clínica debe confirmarlo<span th:if="${cita.expiraEn != null}" th:text="' antes del ' + ${@fmt.fechaHora(cita.expiraEn)}"></span>. Si no confirma a tiempo, la reserva se libera.</span>
+            </div>
+            <div class="vl-alert vl-alert-info" th:each="n : ${reprogramadaA}">
+                <i class="fas fa-calendar-plus" aria-hidden="true"></i>
+                <span>Esta cita se reprogramó. <a th:href="@{'/citas/' + ${n.idCita}}" th:text="'Ver la nueva cita (' + ${@fmt.fechaCorta(n.fecha)} + ', ' + ${@fmt.hora(n.hora)} + ')'"></a></span>
+            </div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
+                <div class="vl-panel">
+                    <div class="vl-panel-head"><h3><i class="fas fa-file-lines" aria-hidden="true"></i> Información de la cita</h3>
+                        <span th:replace="~{layout/dashboard-shell :: estado(${cita.estado})}"></span></div>
+                    <dl class="vl-dl">
+                        <div><dt>Mascota</dt><dd th:text="${cita.mascota.nombre} + ' (' + ${cita.mascota.especie.nombreEspecie} + ')'"></dd></div>
+                        <div><dt>Servicio</dt><dd th:text="${cita.servicio.nombreServicio}"></dd></div>
+                        <div><dt>Veterinaria</dt><dd th:text="${cita.veterinaria.nombre}"></dd></div>
+                        <div><dt>Dirección</dt><dd th:text="${#strings.isEmpty(direccion) ? 'No registrada' : direccion}"></dd></div>
+                        <div><dt>Veterinario asignado</dt><dd th:text="${cita.veterinario.nombre} + ' ' + ${cita.veterinario.apellido}"></dd></div>
+                        <div><dt>Especialidad</dt><dd th:text="${cita.veterinario.veterinario != null and cita.veterinario.veterinario.especialidad != null} ? ${cita.veterinario.veterinario.especialidad.nombreEspecialidad} : 'Medicina veterinaria'"></dd></div>
+                        <div><dt>Fecha</dt><dd th:text="${@fmt.fechaLarga(cita.fecha)}"></dd></div>
+                        <div><dt>Hora</dt><dd th:text="${@fmt.rango(cita.hora, cita.duracionMin)}"></dd></div>
+                        <div><dt>Duración estimada</dt><dd th:text="${@fmt.duracion(cita.duracionMin)}"></dd></div>
+                        <div><dt>Teléfono de la clínica</dt><dd th:text="${#lists.isEmpty(telefonos) ? 'No registrado' : #strings.listJoin(telefonos, ', ')}"></dd></div>
+                        <div class="full"><dt>Motivo de consulta</dt><dd th:text="${cita.motivo} ?: 'No indicado'"></dd></div>
+                        <div class="full" th:if="${cita.observaciones}"><dt>Observaciones</dt><dd th:text="${cita.observaciones}"></dd></div>
+                        <div class="full"><dt>Indicaciones previas</dt><dd th:text="${cita.indicacionesPrevias} ?: 'Llega 10 minutos antes y trae el carnet de vacunación si lo tienes.'"></dd></div>
+                        <div th:if="${cita.inicioAtencion}"><dt>Inicio de la atención</dt><dd th:text="${@fmt.fechaHora(cita.inicioAtencion)}"></dd></div>
+                        <div th:if="${cita.finAtencion}"><dt>Fin de la atención</dt><dd th:text="${@fmt.fechaHora(cita.finAtencion)}"></dd></div>
+                    </dl>
+
+                    <div class="vl-row" style="margin-top:18px" th:if="${puedeCancelar or puedeReprogramar}">
+                        <form th:if="${puedeReprogramar}" th:action="@{'/citas/' + ${cita.idCita} + '/reprogramacion'}" method="post"
+                              data-confirm="La clínica revisará tu solicitud y te propondrá un nuevo horario. Tu cita actual sigue vigente mientras tanto."
+                              data-confirm-title="¿Solicitar reprogramación?" data-confirm-ok="Enviar solicitud"
+                              data-confirm-input="motivo" data-confirm-input-label="¿Qué horario te sirve mejor? (opcional)">
+                            <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Solicitar reprogramación</button>
+                        </form>
+                        <form th:if="${puedeCancelar}" th:action="@{'/citas/' + ${cita.idCita} + '/cancelar'}" method="post"
+                              th:with="cuando=${@fmt.fechaCorta(cita.fecha) + ' a las ' + @fmt.hora(cita.hora)}"
+                              th:data-confirm="${'Se cancelará la cita de ' + cita.mascota.nombre + ' del ' + cuando + '. El horario quedará libre para otras personas y esta acción no se puede deshacer.'}"
+                              data-confirm-title="¿Cancelar la cita?" data-confirm-ok="Sí, cancelar" data-confirm-tipo="peligro">
+                            <input type="hidden" name="origen" value="detalle">
+                            <input type="hidden" name="idMascota" th:value="${cita.mascota.idMascota}">
+                            <button type="submit" class="vl-btn vl-btn-danger"><i class="fas fa-ban" aria-hidden="true"></i> Cancelar cita</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-timeline" aria-hidden="true"></i> Seguimiento</h3>
+                    <ul class="vl-trace">
+                        <li th:each="h : ${historialEstados}">
+                            <strong th:text="${h.estadoNuevo.etiqueta}"></strong>
+                            <div class="when" th:text="${@fmt.fechaHora(h.fecha)}"></div>
+                            <div class="vl-small vl-muted" th:if="${h.comentario}" th:text="${h.comentario}"></div>
+                        </li>
+                        <li th:if="${#lists.isEmpty(historialEstados)}"><span class="vl-muted">Sin movimientos registrados.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

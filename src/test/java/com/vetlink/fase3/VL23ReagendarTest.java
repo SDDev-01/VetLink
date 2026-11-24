@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** VL-23: reagendar = mover la cita a otro cupo DISPONIBLE, liberando el horario original. */
+/** VL-23: reprogramar = la cita pasa a otro cupo DISPONIBLE; la original queda REPROGRAMADA y su horario se libera. */
 class VL23ReagendarTest extends PruebaWebBase {
 
     private Cita recargar(Cita c) {
@@ -39,7 +39,7 @@ class VL23ReagendarTest extends PruebaWebBase {
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
         LocalDate fecha = LocalDate.now().plusDays(2);
-        var cita = crearCita(mascota, vet, clinica, fecha, LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        var cita = crearCita(mascota, vet, clinica, fecha, LocalTime.of(9, 0), EstadoCita.CONFIRMADA);
         var cupo = crearCita(null, vet, clinica, fecha.plusDays(1), LocalTime.of(15, 0), EstadoCita.DISPONIBLE);
         sincronizar();
 
@@ -55,10 +55,16 @@ class VL23ReagendarTest extends PruebaWebBase {
         sincronizar();
         Cita nueva = recargar(cupo);
         Cita vieja = recargar(cita);
-        assertThat(nueva.getEstado()).isEqualTo(EstadoCita.AGENDADA);
+        assertThat(nueva.getEstado()).isEqualTo(EstadoCita.CONFIRMADA);
         assertThat(nueva.getMascota().getIdMascota()).isEqualTo(mascota.getIdMascota());
-        assertThat(vieja.getEstado()).isEqualTo(EstadoCita.DISPONIBLE);
-        assertThat(vieja.getMascota()).isNull();
+        // La original se conserva (trazabilidad) y la nueva apunta a ella.
+        assertThat(vieja.getEstado()).isEqualTo(EstadoCita.REPROGRAMADA);
+        assertThat(vieja.getMascota().getIdMascota()).isEqualTo(mascota.getIdMascota());
+        assertThat(nueva.getCitaOrigen().getIdCita()).isEqualTo(vieja.getIdCita());
+        // El horario viejo vuelve a ofrecerse como un cupo DISPONIBLE nuevo.
+        assertThat(citaRepository.findAll().stream().anyMatch(c -> c.getEstado() == EstadoCita.DISPONIBLE
+                && c.getFecha().equals(vieja.getFecha()) && c.getHora().equals(vieja.getHora())
+                && c.getVeterinario().getIdUsuario().equals(vet.getIdUsuario()))).isTrue();
     }
 
     @Test
@@ -74,7 +80,7 @@ class VL23ReagendarTest extends PruebaWebBase {
                 .andExpect(flash().attribute("errorGeneral", "No se permiten citas en horas pasadas."));
 
         sincronizar();
-        assertThat(recargar(cita).getEstado()).isEqualTo(EstadoCita.AGENDADA);
+        assertThat(recargar(cita).getEstado()).isEqualTo(EstadoCita.CONFIRMADA);
         assertThat(recargar(pasado).getEstado()).isEqualTo(EstadoCita.DISPONIBLE);
     }
 
@@ -102,12 +108,12 @@ class VL23ReagendarTest extends PruebaWebBase {
         var vet2 = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
         LocalDate fecha = LocalDate.now().plusDays(4);
-        var cita = crearCita(mascota, vet1, clinica, fecha, LocalTime.of(9, 0), EstadoCita.AGENDADA);
-        crearCita(mascota, vet1, clinica, fecha, LocalTime.of(11, 0), EstadoCita.AGENDADA);
+        var cita = crearCita(mascota, vet1, clinica, fecha, LocalTime.of(9, 0), EstadoCita.CONFIRMADA);
+        crearCita(mascota, vet1, clinica, fecha, LocalTime.of(11, 0), EstadoCita.CONFIRMADA);
         var cupo = crearCita(null, vet2, clinica, fecha, LocalTime.of(11, 0), EstadoCita.DISPONIBLE);
 
         reagendar(recepcion, cita, cupo)
-                .andExpect(flash().attribute("errorGeneral", "La mascota ya tiene otra cita a esa fecha y hora"));
+                .andExpect(flash().attribute("errorGeneral", "La mascota ya tiene otra cita que se cruza con ese horario."));
     }
 
     @Test

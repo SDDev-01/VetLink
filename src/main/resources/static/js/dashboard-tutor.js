@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const marks = {};
     citas.forEach(c => {
         if (!marks[c.fecha]) marks[c.fecha] = [];
-        marks[c.fecha].push({ cls: c.estado === 'AGENDADA' ? '' : 'warn' });
+        marks[c.fecha].push({ cls: c.estado === 'CONFIRMADA' || c.estado === 'ATENDIDA' ? '' : (c.estado === 'CANCELADA' || c.estado === 'RECHAZADA' ? 'danger' : 'warn') });
     });
 
     function pintarAgenda(fechaStr) {
@@ -28,10 +28,10 @@ document.addEventListener('DOMContentLoaded', function () {
         el.innerHTML = delDia.map(c => `
             <div class="vl-agenda-item">
                 <div>
-                    <strong style="font-size:0.85rem;">${vlLiteFormatHora(c.hora)} · ${vlLiteEsc(c.mascota)}</strong><br>
+                    <strong style="font-size:0.85rem;">${vlLiteEsc(c.horaTexto || vlLiteFormatHora(c.hora))} · ${vlLiteEsc(c.mascota)}</strong><br>
                     <span style="font-size:0.75rem; color:#64748b;">${vlLiteEsc(c.servicio)}</span>
                 </div>
-                <span class="vl-badge ${c.estado === 'AGENDADA' ? 'vl-badge-info' : c.estado === 'PENDIENTE' ? 'vl-badge-warn' : 'vl-badge-muted'}">${c.estado}</span>
+                <span class="vl-st ${vlLiteEsc(c.estadoClase)}">${vlLiteEsc(c.estadoEtiqueta || c.estado)}</span>
             </div>
         `).join('');
     }

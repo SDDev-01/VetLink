@@ -54,10 +54,10 @@ class VL12FechaHistorialTest extends PruebaWebBase {
                 "/mascotas/" + mascota.getIdMascota()}) {
             mockMvc.perform(get(url).with(como(duenio)))
                     .andExpect(status().isOk())
-                    .andExpect(content().string(containsString("05/03/2026 14:30")))
+                    .andExpect(content().string(containsString("05/03/2026 2:30 p. m.")))
                     .andExpect(content().string(containsString("Año 2025 (fecha aproximada)")));
         }
         mockMvc.perform(get("/historial/paciente/" + mascota.getIdMascota()).with(como(vet)))
-                .andExpect(content().string(containsString("05/03/2026 14:30")));
+                .andExpect(content().string(containsString("05/03/2026 2:30 p. m.")));
     }
 }

@@ -120,6 +120,6 @@ class VL06RecepcionDueniosTest extends PruebaWebBase {
 
         assertThatThrownBy(() -> citaService.agendarComoRecepcionista(form, clinica.getIdVeterinaria()))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("La mascota no está activa");
+                .hasMessageContaining("La mascota no está activa");
     }
 }

@@ -21,37 +21,48 @@
             <div class="vl-section-head">
                 <div><h1>Mis Mascotas</h1><p>Registra y consulta la ficha completa de cada una.</p></div>
                 <div class="vl-section-actions">
-                    <a th:href="@{/mascotas/nueva}" class="vl-btn vl-btn-primary"><i class="fas fa-plus"></i> Agregar mascota</a>
+                    <a th:href="@{/mascotas/transferencias}" class="vl-btn vl-btn-ghost"><i class="fas fa-right-left" aria-hidden="true"></i> Transferencias</a>
+                    <a th:href="@{/mascotas/nueva}" class="vl-btn vl-btn-primary"><i class="fas fa-plus" aria-hidden="true"></i> Agregar mascota</a>
                 </div>
             </div>
 
-            <p class="form-message" style="color:#16a34a" th:if="${param.creada}">Mascota registrada correctamente.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.actualizada}">Mascota actualizada.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.eliminada}">Mascota eliminada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${errorMascota}" th:text="${errorMascota}"></p>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.creada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Mascota registrada correctamente.</div>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.actualizada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Mascota actualizada.</div>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${mensajeOk}"><i class="fas fa-circle-check" aria-hidden="true"></i><span th:text="${mensajeOk}"></span></div>
+            <div class="vl-alert vl-alert-err" role="alert" th:if="${errorMascota}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span th:text="${errorMascota}"></span></div>
+
+            <div class="vl-alert vl-alert-info" th:unless="${#lists.isEmpty(recibidas)}">
+                <i class="fas fa-right-left" aria-hidden="true"></i>
+                <span><strong th:text="${#lists.size(recibidas) == 1} ? 'Tienes 1 solicitud de transferencia por revisar.' : 'Tienes ' + ${#lists.size(recibidas)} + ' solicitudes de transferencia por revisar.'"></strong>
+                    <a th:href="@{/mascotas/transferencias}">Revisar ahora</a></span>
+            </div>
 
             <div class="vl-card-grid" th:if="${not #lists.isEmpty(mascotas)}">
                 <div class="vl-entity-card" th:each="m : ${mascotas}">
                     <div class="vl-entity-top">
-                        <div class="vl-entity-avatar"><img th:if="${m.fotoUrl != null}" th:src="@{${m.fotoUrl}}" alt=""><i th:if="${m.fotoUrl == null}" class="fas fa-paw"></i></div>
+                        <div class="vl-entity-avatar"><img th:if="${m.fotoUrl != null}" th:src="@{${m.fotoUrl}}" alt=""><i th:if="${m.fotoUrl == null}" class="fas fa-paw" aria-hidden="true"></i></div>
                         <div>
                             <div class="vl-entity-name" th:text="${m.nombre}">Nombre</div>
                             <div class="vl-entity-sub" th:text="${m.especie.nombreEspecie} + ' · ' + ${m.raza.nombreRaza}">Especie</div>
                         </div>
-                        <span style="margin-left:auto"><span class="vl-badge vl-badge-ok"><i class="fas fa-heart"></i> Activa</span></span>
+                        <span style="margin-left:auto" class="vl-badge" th:classappend="${m.situacionSegura.clase}" th:text="${m.situacionSegura.etiqueta}"></span>
                     </div>
                     <div class="vl-entity-meta">
-                        <span><i class="fas fa-birthday-cake"></i> <span th:text="${m.edad}"></span> años</span>
-                        <span><i class="fas fa-weight-hanging"></i> <span th:text="${m.peso}"></span> kg</span>
+                        <span><i class="fas fa-birthday-cake" aria-hidden="true"></i> <span th:text="${m.edadTexto}"></span></span>
+                        <span><i class="fas fa-weight-hanging" aria-hidden="true"></i> <span th:text="${m.peso}"></span> kg</span>
                         <span th:text="${m.genero == 'M' ? '♂ Macho' : '♀ Hembra'}"></span>
                     </div>
+                    <div class="vl-alert vl-alert-warn vl-small" style="margin:8px 0 0" th:if="${transferenciasPendientes.containsKey(m.idMascota)}">
+                        <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                        <span th:text="'Transferencia pendiente a ' + ${transferenciasPendientes.get(m.idMascota).tutorDestino.nombre}"></span>
+                    </div>
                     <div class="vl-entity-actions">
-                        <a th:href="@{'/mascotas/' + ${m.idMascota}}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-address-card"></i> Ver ficha</a>
-                        <a th:href="@{'/mascotas/' + ${m.idMascota} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
-                        <form th:action="@{'/mascotas/' + ${m.idMascota} + '/eliminar'}" method="post" style="display:inline"
-                              onsubmit="return confirm('¿Eliminar esta mascota?');">
-                            <button type="submit" class="vl-btn vl-btn-danger vl-btn-sm"><i class="fas fa-ban"></i> Eliminar</button>
-                        </form>
+                        <a th:href="@{'/mascotas/' + ${m.idMascota}}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-address-card" aria-hidden="true"></i> Ficha</a>
+                        <a th:if="${m.agendable}" th:href="@{'/citas/agendar/' + ${m.idMascota}}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar</a>
+                        <details class="vl-menu" th:if="${m.situacionSegura.name() != 'FALLECIDA'}">
+                            <summary class="vl-btn vl-btn-ghost vl-btn-sm" th:attr="aria-label=${'Más acciones para ' + m.nombre}"><i class="fas fa-ellipsis" aria-hidden="true"></i></summary>
+                            <div th:replace="~{mascotas/acciones :: menu(${m}, ${transferenciasPendientes.containsKey(m.idMascota)})}"></div>
+                        </details>
                     </div>
                 </div>
             </div>

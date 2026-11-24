@@ -13,21 +13,48 @@
 <nav th:replace="~{layout/navbar :: navbar}"></nav>
 
 <main class="container" style="max-width:900px; margin:0 auto; padding:32px 16px;">
-    <div class="vl-table-wrap" style="padding:28px; margin-bottom:20px;">
-        <h1 th:text="${veterinaria.nombre}">Nombre</h1>
-        <p style="color:#64748b;" th:text="${veterinaria.descripcion}">Descripción</p>
-        <p th:if="${veterinaria.paginaWeb}"><i class="fas fa-globe"></i> <a th:href="${veterinaria.paginaWeb}" th:text="${veterinaria.paginaWeb}" target="_blank"></a></p>
-        <p th:if="${promedio}">
-            <i class="fas fa-star" style="color:#f59e0b"></i>
-            Calificación promedio: <strong th:text="${#numbers.formatDecimal(promedio, 1, 1)}"></strong> / 5
-        </p>
-
-        <div class="vl-entity-meta" th:if="${not #lists.isEmpty(servicios)}" style="margin-top:12px;">
-            <span th:each="s : ${servicios}" class="vl-badge vl-badge-ok" th:text="${s.servicio.nombreServicio} + ' · $' + ${s.precio}"></span>
+    <a th:href="@{${volver}}" class="vl-btn vl-btn-ghost" style="margin-bottom:14px"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver a los resultados</a>
+    <div class="vl-panel" style="padding:24px; margin-bottom:20px;">
+        <div class="vl-row" style="align-items:flex-start">
+            <img th:src="@{${logoUrl}}" alt="" style="width:96px;height:96px;object-fit:contain;border-radius:18px;background:#eff6ff">
+            <div style="flex:1;min-width:220px">
+                <h1 th:text="${veterinaria.nombre}" style="margin:0">Nombre</h1>
+                <p style="color:#64748b;margin:6px 0" th:text="${veterinaria.descripcion}">Descripción</p>
+                <p style="margin:4px 0" th:if="${!#strings.isEmpty(direccion)}"><i class="fas fa-location-dot" aria-hidden="true"></i> <span th:text="${direccion}"></span></p>
+                <p style="margin:4px 0" th:unless="${#lists.isEmpty(telefonos)}"><i class="fas fa-phone" aria-hidden="true"></i>
+                    <a th:each="t, i : ${telefonos}" th:href="'tel:' + ${t}" th:text="${t} + (${i.last} ? '' : ', ')"></a></p>
+                <p style="margin:4px 0" th:unless="${#lists.isEmpty(correos)}"><i class="fas fa-envelope" aria-hidden="true"></i>
+                    <a th:each="c, i : ${correos}" th:href="'mailto:' + ${c}" th:text="${c} + (${i.last} ? '' : ', ')"></a></p>
+                <p style="margin:4px 0" th:if="${veterinaria.paginaWeb}"><i class="fas fa-globe" aria-hidden="true"></i>
+                    <a th:href="${#strings.startsWith(veterinaria.paginaWeb, 'http') ? veterinaria.paginaWeb : 'https://' + veterinaria.paginaWeb}" th:text="${veterinaria.paginaWeb}" target="_blank" rel="noopener"></a></p>
+                <p th:if="${promedio}" style="margin:4px 0">
+                    <i class="fas fa-star" style="color:#f59e0b" aria-hidden="true"></i>
+                    Calificación promedio: <strong th:text="${#numbers.formatDecimal(promedio, 1, 1)}"></strong> / 5</p>
+                <p th:if="${urgencias}" style="margin:6px 0"><span class="vl-chip vl-emergencia-tag"><i class="fas fa-truck-medical" aria-hidden="true"></i> Urgencias</span>
+                    <span class="vl-small" th:text="${vetsDisponibles > 0} ? ${vetsDisponibles} + ' veterinario(s) disponible(s) ahora' : 'Sin veterinarios disponibles en este momento'"></span></p>
+            </div>
+        </div>
+        <div class="vl-grid-2" style="margin-top:16px">
+            <div>
+                <h3 style="font-size:.95rem">Servicios</h3>
+                <span th:each="s : ${servicios}" class="vl-chip" th:text="${s.servicio.nombreServicio} + (${s.precio != null} ? ' · $' + ${#numbers.formatInteger(s.precio, 0, 'POINT')} : '')"></span>
+            </div>
+            <div>
+                <h3 style="font-size:.95rem">Horario</h3>
+                <ul class="vl-small" style="margin:0;padding-left:18px">
+                    <li th:each="h : ${horario}" th:text="${h.diaSemana.diaSemana} + ': ' + ${@fmt.hora(h.horaApertura)} + ' – ' + ${@fmt.hora(h.horaCierre)}"></li>
+                </ul>
+                <p class="vl-small vl-muted" th:if="${#lists.isEmpty(horario)}">Horario no publicado.</p>
+            </div>
         </div>
         <div class="vl-section-actions" style="margin-top:20px;" sec:authorize="hasRole('TUTOR')">
-            <a class="vl-btn vl-btn-primary" th:href="@{/citas/agendar(idVeterinaria=${veterinaria.idVeterinaria})}"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
-            <a class="vl-btn vl-btn-ghost" th:href="@{/chat}"><i class="fas fa-comments"></i> Contactar por chat</a>
+            <a class="vl-btn vl-btn-primary" th:href="@{/citas/agendar(idVeterinaria=${veterinaria.idVeterinaria})}"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar cita</a>
+            <form th:action="@{'/chat/veterinaria/' + ${veterinaria.idVeterinaria}}" method="post" style="display:inline">
+                <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-comments" aria-hidden="true"></i> Contactar por chat</button></form>
+            <a th:if="${urgencias}" class="vl-btn vl-btn-danger" th:href="@{/emergencias(idVeterinaria=${veterinaria.idVeterinaria})}"><i class="fas fa-truck-medical" aria-hidden="true"></i> Solicitar emergencia</a>
+        </div>
+        <div class="vl-section-actions" style="margin-top:20px;" sec:authorize="isAnonymous()">
+            <a class="vl-btn vl-btn-primary" th:href="@{/login}"><i class="fas fa-right-to-bracket" aria-hidden="true"></i> Inicia sesión para agendar</a>
         </div>
     </div>
 
@@ -75,5 +102,7 @@
         </form>
     </div>
 </main>
+<script th:src="@{/js/vl-validate.js}"></script>
+<script th:src="@{/js/vl-confirm.js}"></script>
 </body>
 </html>

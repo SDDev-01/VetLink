@@ -35,12 +35,23 @@ public class VeterinariaAdminController {
     private final TipoDocumentoRepository tipoDocumentoRepository;
     private final EspecialidadVeterinarioRepository especialidadVeterinarioRepository;
     private final RecepcionistaRepository recepcionistaRepository;
+    private final com.vetlink.veterinaria.service.LogoVeterinariaService logos;
+    private final com.vetlink.auditoria.AuditoriaService auditoria;
+
+    /** El personal de una clínica es mayor de edad: la tarjeta de identidad no aplica en estos formularios. */
+    static final String TIPO_NO_PERMITIDO_PERSONAL = "TI";
+    private static final java.util.regex.Pattern WEB =
+            java.util.regex.Pattern.compile("^(https?://)?([\\w-]+\\.)+[a-zA-Z]{2,}(/[\\w\\-./?%&=]*)?$");
 
     public VeterinariaAdminController(VeterinariaService veterinariaService, UsuarioService usuarioService,
                                        VeterinarioRepository veterinarioRepository,
                                        TipoDocumentoRepository tipoDocumentoRepository,
                                        EspecialidadVeterinarioRepository especialidadVeterinarioRepository,
-                                       RecepcionistaRepository recepcionistaRepository) {
+                                       RecepcionistaRepository recepcionistaRepository,
+                                       com.vetlink.veterinaria.service.LogoVeterinariaService logos,
+                                       com.vetlink.auditoria.AuditoriaService auditoria) {
+        this.logos = logos;
+        this.auditoria = auditoria;
         this.veterinariaService = veterinariaService;
         this.usuarioService = usuarioService;
         this.veterinarioRepository = veterinarioRepository;
@@ -58,27 +69,71 @@ public class VeterinariaAdminController {
         model.addAttribute("equipo", veterinarioRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
         model.addAttribute("recepcionistas", recepcionistaRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
         model.addAttribute("formEquipo", new RegistroUsuarioForm());
-        model.addAttribute("tiposDocumento", tipoDocumentoRepository.findAll());
+        model.addAttribute("logoUrl", com.vetlink.veterinaria.service.VeterinariaInfoService.logoUrl(veterinaria));
+        model.addAttribute("tamanoMaximoImagenMb", 2);
+        model.addAttribute("tiposDocumento", tiposDocumentoPersonal());
         model.addAttribute("especialidades", especialidadVeterinarioRepository.findAll());
         return "veterinarias/admin";
     }
 
     @PostMapping("/info")
     public String actualizarInfo(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                                  @RequestParam String nombre, @RequestParam(required = false) String descripcion,
-                                   @RequestParam(required = false) String paginaWeb, @RequestParam(required = false) String logo,
-                                   RedirectAttributes redirectAttributes) {
+                                 @RequestParam(required = false) String nombre, @RequestParam(required = false) String descripcion,
+                                 @RequestParam(required = false) String paginaWeb,
+                                 RedirectAttributes redirectAttributes) {
         exigirRecepcionistaPrincipal(principal);
         Veterinaria veterinaria = miVeterinaria(principal);
+        String error = null;
+        String n = nombre == null ? "" : nombre.trim();
+        String web = paginaWeb == null ? "" : paginaWeb.trim();
+        if (n.isEmpty()) error = "El nombre de la veterinaria es obligatorio";
+        else if (n.length() > 50) error = "El nombre no puede superar 50 caracteres";
+        else if (!web.isEmpty() && (web.length() > 50 || !WEB.matcher(web).matches())) error = "Ingresa una página web válida (máx. 50 caracteres)";
+        else if (descripcion != null && descripcion.length() > 2000) error = "La descripción no puede superar 2000 caracteres";
+        if (error != null) {
+            redirectAttributes.addFlashAttribute("error", error);
+            return "redirect:/veterinarias/admin";
+        }
         try {
             veterinariaService.actualizarInfo(veterinaria.getIdVeterinaria(), principal.getUsuario().getIdUsuario(),
-                    nombre, descripcion, paginaWeb, logo);
+                    n, descripcion == null ? null : descripcion.trim(), web.isEmpty() ? null : web, null);
+            auditoria.registrar(principal.getUsuario().getIdUsuario(), "VETERINARIA_EDITAR", "veterinaria",
+                    veterinaria.getIdVeterinaria(), null);
         } catch (RuntimeException e) {
-            // VL-21: el mensaje va como atributo flash, no en la URL (tildes, espacios o & lo cortaban).
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/veterinarias/admin";
         }
         return "redirect:/veterinarias/admin?actualizada";
+    }
+
+    /** Carga real de la imagen de la veterinaria (PNG/JPG, tamaño máximo configurable). */
+    @PostMapping("/logo")
+    public String subirLogo(@AuthenticationPrincipal VetlinkUserPrincipal principal,
+                            @RequestParam(value = "logoArchivo", required = false) org.springframework.web.multipart.MultipartFile archivo,
+                            RedirectAttributes redirectAttributes) {
+        exigirRecepcionistaPrincipal(principal);
+        Veterinaria veterinaria = veterinariaService.buscarPorId(miVeterinaria(principal).getIdVeterinaria());
+        try {
+            logos.guardar(veterinaria, archivo);
+            principal.getUsuario().getRecepcionista().getVeterinaria().setLogo(veterinaria.getLogo());
+            auditoria.registrar(principal.getUsuario().getIdUsuario(), "VETERINARIA_LOGO", "veterinaria",
+                    veterinaria.getIdVeterinaria(), null);
+            redirectAttributes.addFlashAttribute("mensajeOk", "Imagen actualizada. Ya se muestra en el directorio.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/veterinarias/admin";
+    }
+
+    private java.util.List<com.vetlink.usuario.model.TipoDocumento> tiposDocumentoPersonal() {
+        return tipoDocumentoRepository.findAll().stream()
+                .filter(t -> !TIPO_NO_PERMITIDO_PERSONAL.equalsIgnoreCase(t.getNombreTipo()))
+                .toList();
+    }
+
+    private boolean esTipoNoPermitido(Integer idTipoDocumento) {
+        return idTipoDocumento != null && tipoDocumentoRepository.findById(idTipoDocumento)
+                .map(t -> TIPO_NO_PERMITIDO_PERSONAL.equalsIgnoreCase(t.getNombreTipo())).orElse(false);
     }
 
     @PostMapping("/equipo")
@@ -94,6 +149,9 @@ public class VeterinariaAdminController {
         form.setIdVeterinaria(veterinaria.getIdVeterinaria());
         form.setConfirmarPassword(form.getPassword());
 
+        if (esTipoNoPermitido(form.getIdTipoDocumento())) {
+            result.rejectValue("idTipoDocumento", "tipo.noPermitido", "Selecciona un tipo de documento válido para personal");
+        }
         if (hayErroresDelUsuario(result) || (form.getLicencia() == null || form.getLicencia().isBlank())) {
             if (form.getLicencia() == null || form.getLicencia().isBlank()) {
                 result.rejectValue("licencia", "licencia.requerida", "La licencia profesional es obligatoria");
@@ -101,7 +159,7 @@ public class VeterinariaAdminController {
             cargarShell(model, principal);
             model.addAttribute("veterinaria", veterinaria);
             model.addAttribute("equipo", veterinarioRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
-            model.addAttribute("tiposDocumento", tipoDocumentoRepository.findAll());
+            model.addAttribute("tiposDocumento", tiposDocumentoPersonal());
             model.addAttribute("especialidades", especialidadVeterinarioRepository.findAll());
             return "veterinarias/admin";
         }
@@ -112,7 +170,7 @@ public class VeterinariaAdminController {
             cargarShell(model, principal);
             model.addAttribute("veterinaria", veterinaria);
             model.addAttribute("equipo", veterinarioRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
-            model.addAttribute("tiposDocumento", tipoDocumentoRepository.findAll());
+            model.addAttribute("tiposDocumento", tiposDocumentoPersonal());
             model.addAttribute("especialidades", especialidadVeterinarioRepository.findAll());
             model.addAttribute("errorEquipo", e.getMessage());
             return "veterinarias/admin";
@@ -130,6 +188,9 @@ public class VeterinariaAdminController {
         // VL-08: desde el panel nunca se crea una clínica nueva, así la recepcionista queda con esPrincipal = false.
         form.setNuevaVeterinaria(null);
         form.setConfirmarPassword(form.getPassword()); if (form.getTurno() == null || form.getTurno().isBlank()) form.setTurno("MAÑANA");
+        if (esTipoNoPermitido(form.getIdTipoDocumento())) {
+            result.rejectValue("idTipoDocumento", "tipo.noPermitido", "Selecciona un tipo de documento válido para personal");
+        }
         // VL-21: con errores de validación se vuelve a la vista mostrando qué campo falló.
         if (hayErroresDelUsuario(result)) {
             cargarPanelConError(model, principal, veterinaria, "Revisa los datos de la recepcionista.");
@@ -162,7 +223,7 @@ public class VeterinariaAdminController {
         model.addAttribute("veterinaria", veterinaria);
         model.addAttribute("equipo", veterinarioRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
         model.addAttribute("recepcionistas", recepcionistaRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria()));
-        model.addAttribute("tiposDocumento", tipoDocumentoRepository.findAll());
+        model.addAttribute("tiposDocumento", tiposDocumentoPersonal());
         model.addAttribute("especialidades", especialidadVeterinarioRepository.findAll());
         model.addAttribute("errorRecepcion", mensaje);
     }

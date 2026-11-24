@@ -10,8 +10,9 @@
 #     nginx ($host, $remote_addr...) no se tocan.
 #
 # Rutas:
-#   /internal/  -> 404 desde Nginx (nunca llega a los backends)
-#   /p/         -> FastAPI  (fastapi:8000), conservando el prefijo /p/
+#   /internal/      -> 404 desde Nginx (nunca llega a los backends)
+#   /api/reportes/  -> FastAPI, tras validar la sesión con Spring (auth_request)
+#   /p/             -> FastAPI  (fastapi:8000), conservando el prefijo /p/
 #   /           -> Spring Boot (spring:8080)
 # =====================================================================
 
@@ -96,6 +97,53 @@ http {
         # --- Rutas internas: bloqueadas desde el exterior ---
         location ~ ^/internal(/|$) {
             return 404;
+        }
+
+        # --- Reportes clínicos PDF (FastAPI), protegidos con la sesión de Spring ---
+        # 1) Subpetición interna: Spring valida la cookie de sesión y el permiso sobre el
+        #    recurso pedido (X-Original-URI). 2xx = permitido; 401/403 = denegado.
+        location = /_auth/reportes {
+            internal;
+            proxy_pass $spring_upstream/internal/auth/reportes;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length     "";
+            proxy_set_header X-Original-URI     $request_uri;
+            proxy_set_header Cookie             $http_cookie;
+            proxy_set_header Host               $vetlink_public_host;
+            proxy_set_header X-Real-IP          $remote_addr;
+            proxy_set_header X-Forwarded-For    $remote_addr;
+            proxy_set_header X-Forwarded-Proto  $scheme;
+            proxy_set_header X-Forwarded-Host   $vetlink_public_host;
+        }
+
+        location = /api/reportes/health {
+            proxy_pass $fastapi_upstream;
+        }
+
+        # 2) Descarga: la identidad que devolvió Spring se reenvía a FastAPI junto con el
+        #    token interno. Cualquier encabezado X-Vetlink-* o X-Internal-Token que envíe el
+        #    navegador queda sobrescrito aquí.
+        location ^~ /api/reportes/ {
+            auth_request /_auth/reportes;
+            auth_request_set $vl_usuario $upstream_http_x_vetlink_usuario;
+            auth_request_set $vl_rol     $upstream_http_x_vetlink_rol;
+            auth_request_set $vl_clinica $upstream_http_x_vetlink_veterinaria;
+            # Al definir proxy_set_header aquí no se heredan los del server: se repiten.
+            proxy_set_header Host                  $vetlink_public_host;
+            proxy_set_header X-Real-IP             $remote_addr;
+            proxy_set_header X-Forwarded-For       $remote_addr;
+            proxy_set_header X-Forwarded-Proto     $scheme;
+            proxy_set_header X-Vetlink-Usuario     $vl_usuario;
+            proxy_set_header X-Vetlink-Rol         $vl_rol;
+            proxy_set_header X-Vetlink-Veterinaria $vl_clinica;
+            proxy_set_header X-Internal-Token      "${INTERNAL_TOKEN}";
+            proxy_read_timeout 60s;
+            error_page 401 = @vetlink_login;
+            proxy_pass $fastapi_upstream;
+        }
+
+        location @vetlink_login {
+            return 302 /login;
         }
 
         # --- Pasaportes digitales (FastAPI) ---

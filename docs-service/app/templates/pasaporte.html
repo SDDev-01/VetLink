@@ -33,6 +33,7 @@
 
   <section class="tarjeta">
     <h2>Últimas atenciones</h2>
+    {% if not detalle_clinico %}<p class="tenue">Por privacidad, los diagnósticos y tratamientos solo se ven dentro de VetLink.</p>{% endif %}
     {% if atenciones %}
       <ul class="lista">
         {% for a in atenciones %}
@@ -40,12 +41,16 @@
             <span class="etiqueta">
               {%- if a.fechaRegistro %}{{ a.fechaRegistro.strftime("%d/%m/%Y") }}{% else %}{{ a.fechaConsulta }}{% endif -%}
             </span>
+            {% if detalle_clinico %}
             <div><strong>{{ a.motivoConsulta }}</strong></div>
             <div>Diagnóstico: {{ a.diagnostico }}</div>
             {% if a.medicamentos %}
               <div class="tenue">Medicamentos:
                 {% for m in a.medicamentos %}{{ m.medicamento }} ({{ m.cantidad }}){% if not loop.last %}, {% endif %}{% endfor %}
               </div>
+            {% endif %}
+            {% else %}
+            <div><strong>Atención veterinaria</strong></div>
             {% endif %}
             <div class="tenue">Atendió: {{ a.veterinario }}</div>
           </li>

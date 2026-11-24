@@ -1,30 +1,36 @@
 package com.vetlink.mascota.controller;
 
+import com.vetlink.cita.model.EstadoCita;
 import com.vetlink.cita.service.CitaService;
 import com.vetlink.historial.service.HistorialClinicoService;
 import com.vetlink.mascota.dto.MascotaForm;
 import com.vetlink.mascota.repository.EspecieRepository;
 import com.vetlink.mascota.repository.RazaRepository;
 import com.vetlink.mascota.service.FotoMascotaService;
+import com.vetlink.mascota.service.GestionMascotaService;
+import com.vetlink.mascota.service.MascotaService;
 import com.vetlink.security.AccesoPacienteService;
 import com.vetlink.security.VetlinkUserPrincipal;
-import com.vetlink.mascota.service.MascotaService;
 import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.vacuna.service.CarnetVacunaService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URI;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-/** CRUD completo de mascotas para el rol TUTOR. */
+/** Mascotas del TUTOR: alta, edición, ficha, transferencia y situación (sin borrado directo). */
 @Controller
 @RequestMapping("/mascotas")
 public class MascotaController {
@@ -37,11 +43,12 @@ public class MascotaController {
     private final CarnetVacunaService carnetVacunaService;
     private final FotoMascotaService fotoMascotaService;
     private final AccesoPacienteService accesoPacienteService;
+    private final GestionMascotaService gestion;
 
     public MascotaController(MascotaService mascotaService, EspecieRepository especieRepository, RazaRepository razaRepository,
-                              CitaService citaService, HistorialClinicoService historialClinicoService,
-                              CarnetVacunaService carnetVacunaService, FotoMascotaService fotoMascotaService,
-                              AccesoPacienteService accesoPacienteService) {
+                             CitaService citaService, HistorialClinicoService historialClinicoService,
+                             CarnetVacunaService carnetVacunaService, FotoMascotaService fotoMascotaService,
+                             AccesoPacienteService accesoPacienteService, GestionMascotaService gestion) {
         this.mascotaService = mascotaService;
         this.especieRepository = especieRepository;
         this.razaRepository = razaRepository;
@@ -50,12 +57,20 @@ public class MascotaController {
         this.carnetVacunaService = carnetVacunaService;
         this.fotoMascotaService = fotoMascotaService;
         this.accesoPacienteService = accesoPacienteService;
+        this.gestion = gestion;
     }
 
     @GetMapping
     public String listar(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
-        model.addAttribute("mascotas", mascotaService.listarActivasPorTutor(principal.getUsuario().getIdUsuario()));
+        Integer yo = principal.getUsuario().getIdUsuario();
+        var mascotas = mascotaService.listarActivasPorTutor(yo);
+        model.addAttribute("mascotas", mascotas);
+        model.addAttribute("transferenciasPendientes", mascotas.stream()
+                .map(m -> gestion.pendienteDeMascota(m.getIdMascota()).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toMap(t -> t.getMascota().getIdMascota(), t -> t)));
+        model.addAttribute("recibidas", gestion.recibidasPendientes(yo));
         return "mascotas/lista";
     }
 
@@ -69,8 +84,8 @@ public class MascotaController {
 
     @PostMapping("/nueva")
     public String crear(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                         @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
-                         @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+                        @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
+                        @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
         validarFoto(archivoFoto, result);
         if (result.hasErrors()) {
             cargarShell(model, principal);
@@ -101,7 +116,7 @@ public class MascotaController {
         form.setGenero(mascota.getGenero());
         form.setFechaNacimiento(mascota.getFechaNacimiento());
         form.setPeso(mascota.getPeso());
-        form.setFoto(mascota.getFotoUrl()); // solo para la vista previa
+        form.setFoto(mascota.getFotoUrl());
         cargarShell(model, principal);
         cargarCatalogos(model);
         model.addAttribute("form", form);
@@ -110,8 +125,8 @@ public class MascotaController {
 
     @PostMapping("/{id}/editar")
     public String actualizar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
-                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
-                              @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+                             @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
+                             @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
         form.setIdMascota(id);
         validarFoto(archivoFoto, result);
         if (result.hasErrors()) {
@@ -132,10 +147,12 @@ public class MascotaController {
         return "redirect:/mascotas?actualizada";
     }
 
+    /** El borrado directo se reemplazó por transferencia y reporte de situación. */
     @PostMapping("/{id}/eliminar")
-    public String eliminar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal) {
-        mascotaService.eliminar(id, principal.getUsuario().getIdUsuario());
-        return "redirect:/mascotas?eliminada";
+    public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
+        ra.addFlashAttribute("errorMascota", "Las mascotas ya no se eliminan. Usa «Transferir» o reporta su situación "
+                + "(perdida, encontrada o fallecida) para conservar su historial.");
+        return "redirect:/mascotas";
     }
 
     @GetMapping("/{id}")
@@ -147,21 +164,100 @@ public class MascotaController {
         model.addAttribute("mascota", mascota);
         model.addAttribute("citas", citas);
         model.addAttribute("proximasCitas", citas.stream()
-                .filter(c -> c.getEstado() == com.vetlink.cita.model.EstadoCita.AGENDADA)
-                .toList());
+                .filter(c -> EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado())).toList());
         model.addAttribute("historial", historialClinicoService.listarPorMascota(id));
         model.addAttribute("carnet", carnetVacunaService.listarPorMascota(id));
+        model.addAttribute("eventos", gestion.eventos(id));
+        model.addAttribute("transferenciaPendiente", gestion.pendienteDeMascota(id).orElse(null));
         return "mascotas/detalle";
     }
 
-    /**
-     * VL-22: devuelve la foto subida solo a quien tiene acceso a la mascota
-     * (su dueño, o el personal que la atiende). Las fotos antiguas que son URL redirigen a esa URL.
-     */
+    // ------------------------------------------------------------------
+    // Transferencias
+    // ------------------------------------------------------------------
+
+    @GetMapping("/transferencias")
+    public String transferencias(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+        cargarShell(model, principal);
+        Integer yo = principal.getUsuario().getIdUsuario();
+        model.addAttribute("recibidas", gestion.recibidas(yo));
+        model.addAttribute("enviadas", gestion.enviadas(yo));
+        return "mascotas/transferencias";
+    }
+
+    @PostMapping("/{id}/transferir")
+    public String transferir(@PathVariable Integer id, @RequestParam(required = false) String destino,
+                             @RequestParam(required = false) String mensaje,
+                             @AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes ra) {
+        if (destino == null || destino.isBlank()) {
+            ra.addFlashAttribute("errorMascota", "Indica el documento o correo del nuevo tutor.");
+            return "redirect:/mascotas/" + id;
+        }
+        return ejecutar(ra, "/mascotas/" + id, "Solicitud enviada. La propiedad cambiará cuando el nuevo tutor la acepte.",
+                () -> gestion.solicitarTransferencia(id, principal.getUsuario().getIdUsuario(), destino, mensaje));
+    }
+
+    @PostMapping("/transferencias/{idT}/aceptar")
+    public String aceptar(@PathVariable Integer idT, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                          RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/transferencias", "Transferencia aceptada. La mascota ya aparece en tu lista.",
+                () -> gestion.aceptar(idT, principal.getUsuario().getIdUsuario()));
+    }
+
+    @PostMapping("/transferencias/{idT}/rechazar")
+    public String rechazar(@PathVariable Integer idT, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                           RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/transferencias", "Rechazaste la transferencia.",
+                () -> gestion.rechazar(idT, principal.getUsuario().getIdUsuario()));
+    }
+
+    @PostMapping("/transferencias/{idT}/cancelar")
+    public String cancelarTransferencia(@PathVariable Integer idT, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                        RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/transferencias", "Cancelaste la transferencia.",
+                () -> gestion.cancelar(idT, principal.getUsuario().getIdUsuario()));
+    }
+
+    // ------------------------------------------------------------------
+    // Situación
+    // ------------------------------------------------------------------
+
+    @PostMapping("/{id}/perdida")
+    public String perdida(@PathVariable Integer id, @RequestParam(required = false) String detalle,
+                          @AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/" + id, "Reportaste a la mascota como perdida.",
+                () -> gestion.reportarPerdida(id, principal.getUsuario().getIdUsuario(), detalle));
+    }
+
+    @PostMapping("/{id}/encontrada")
+    public String encontrada(@PathVariable Integer id, @RequestParam(required = false) String detalle,
+                             @AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/" + id, "¡Qué buena noticia! La mascota vuelve a estar activa.",
+                () -> gestion.reportarEncontrada(id, principal.getUsuario().getIdUsuario(), detalle));
+    }
+
+    @PostMapping("/{id}/fallecida")
+    public String fallecida(@PathVariable Integer id, @RequestParam(required = false) String detalle,
+                            @AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes ra) {
+        return ejecutar(ra, "/mascotas/" + id, "Lamentamos tu pérdida. Registramos el fallecimiento y conservamos su historial.",
+                () -> gestion.reportarFallecimiento(id, principal.getUsuario().getIdUsuario(), detalle));
+    }
+
+    private String ejecutar(RedirectAttributes ra, String volver, String ok, Supplier<?> accion) {
+        try {
+            accion.get();
+            ra.addFlashAttribute("mensajeOk", ok);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            ra.addFlashAttribute("errorMascota", e.getMessage());
+        }
+        return "redirect:" + volver;
+    }
+
+    /** VL-22: la foto solo la ve quien tiene acceso a la mascota. */
     @GetMapping("/{id}/foto")
     public ResponseEntity<Resource> foto(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal) {
         var mascota = mascotaService.buscarPorId(id);
-        accesoPacienteService.verificar(mascota, principal);
+        accesoPacienteService.verificarDatosBasicos(mascota, principal);
         if (FotoMascotaService.esUrl(mascota.getFoto())) {
             return ResponseEntity.status(302).location(URI.create(mascota.getFoto())).build();
         }
@@ -181,9 +277,13 @@ public class MascotaController {
         }
     }
 
+    /** Las razas viajan con su especie para que el formulario solo muestre las que corresponden. */
     private void cargarCatalogos(Model model) {
         model.addAttribute("especies", especieRepository.findAll());
         model.addAttribute("razas", razaRepository.findAll());
+        Map<Integer, Integer> especieDeRaza = razaRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> r.getIdRaza(), r -> r.getEspecie().getIdEspecie()));
+        model.addAttribute("especieDeRaza", especieDeRaza);
     }
 
     private void cargarShell(Model model, VetlinkUserPrincipal principal) {
@@ -192,8 +292,7 @@ public class MascotaController {
         model.addAttribute("navItems", DashboardController.navTutor());
     }
 
-    private void verificarPropietario(com.vetlink.mascota.model.Mascota mascota,
-                                      VetlinkUserPrincipal principal) {
+    private void verificarPropietario(com.vetlink.mascota.model.Mascota mascota, VetlinkUserPrincipal principal) {
         accesoPacienteService.verificarPropietario(mascota, principal);
     }
 }

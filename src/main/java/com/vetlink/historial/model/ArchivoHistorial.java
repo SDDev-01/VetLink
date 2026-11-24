@@ -28,4 +28,29 @@ public class ArchivoHistorial {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "numeroHistorial", nullable = false)
     private HistorialClinico historial;
+
+    private Long tamanoBytes;
+
+    private java.time.LocalDateTime subidoEn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idUsuario")
+    private com.vetlink.usuario.model.Usuario subidoPor;
+
+    @Transient
+    public boolean isImagen() {
+        return tipoArchivo != null && tipoArchivo.startsWith("image/");
+    }
+
+    @Transient
+    public boolean isPdf() {
+        return "application/pdf".equals(tipoArchivo);
+    }
+
+    @Transient
+    public String getIcono() {
+        if (isPdf()) return "fa-file-pdf";
+        if (isImagen()) return "fa-file-image";
+        return "fa-file";
+    }
 }

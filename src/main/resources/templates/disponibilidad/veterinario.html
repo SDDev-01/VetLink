@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi disponibilidad | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Veterinario', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Mi disponibilidad</h1>
+                    <p th:text="'Tu horario, novedades y servicios en ' + ${veterinaria.nombre} + '. Todo cambio queda pendiente de aprobación de recepción.'"></p></div>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-grid-3" style="margin-bottom:18px">
+                <div class="vl-panel">
+                    <h3><i class="fas fa-clock" aria-hidden="true"></i> Horario aprobado</h3>
+                    <ul class="vl-trace" th:unless="${#lists.isEmpty(horario)}">
+                        <li th:each="h : ${horario}"><strong th:text="${h.nombreDia}"></strong>
+                            <div class="when" th:text="${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></div></li>
+                    </ul>
+                    <p class="vl-muted" th:if="${#lists.isEmpty(horario)}">Aún no tienes un horario aprobado: no se generan cupos para ti.</p>
+                </div>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-briefcase-medical" aria-hidden="true"></i> Servicios autorizados</h3>
+                    <span class="vl-chip" th:each="s : ${servicios}" th:text="${s.servicio.nombreServicio}"></span>
+                    <p class="vl-muted" th:if="${#lists.isEmpty(servicios)}">Sin servicios autorizados.</p>
+                </div>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-calendar-xmark" aria-hidden="true"></i> Próximas novedades</h3>
+                    <ul class="vl-trace" th:unless="${#lists.isEmpty(ausencias)}">
+                        <li th:each="a : ${ausencias}"><strong th:text="${a.tipo.etiqueta}"></strong>
+                            <div class="when" th:text="${@fmt.fechaHora(a.inicio)} + ' – ' + ${@fmt.fechaHora(a.fin)}"></div>
+                            <span class="vl-badge" th:classappend="${a.estado.name() == 'APROBADO'} ? 'vl-badge-ok' : (${a.estado.name() == 'PENDIENTE'} ? 'vl-badge-warn' : 'vl-badge-muted')" th:text="${a.estado.etiqueta}"></span></li>
+                    </ul>
+                    <p class="vl-muted" th:if="${#lists.isEmpty(ausencias)}">Sin novedades registradas.</p>
+                </div>
+            </div>
+
+            <div class="vl-grid-2">
+                <form class="vl-panel" th:action="@{/disponibilidad/horario}" method="post" id="form-horario"
+                      data-confirm="Tu nuevo horario reemplazará al actual cuando recepción lo apruebe. Las citas ya reservadas no se eliminan: si alguna queda fuera, la clínica gestionará su reprogramación."
+                      data-confirm-title="¿Enviar solicitud de horario?" data-confirm-ok="Enviar">
+                    <h3><i class="fas fa-clock" aria-hidden="true"></i> Solicitar horario laboral</h3>
+                    <p class="vl-small vl-muted">Agrega una franja por bloque de trabajo. Para registrar un descanso fijo (p. ej. almuerzo) usa dos franjas el mismo día.</p>
+                    <div id="franjas" class="vl-stack">
+                        <div class="vl-row franja" th:each="h : ${horario}">
+                            <label class="vl-sr-only">Día</label>
+                            <select name="dia" required>
+                                <option value="">Día</option>
+                                <option th:each="d : ${#numbers.sequence(1, 7)}" th:value="${d}" th:selected="${d == h.diaSemana}"
+                                        th:text="${T(java.time.DayOfWeek).of(d).getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).forLanguageTag('es-CO'))}"></option>
+                            </select>
+                            <input type="time" name="inicio" required th:value="${h.horaInicio}" aria-label="Hora de inicio">
+                            <input type="time" name="fin" required th:value="${h.horaFin}" aria-label="Hora de fin">
+                            <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm quitar" aria-label="Quitar franja"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="agregar-franja" style="margin-top:10px"><i class="fas fa-plus" aria-hidden="true"></i> Agregar franja</button>
+                    <div class="vl-field" style="margin-top:12px"><label for="descH">Comentario para recepción</label>
+                        <input id="descH" name="descripcion" maxlength="500" placeholder="Ej.: a partir de diciembre"></div>
+                    <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar solicitud</button>
+                </form>
+
+                <div class="vl-stack">
+                    <form class="vl-panel" th:action="@{/disponibilidad/ausencia}" method="post"
+                          data-confirm="La novedad se enviará a recepción. Cuando la aprueben, se retirarán tus cupos libres en ese periodo." data-confirm-title="¿Enviar novedad?" data-confirm-ok="Enviar">
+                        <h3><i class="fas fa-calendar-xmark" aria-hidden="true"></i> Descanso, permiso, incapacidad, vacaciones o ausencia</h3>
+                        <div class="vl-form-grid">
+                            <div class="vl-field"><label for="tipo">Tipo *</label>
+                                <select id="tipo" name="tipo" required><option value="">Selecciona</option>
+                                    <option th:each="t : ${tiposAusencia}" th:value="${t}" th:text="${t.etiqueta}"></option></select></div>
+                            <div class="vl-field"><label for="motivo">Motivo</label><input id="motivo" name="motivo" maxlength="500"></div>
+                            <div class="vl-field"><label for="inicioA">Desde *</label><input type="datetime-local" id="inicioA" name="inicio" required data-no-pasado></div>
+                            <div class="vl-field"><label for="finA">Hasta *</label><input type="datetime-local" id="finA" name="fin" required data-no-pasado></div>
+                        </div>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar novedad</button>
+                    </form>
+
+                    <form class="vl-panel" th:action="@{/disponibilidad/servicios}" method="post"
+                          data-confirm="Recepción revisará los servicios que propones. Los servicios no se autorizan hasta su aprobación." data-confirm-title="¿Solicitar estos servicios?" data-confirm-ok="Enviar">
+                        <h3><i class="fas fa-briefcase-medical" aria-hidden="true"></i> Servicios que puedo atender</h3>
+                        <fieldset style="border:none;padding:0;margin:0">
+                            <legend class="vl-small vl-muted">Marca todos los servicios que quieres atender (reemplaza la lista actual al aprobarse).</legend>
+                            <label th:each="s : ${serviciosClinica}" class="vl-row vl-small" style="gap:8px;margin:6px 0">
+                                <input type="checkbox" name="servicios" th:value="${s.idServicio}" th:checked="${idsServiciosAprobados.contains(s.idServicio)}">
+                                <span th:text="${s.nombreServicio}"></span>
+                            </label>
+                        </fieldset>
+                        <div class="vl-field" style="margin-top:8px"><label for="descS">Comentario</label><input id="descS" name="descripcion" maxlength="500"></div>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar solicitud</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="vl-panel" style="margin-top:18px">
+                <h3><i class="fas fa-list" aria-hidden="true"></i> Mis solicitudes</h3>
+                <div class="vl-table-wrap" th:unless="${#lists.isEmpty(solicitudes)}">
+                    <table class="vl-table">
+                        <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Estado</th><th>Respuesta</th></tr></thead>
+                        <tbody>
+                        <tr th:each="s : ${solicitudes}">
+                            <td th:text="${@fmt.fechaHora(s.creadaEn)}"></td>
+                            <td th:text="${s.tipo.etiqueta}"></td>
+                            <td th:text="${s.descripcion} ?: '—'"></td>
+                            <td><span class="vl-badge" th:classappend="${s.estado.name() == 'APROBADO'} ? 'vl-badge-ok' : (${s.estado.name() == 'PENDIENTE'} ? 'vl-badge-warn' : 'vl-badge-danger')" th:text="${s.estado.etiqueta}"></span></td>
+                            <td th:text="${s.observacionRevision} ?: ''"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="vl-muted" th:if="${#lists.isEmpty(solicitudes)}">No has enviado solicitudes.</p>
+            </div>
+        </div>
+    </section>
+</main>
+<template id="tpl-franja">
+    <div class="vl-row franja">
+        <select name="dia" required aria-label="Día">
+            <option value="">Día</option><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+            <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option>
+        </select>
+        <input type="time" name="inicio" required aria-label="Hora de inicio" value="08:00">
+        <input type="time" name="fin" required aria-label="Hora de fin" value="12:00">
+        <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm quitar" aria-label="Quitar franja"><i class="fas fa-trash" aria-hidden="true"></i></button>
+    </div>
+</template>
+<script>
+    (function () {
+        var cont = document.getElementById('franjas');
+        var tpl = document.getElementById('tpl-franja');
+        document.getElementById('agregar-franja').addEventListener('click', function () {
+            cont.appendChild(tpl.content.cloneNode(true));
+        });
+        cont.addEventListener('click', function (e) {
+            var b = e.target.closest('.quitar');
+            if (b) b.closest('.franja').remove();
+        });
+        if (!cont.querySelector('.franja')) cont.appendChild(tpl.content.cloneNode(true));
+        document.getElementById('form-horario').addEventListener('submit', function (e) {
+            var malo = Array.prototype.some.call(cont.querySelectorAll('.franja'), function (f) {
+                var i = f.querySelector('[name=inicio]').value, fin = f.querySelector('[name=fin]').value;
+                return i && fin && i >= fin;
+            });
+            if (malo) { e.preventDefault(); e.stopImmediatePropagation(); alertaFranja(); }
+        }, true);
+        function alertaFranja() {
+            var p = document.getElementById('error-franjas');
+            if (!p) { p = document.createElement('p'); p.id = 'error-franjas'; p.className = 'vl-field-error'; p.setAttribute('role', 'alert'); cont.after(p); }
+            p.textContent = 'En cada franja la hora de inicio debe ser anterior a la de fin';
+        }
+    })();
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

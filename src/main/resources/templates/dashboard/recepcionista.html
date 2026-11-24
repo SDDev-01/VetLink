@@ -3,67 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Panel - VetLink</title>
+    <title>Recepción | VetLink</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" th:href="@{/css/dashboard.css}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="dashboard-body">
-
-<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel de recepción', ${navItems}, ${seccionActiva})}"></aside>
-
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Recepción', ${navItems}, ${seccionActiva})}"></aside>
 <main class="main-content">
-    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar citas...')}"></header>
-
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
     <section class="container">
         <div class="vl-section vl-section-active">
-            <div class="welcome-header reveal active">
-                <h1 th:text="'Hola, ' + ${usuario.nombre}">Dashboard</h1>
-                <p th:text="'Administras ' + ${veterinaria.nombre}">Resumen</p>
-            </div>
-
-            <!-- VL-09 -->
-            <div th:if="${!veterinaria.activa}" class="vl-table-wrap"
-                 style="padding:16px 20px; margin-bottom:20px; border-left:4px solid #f59e0b; background:#fffbeb; color:#92400e;">
-                <i class="fas fa-hourglass-half"></i>
-                Tu clínica está pendiente de verificación. Aún no aparece en el directorio.
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-card reveal active">
-                    <div class="stat-info"><span class="stat-label">Citas de hoy</span><span class="stat-number" th:text="${statCitasHoy}">0</span></div>
-                    <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
+            <div class="vl-hero">
+                <div>
+                    <h1 th:text="${saludo} + ', ' + ${usuario.nombre}">Buenos días</h1>
+                    <p th:text="${veterinaria.nombre} + ' · ' + ${@fmt.fechaLarga(hoy)}"></p>
                 </div>
-                <div class="stat-card reveal active">
-                    <div class="stat-info"><span class="stat-label">Agendadas (total)</span><span class="stat-number" th:text="${statAgendadas}">0</span></div>
-                    <div class="stat-icon purple"><i class="fas fa-calendar-check"></i></div>
+                <div class="vl-row">
+                    <a th:href="@{/agenda}" class="vl-btn"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Agenda</a>
+                    <a th:href="@{/citas/recepcion/agendar}" class="vl-btn"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar</a>
                 </div>
             </div>
 
-            <div class="panels-grid">
-                <div class="panel reveal active">
-                    <div class="panel-header"><h3>Citas de hoy en tu clínica</h3><a th:href="@{/reportes/citas}" class="view-all">Ver todas</a></div>
-                    <div>
-                        <div class="list-item" th:each="c : ${citasHoy}">
-                            <div class="pet-avatar"><i class="fas fa-paw"></i></div>
-                            <div class="item-details"><strong th:text="${c.mascota != null ? c.mascota.nombre : 'Cupo disponible'}">Cupo disponible</strong><span th:text="${c.hora} + ' · Dr(a). ' + ${c.veterinario.apellido}"></span></div>
-                            <div class="item-action"><span class="vl-badge vl-badge-ok" th:text="${c.estado}"></span></div>
+            <div class="vl-alert vl-alert-warn" th:if="${!veterinaria.activa}" role="status">
+                <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                <span>Tu clínica está pendiente de verificación. Aún no aparece en el directorio.</span>
+            </div>
+
+            <div class="vl-grid-4" style="margin-bottom:18px">
+                <a class="vl-kpi" th:href="@{/agenda}"><span class="vl-kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fas fa-calendar-day" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${statCitasHoy}">0</span><span class="vl-kpi-lbl" style="display:block">Citas hoy</span></span></a>
+                <a class="vl-kpi" href="#pendientes"><span class="vl-kpi-icon" style="background:#fef3c7;color:#b45309"><i class="fas fa-hourglass-half" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${statPendientes}">0</span><span class="vl-kpi-lbl" style="display:block">Por confirmar (7 días)</span></span></a>
+                <a class="vl-kpi" th:href="@{/agenda}"><span class="vl-kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fas fa-circle-check" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${statConfirmadas}">0</span><span class="vl-kpi-lbl" style="display:block">Confirmadas hoy</span></span></a>
+                <a class="vl-kpi" th:href="@{/agenda}"><span class="vl-kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fas fa-ban" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${statCanceladas}">0</span><span class="vl-kpi-lbl" style="display:block">Canceladas / rechazadas hoy</span></span></a>
+            </div>
+
+            <div class="vl-grid-3" style="margin-bottom:18px">
+                <a class="vl-kpi" th:href="@{/recepcion/disponibilidad}"><span class="vl-kpi-icon" style="background:#ede9fe;color:#6d28d9"><i class="fas fa-user-clock" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${solicitudesPendientes}">0</span><span class="vl-kpi-lbl" style="display:block">Solicitudes de horario y servicios</span></span></a>
+                <a class="vl-kpi" th:href="@{/emergencias}"><span class="vl-kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fas fa-truck-medical" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${emergenciasPendientes}">0</span><span class="vl-kpi-lbl" style="display:block">Emergencias sin asignar</span></span></a>
+                <div class="vl-kpi"><span class="vl-kpi-icon" style="background:#e0f2fe;color:#0369a1"><i class="fas fa-chart-simple" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${ocupacion} + '%'">0%</span>
+                        <span class="vl-kpi-lbl" style="display:block" th:text="'Ocupación 7 días · ' + ${cuposLibres} + ' cupos libres'"></span></span></div>
+            </div>
+
+            <div class="vl-grid-2">
+                <div class="vl-stack">
+                    <div class="vl-panel" id="pendientes">
+                        <h3><i class="fas fa-hourglass-half" aria-hidden="true"></i> Reservas por confirmar</h3>
+                        <div class="vl-cita-list">
+                            <a th:each="c : ${pendientes}" th:href="@{'/agenda/' + ${c.idCita}}" class="vl-cita-card st-PENDIENTE">
+                                <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
+                                <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
+                                    <div class="vl-cita-meta"><span th:text="${c.mascota.tutor.nombre} + ' ' + ${c.mascota.tutor.apellido}"></span>
+                                        <span th:text="'Dr(a). ' + ${c.veterinario.apellido}"></span>
+                                        <span th:if="${c.expiraEn}" th:text="'vence ' + ${@fmt.fechaHora(c.expiraEn)}"></span></div></div>
+                                <div class="vl-cita-side"><span class="vl-btn vl-btn-primary vl-btn-sm">Revisar</span></div>
+                            </a>
                         </div>
-                        <p th:if="${#lists.isEmpty(citasHoy)}" style="color:#94a3b8; font-size:0.88rem; padding:10px 0;">No hay citas para hoy.</p>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(pendientes)}">No hay reservas pendientes.</p>
+                    </div>
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-calendar-day" aria-hidden="true"></i> Citas de hoy</h3>
+                        <div class="vl-cita-list">
+                            <a th:each="c : ${citasHoy}" th:href="@{'/agenda/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                                <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.duracion(c.duracionMin)}"></small></div>
+                                <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
+                                    <div class="vl-cita-meta" th:text="'Dr(a). ' + ${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></div></div>
+                                <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span></div>
+                            </a>
+                        </div>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(citasHoy)}">No hay citas hoy.</p>
                     </div>
                 </div>
-
-                <div class="panel reveal active">
-                    <div class="panel-header"><h3>Accesos rápidos</h3></div>
-                    <div class="quick-actions-section" style="padding:0;">
-                        <div class="actions-grid">
-                            <a th:href="@{/citas/recepcion/agendar}" class="action-btn" style="text-decoration:none;"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
-                            <a th:href="@{/recepcion/mascotas}" class="action-btn" style="text-decoration:none;"><i class="fas fa-dog"></i> Mascotas</a>
-                            <a th:href="@{/historial/pacientes}" class="action-btn" style="text-decoration:none;"><i class="fas fa-file-medical"></i> Historial clínico</a>
-                            <a th:href="@{/veterinarias/admin}" class="action-btn" style="text-decoration:none;"><i class="fas fa-hospital"></i> Mi veterinaria</a>
-                            <a th:href="@{/emergencias}" class="action-btn" style="text-decoration:none;"><i class="fas fa-truck-medical"></i> Emergencias</a>
-                            <a th:href="@{/chat}" class="action-btn" style="text-decoration:none;"><i class="fas fa-comments"></i> Chat</a>
+                <div class="vl-stack">
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-user-doctor" aria-hidden="true"></i> Disponibilidad del equipo ahora</h3>
+                        <ul class="vl-docs" style="padding:0">
+                            <li class="vl-doc" th:each="v : ${equipo}">
+                                <span class="ico"><i class="fas fa-user-doctor" aria-hidden="true"></i></span>
+                                <div><strong th:text="${v.usuario().nombre} + ' ' + ${v.usuario().apellido}"></strong>
+                                    <div class="meta" th:text="${v.citasHoy()} + ' citas hoy · ' + ${v.pendientesHoy()} + ' por atender'"></div></div>
+                                <span class="vl-st" th:classappend="${v.clase()}" th:text="${v.estado()}"></span>
+                            </li>
+                        </ul>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(equipo)}">Sin veterinarios registrados.</p>
+                    </div>
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-forward" aria-hidden="true"></i> Próximas citas confirmadas</h3>
+                        <div class="vl-cita-list">
+                            <a th:each="c : ${proximas}" th:href="@{'/agenda/' + ${c.idCita}}" class="vl-cita-card st-CONFIRMADA">
+                                <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
+                                <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre}"></div>
+                                    <div class="vl-cita-meta" th:text="${c.servicio.nombreServicio}"></div></div>
+                            </a>
+                        </div>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(proximas)}">Sin próximas citas.</p>
+                    </div>
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-bolt" aria-hidden="true"></i> Accesos rápidos</h3>
+                        <div class="vl-row">
+                            <a th:href="@{/recepcion/disponibilidad}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-user-clock" aria-hidden="true"></i> Solicitudes</a>
+                            <a th:href="@{/recepcion/mascotas}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-dog" aria-hidden="true"></i> Mascotas</a>
+                            <a th:href="@{/reportes/citas}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-table-list" aria-hidden="true"></i> Reporte de citas</a>
+                            <a th:href="@{/veterinarias/admin}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-hospital" aria-hidden="true"></i> Mi veterinaria</a>
                         </div>
                     </div>
                 </div>

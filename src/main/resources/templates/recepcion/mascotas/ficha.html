@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${mascota.nombre} + ' | VetLink'">Mascota</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Recepción', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="${mascota.nombre}">Mascota</h1>
+                    <p>Consulta de datos. Recepción solo puede actualizar el peso; la información clínica la registra el veterinario.</p></div>
+                <a th:href="@{/recepcion/mascotas}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Mascotas</a>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-grid-2">
+                <div class="vl-panel">
+                    <h3><i class="fas fa-paw" aria-hidden="true"></i> Datos de la mascota</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Especie</dt><dd th:text="${mascota.especie.nombreEspecie}"></dd></div>
+                        <div><dt>Raza</dt><dd th:text="${mascota.raza.nombreRaza}"></dd></div>
+                        <div><dt>Sexo</dt><dd th:text="${mascota.genero == 'H'} ? 'Hembra' : 'Macho'"></dd></div>
+                        <div><dt>Edad</dt><dd th:text="${mascota.edadTexto}"></dd></div>
+                        <div><dt>Fecha de nacimiento</dt><dd th:text="${@fmt.fecha(mascota.fechaNacimiento)}"></dd></div>
+                        <div><dt>Situación</dt><dd th:text="${mascota.situacionSegura.etiqueta}"></dd></div>
+                        <div><dt>Tutor</dt><dd th:text="${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}"></dd></div>
+                        <div><dt>Peso actual</dt><dd th:text="${mascota.peso} + ' kg'"></dd></div>
+                    </dl>
+                    <div class="vl-row" style="margin-top:14px">
+                        <a th:href="@{'/historial/mascota/' + ${mascota.idMascota}}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-folder-open" aria-hidden="true"></i> Expediente (lectura)</a>
+                    </div>
+                </div>
+                <div class="vl-panel">
+                    <h3><i class="fas fa-weight-scale" aria-hidden="true"></i> Actualizar peso</h3>
+                    <form th:action="@{'/recepcion/mascotas/' + ${mascota.idMascota} + '/peso'}" method="post"
+                          th:attr="data-confirm=${'Se actualizará el peso de ' + mascota.nombre + '. Quedará registrado quién y cuándo hizo el cambio.'}"
+                          data-confirm-title="¿Actualizar el peso?" data-confirm-ok="Actualizar">
+                        <div class="vl-field">
+                            <label for="peso">Nuevo peso (kg)</label>
+                            <input type="number" id="peso" name="peso" step="0.01" min="0.01" max="1500" required th:value="${mascota.peso}">
+                        </div>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-floppy-disk" aria-hidden="true"></i> Guardar peso</button>
+                    </form>
+                    <h3 style="margin-top:20px"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Cambios de peso</h3>
+                    <ul class="vl-trace">
+                        <li th:each="e : ${eventos}">
+                            <strong th:text="${e.valorAnterior} + ' kg → ' + ${e.valorNuevo} + ' kg'"></strong>
+                            <div class="when" th:text="${@fmt.fechaHora(e.fecha)} + (${e.usuario != null} ? ' · ' + ${e.usuario.nombre} + ' ' + ${e.usuario.apellido} : '')"></div>
+                        </li>
+                        <li th:if="${#lists.isEmpty(eventos)}"><span class="vl-muted">Sin cambios registrados.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>
