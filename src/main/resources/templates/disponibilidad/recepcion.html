@@ -76,29 +76,54 @@
                 </div>
             </div>
 
-            <div class="vl-grid-2">
+            <div class="vl-grid-2" style="align-items:start">
+                <!-- REC-07: campos con ancho adaptable, botón separado y mensajes visibles -->
                 <form class="vl-panel" th:action="@{/recepcion/disponibilidad/bloqueo}" method="post"
                       data-confirm="El bloqueo se aplica de inmediato: se retiran los cupos libres del periodo. Las citas reservadas se conservan y aparecerán para reprogramar."
                       data-confirm-title="¿Bloquear la agenda?" data-confirm-ok="Bloquear" data-confirm-tipo="peligro">
                     <h3><i class="fas fa-lock" aria-hidden="true"></i> Bloquear agenda de un veterinario</h3>
-                    <div class="vl-form-grid">
-                        <div class="vl-field"><label for="vetB">Veterinario *</label>
+                    <p class="vl-small vl-muted" style="margin-top:-6px">Durante el bloqueo no se ofrecen cupos del veterinario.</p>
+                    <div class="vl-form-grid vl-form-grid-auto">
+                        <div class="vl-field vl-full"><label for="vetB">Veterinario *</label>
                             <select id="vetB" name="idVeterinario" required><option value="">Selecciona</option>
                                 <option th:each="v : ${equipo}" th:value="${v.idUsuario}" th:text="${v.nombre} + ' ' + ${v.apellido}"></option></select></div>
-                        <div class="vl-field"><label for="motB">Motivo</label><input id="motB" name="motivo" maxlength="500"></div>
-                        <div class="vl-field"><label for="iniB">Desde *</label><input type="datetime-local" id="iniB" name="inicio" required data-no-pasado></div>
-                        <div class="vl-field"><label for="finB">Hasta *</label><input type="datetime-local" id="finB" name="fin" required data-no-pasado></div>
+                        <div class="vl-field"><label for="iniB">Desde *</label>
+                            <input type="datetime-local" id="iniB" name="inicio" required data-no-pasado></div>
+                        <div class="vl-field"><label for="finB">Hasta *</label>
+                            <input type="datetime-local" id="finB" name="fin" required data-no-pasado data-posterior-a="iniB"
+                                   data-msg-posterior="El fin del bloqueo debe ser posterior al inicio"></div>
+                        <div class="vl-field vl-full"><label for="motB">Motivo</label>
+                            <input id="motB" name="motivo" maxlength="500" placeholder="Ej.: capacitación externa"></div>
                     </div>
-                    <button type="submit" class="vl-btn vl-btn-danger"><i class="fas fa-lock" aria-hidden="true"></i> Bloquear</button>
+                    <div class="vl-form-actions">
+                        <button type="submit" class="vl-btn vl-btn-danger"><i class="fas fa-lock" aria-hidden="true"></i> Bloquear</button>
+                    </div>
                 </form>
+
+                <!-- REC-08: bloques separados por profesional, con jerarquía y estados -->
                 <div class="vl-panel">
                     <h3><i class="fas fa-users" aria-hidden="true"></i> Horarios y servicios aprobados</h3>
-                    <details th:each="v : ${equipo}" style="margin-bottom:8px">
-                        <summary><strong th:text="${v.nombre} + ' ' + ${v.apellido}"></strong></summary>
-                        <ul class="vl-small"><li th:each="h : ${horarios[v.idUsuario]}" th:text="${h.nombreDia} + ': ' + ${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></li></ul>
-                        <p class="vl-small vl-muted" th:if="${#lists.isEmpty(horarios[v.idUsuario])}">Sin horario aprobado.</p>
-                        <span class="vl-chip" th:each="s : ${serviciosEquipo[v.idUsuario]}" th:text="${s.servicio.nombreServicio}"></span>
-                    </details>
+                    <div class="vl-equipo-lista">
+                        <article class="vl-equipo-card" th:each="v : ${equipo}">
+                            <header>
+                                <h4><i class="fas fa-user-doctor" aria-hidden="true"></i> <span th:text="${v.nombre} + ' ' + ${v.apellido}"></span></h4>
+                                <span class="vl-badge" th:classappend="${#lists.isEmpty(horarios[v.idUsuario])} ? 'vl-badge-warn' : 'vl-badge-ok'"
+                                      th:text="${#lists.isEmpty(horarios[v.idUsuario])} ? 'Sin horario' : 'Horario aprobado'"></span>
+                            </header>
+                            <div class="vl-equipo-sub">Horario</div>
+                            <ul class="vl-horario-lista" th:unless="${#lists.isEmpty(horarios[v.idUsuario])}">
+                                <li th:each="h : ${horarios[v.idUsuario]}"><strong th:text="${h.nombreDia}"></strong>
+                                    <span th:text="${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></span></li>
+                            </ul>
+                            <p class="vl-small vl-muted" style="margin:0" th:if="${#lists.isEmpty(horarios[v.idUsuario])}">No se generan cupos hasta aprobar un horario.</p>
+                            <div class="vl-equipo-sub">Servicios autorizados</div>
+                            <div>
+                                <span class="vl-chip" th:each="s : ${serviciosEquipo[v.idUsuario]}" th:text="${s.servicio.nombreServicio}"></span>
+                                <span class="vl-small vl-muted" th:if="${#lists.isEmpty(serviciosEquipo[v.idUsuario])}">Sin servicios autorizados.</span>
+                            </div>
+                        </article>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(equipo)}">No hay veterinarios en la clínica.</p>
+                    </div>
                 </div>
             </div>
 

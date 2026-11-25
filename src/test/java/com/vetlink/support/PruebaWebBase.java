@@ -123,7 +123,11 @@ public abstract class PruebaWebBase {
         return especieRepository.findAll().stream().findFirst().orElseGet(() -> crearEspecie("Perro"));
     }
 
+    /** La raza es única por especie (V9): si ya existe con ese nombre se reutiliza. */
     protected Raza crearRaza(Especie especie, String nombre) {
+        var existente = razaRepository.findByEspecie_IdEspecie(especie.getIdEspecie()).stream()
+                .filter(r -> r.getNombreRaza().equalsIgnoreCase(nombre)).findFirst();
+        if (existente.isPresent()) return existente.get();
         Raza r = new Raza();
         r.setEspecie(especie);
         r.setNombreRaza(nombre);
@@ -157,13 +161,25 @@ public abstract class PruebaWebBase {
     // Usuarios
     // ------------------------------------------------------------------
 
+    /** Sufijo único solo con letras (los nombres de personas no admiten números). */
+    protected static String letras(int n) {
+        StringBuilder sb = new StringBuilder();
+        int x = Math.max(n, 0);
+        do {
+            sb.insert(0, (char) ('a' + x % 26));
+            x = x / 26 - 1;
+        } while (x >= 0);
+        sb.setCharAt(0, Character.toUpperCase(sb.charAt(0)));
+        return sb.toString();
+    }
+
     protected Usuario crearUsuarioBase(String nombre) {
         int n = siguiente();
         Usuario u = new Usuario();
         u.setNumeroDocumento("DOC" + n);
         u.setTipoDocumento(tipoDocumento());
         u.setNombre(nombre);
-        u.setApellido("Prueba" + n);
+        u.setApellido("Prueba " + letras(n));
         u.setPassword(passwordEncoder.encode(PASSWORD_PRUEBAS));
         u.setEstado((byte) 1);
         u = usuarioRepository.save(u);
@@ -230,7 +246,7 @@ public abstract class PruebaWebBase {
 
     protected Mascota crearMascota(Usuario duenio, Especie especie, Raza raza) {
         Mascota m = new Mascota();
-        m.setNombre("Mascota" + siguiente());
+        m.setNombre("Mascota " + letras(siguiente()));
         m.setEspecie(especie);
         m.setRaza(raza);
         m.setGenero("M");

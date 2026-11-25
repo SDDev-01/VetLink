@@ -24,9 +24,9 @@
             <div class="vl-grid-3" style="margin-bottom:18px">
                 <div class="vl-panel">
                     <h3><i class="fas fa-clock" aria-hidden="true"></i> Horario aprobado</h3>
-                    <ul class="vl-trace" th:unless="${#lists.isEmpty(horario)}">
+                    <ul class="vl-horario-lista" th:unless="${#lists.isEmpty(horario)}">
                         <li th:each="h : ${horario}"><strong th:text="${h.nombreDia}"></strong>
-                            <div class="when" th:text="${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></div></li>
+                            <span th:text="${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></span></li>
                     </ul>
                     <p class="vl-muted" th:if="${#lists.isEmpty(horario)}">Aún no tienes un horario aprobado: no se generan cupos para ti.</p>
                 </div>
@@ -46,60 +46,94 @@
                 </div>
             </div>
 
-            <div class="vl-grid-2">
-                <form class="vl-panel" th:action="@{/disponibilidad/horario}" method="post" id="form-horario"
-                      data-confirm="Tu nuevo horario reemplazará al actual cuando recepción lo apruebe. Las citas ya reservadas no se eliminan: si alguna queda fuera, la clínica gestionará su reprogramación."
-                      data-confirm-title="¿Enviar solicitud de horario?" data-confirm-ok="Enviar">
-                    <h3><i class="fas fa-clock" aria-hidden="true"></i> Solicitar horario laboral</h3>
-                    <p class="vl-small vl-muted">Agrega una franja por bloque de trabajo. Para registrar un descanso fijo (p. ej. almuerzo) usa dos franjas el mismo día.</p>
-                    <div id="franjas" class="vl-stack">
-                        <div class="vl-row franja" th:each="h : ${horario}">
-                            <label class="vl-sr-only">Día</label>
-                            <select name="dia" required>
-                                <option value="">Día</option>
-                                <option th:each="d : ${#numbers.sequence(1, 7)}" th:value="${d}" th:selected="${d == h.diaSemana}"
-                                        th:text="${T(java.time.DayOfWeek).of(d).getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).forLanguageTag('es-CO'))}"></option>
-                            </select>
-                            <input type="time" name="inicio" required th:value="${h.horaInicio}" aria-label="Hora de inicio">
-                            <input type="time" name="fin" required th:value="${h.horaFin}" aria-label="Hora de fin">
-                            <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm quitar" aria-label="Quitar franja"><i class="fas fa-trash" aria-hidden="true"></i></button>
-                        </div>
+            <!-- VET-01: selector semanal de horario laboral -->
+            <form class="vl-panel" th:action="@{/disponibilidad/horario}" method="post" id="form-horario" style="margin-bottom:18px"
+                  data-confirm="Tu nuevo horario reemplazará al actual cuando recepción lo apruebe. Las citas ya reservadas no se eliminan: si alguna queda fuera, la clínica gestionará su reprogramación."
+                  data-confirm-title="¿Enviar solicitud de horario?" data-confirm-ok="Enviar">
+                <div class="vl-panel-head">
+                    <h3><i class="fas fa-calendar-week" aria-hidden="true"></i> Solicitar horario laboral</h3>
+                    <div class="vl-row">
+                        <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="copiar-habiles"
+                                title="Copia las franjas del lunes de martes a viernes"><i class="fas fa-copy" aria-hidden="true"></i> Copiar lunes a días hábiles</button>
                     </div>
-                    <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="agregar-franja" style="margin-top:10px"><i class="fas fa-plus" aria-hidden="true"></i> Agregar franja</button>
-                    <div class="vl-field" style="margin-top:12px"><label for="descH">Comentario para recepción</label>
-                        <input id="descH" name="descripcion" maxlength="500" placeholder="Ej.: a partir de diciembre"></div>
+                </div>
+                <p class="vl-small vl-muted" style="margin-top:-4px">Activa los días que trabajas y define sus franjas. Para un descanso fijo (p. ej. almuerzo) agrega dos franjas el mismo día.</p>
+
+                <div class="vl-semana" id="semana">
+                    <div class="vl-dia-card" th:each="d : ${#numbers.sequence(1, 7)}" th:with="franjas=${horarioPorDia.get(d)}"
+                         th:classappend="${!#lists.isEmpty(franjas)} ? 'activo'" th:attr="data-dia=${d}">
+                        <div class="vl-dia-head">
+                            <label class="vl-dia-toggle">
+                                <input type="checkbox" class="dia-activo" th:checked="${!#lists.isEmpty(franjas)}"
+                                       th:attr="aria-controls='franjas-' + ${d}">
+                                <span th:text="${nombresDia.get(d)}">Día</span>
+                            </label>
+                            <span class="vl-dia-resumen" aria-live="polite">No laborable</span>
+                        </div>
+                        <div class="vl-franjas" th:id="'franjas-' + ${d}">
+                            <div class="vl-franja" th:each="h, i : ${franjas}">
+                                <input type="hidden" name="dia" th:value="${d}">
+                                <div class="vl-field"><label th:for="'ini-' + ${d} + '-' + ${i.index}">Desde</label>
+                                    <input type="time" name="inicio" required step="900" th:id="'ini-' + ${d} + '-' + ${i.index}" th:value="${h.horaInicio}"></div>
+                                <span class="vl-franja-sep" aria-hidden="true">a</span>
+                                <div class="vl-field"><label th:for="'fin-' + ${d} + '-' + ${i.index}">Hasta</label>
+                                    <input type="time" name="fin" required step="900" th:id="'fin-' + ${d} + '-' + ${i.index}" th:value="${h.horaFin}"></div>
+                                <button type="button" class="vl-btn-icon danger quitar" th:attr="aria-label='Quitar franja de ' + ${nombresDia.get(d)}"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                            </div>
+                        </div>
+                        <div class="vl-dia-acciones">
+                            <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm agregar" th:attr="aria-label='Agregar franja al ' + ${nombresDia.get(d)}">
+                                <i class="fas fa-plus" aria-hidden="true"></i> Agregar franja</button>
+                        </div>
+                        <p class="vl-dia-error" role="alert" hidden></p>
+                    </div>
+                </div>
+                <p class="vl-dia-error" id="error-semana" role="alert" hidden></p>
+
+                <div class="vl-field" style="margin-top:14px"><label for="descH">Comentario para recepción</label>
+                    <input id="descH" name="descripcion" maxlength="500" placeholder="Ej.: a partir de diciembre"></div>
+                <div class="vl-form-actions">
                     <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar solicitud</button>
+                </div>
+            </form>
+
+            <div class="vl-grid-2">
+                <!-- VET-02: campos de fecha con espacio suficiente -->
+                <form class="vl-panel" th:action="@{/disponibilidad/ausencia}" method="post"
+                      data-confirm="La novedad se enviará a recepción. Cuando la aprueben, se retirarán tus cupos libres en ese periodo." data-confirm-title="¿Enviar novedad?" data-confirm-ok="Enviar">
+                    <h3><i class="fas fa-calendar-xmark" aria-hidden="true"></i> Registrar una novedad</h3>
+                    <p class="vl-small vl-muted" style="margin-top:-6px">Descanso, permiso, incapacidad, vacaciones o ausencia.</p>
+                    <div class="vl-form-grid vl-form-grid-auto">
+                        <div class="vl-field"><label for="tipo">Tipo *</label>
+                            <select id="tipo" name="tipo" required><option value="">Selecciona</option>
+                                <option th:each="t : ${tiposAusencia}" th:value="${t}" th:text="${t.etiqueta}"></option></select></div>
+                        <div class="vl-field"><label for="motivo">Motivo</label><input id="motivo" name="motivo" maxlength="500" placeholder="Opcional"></div>
+                        <div class="vl-field"><label for="inicioA">Desde *</label>
+                            <input type="datetime-local" id="inicioA" name="inicio" required data-no-pasado></div>
+                        <div class="vl-field"><label for="finA">Hasta *</label>
+                            <input type="datetime-local" id="finA" name="fin" required data-no-pasado data-posterior-a="inicioA"
+                                   data-msg-posterior="La fecha final debe ser posterior a la inicial"></div>
+                    </div>
+                    <div class="vl-form-actions">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar novedad</button>
+                    </div>
                 </form>
 
-                <div class="vl-stack">
-                    <form class="vl-panel" th:action="@{/disponibilidad/ausencia}" method="post"
-                          data-confirm="La novedad se enviará a recepción. Cuando la aprueben, se retirarán tus cupos libres en ese periodo." data-confirm-title="¿Enviar novedad?" data-confirm-ok="Enviar">
-                        <h3><i class="fas fa-calendar-xmark" aria-hidden="true"></i> Descanso, permiso, incapacidad, vacaciones o ausencia</h3>
-                        <div class="vl-form-grid">
-                            <div class="vl-field"><label for="tipo">Tipo *</label>
-                                <select id="tipo" name="tipo" required><option value="">Selecciona</option>
-                                    <option th:each="t : ${tiposAusencia}" th:value="${t}" th:text="${t.etiqueta}"></option></select></div>
-                            <div class="vl-field"><label for="motivo">Motivo</label><input id="motivo" name="motivo" maxlength="500"></div>
-                            <div class="vl-field"><label for="inicioA">Desde *</label><input type="datetime-local" id="inicioA" name="inicio" required data-no-pasado></div>
-                            <div class="vl-field"><label for="finA">Hasta *</label><input type="datetime-local" id="finA" name="fin" required data-no-pasado></div>
-                        </div>
-                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar novedad</button>
-                    </form>
-
-                    <form class="vl-panel" th:action="@{/disponibilidad/servicios}" method="post"
-                          data-confirm="Recepción revisará los servicios que propones. Los servicios no se autorizan hasta su aprobación." data-confirm-title="¿Solicitar estos servicios?" data-confirm-ok="Enviar">
-                        <h3><i class="fas fa-briefcase-medical" aria-hidden="true"></i> Servicios que puedo atender</h3>
-                        <fieldset style="border:none;padding:0;margin:0">
-                            <legend class="vl-small vl-muted">Marca todos los servicios que quieres atender (reemplaza la lista actual al aprobarse).</legend>
-                            <label th:each="s : ${serviciosClinica}" class="vl-row vl-small" style="gap:8px;margin:6px 0">
-                                <input type="checkbox" name="servicios" th:value="${s.idServicio}" th:checked="${idsServiciosAprobados.contains(s.idServicio)}">
-                                <span th:text="${s.nombreServicio}"></span>
-                            </label>
-                        </fieldset>
-                        <div class="vl-field" style="margin-top:8px"><label for="descS">Comentario</label><input id="descS" name="descripcion" maxlength="500"></div>
+                <form class="vl-panel" th:action="@{/disponibilidad/servicios}" method="post"
+                      data-confirm="Recepción revisará los servicios que propones. Los servicios no se autorizan hasta su aprobación." data-confirm-title="¿Solicitar estos servicios?" data-confirm-ok="Enviar">
+                    <h3><i class="fas fa-briefcase-medical" aria-hidden="true"></i> Servicios que puedo atender</h3>
+                    <fieldset style="border:none;padding:0;margin:0">
+                        <legend class="vl-small vl-muted">Marca todos los servicios que quieres atender (reemplaza la lista actual al aprobarse).</legend>
+                        <label th:each="s : ${serviciosClinica}" class="vl-row vl-small" style="gap:8px;margin:6px 0">
+                            <input type="checkbox" name="servicios" th:value="${s.idServicio}" th:checked="${idsServiciosAprobados.contains(s.idServicio)}">
+                            <span th:text="${s.nombreServicio}"></span>
+                        </label>
+                    </fieldset>
+                    <div class="vl-field" style="margin-top:8px"><label for="descS">Comentario</label><input id="descS" name="descripcion" maxlength="500"></div>
+                    <div class="vl-form-actions">
                         <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar solicitud</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
 
             <div class="vl-panel" style="margin-top:18px">
@@ -124,40 +158,140 @@
     </section>
 </main>
 <template id="tpl-franja">
-    <div class="vl-row franja">
-        <select name="dia" required aria-label="Día">
-            <option value="">Día</option><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
-            <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option>
-        </select>
-        <input type="time" name="inicio" required aria-label="Hora de inicio" value="08:00">
-        <input type="time" name="fin" required aria-label="Hora de fin" value="12:00">
-        <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm quitar" aria-label="Quitar franja"><i class="fas fa-trash" aria-hidden="true"></i></button>
+    <div class="vl-franja">
+        <input type="hidden" name="dia" value="">
+        <div class="vl-field"><label>Desde</label><input type="time" name="inicio" required step="900" value="08:00"></div>
+        <span class="vl-franja-sep" aria-hidden="true">a</span>
+        <div class="vl-field"><label>Hasta</label><input type="time" name="fin" required step="900" value="12:00"></div>
+        <button type="button" class="vl-btn-icon danger quitar" aria-label="Quitar franja"><i class="fas fa-trash" aria-hidden="true"></i></button>
     </div>
 </template>
 <script>
     (function () {
-        var cont = document.getElementById('franjas');
+        'use strict';
+        var form = document.getElementById('form-horario');
         var tpl = document.getElementById('tpl-franja');
-        document.getElementById('agregar-franja').addEventListener('click', function () {
-            cont.appendChild(tpl.content.cloneNode(true));
-        });
-        cont.addEventListener('click', function (e) {
-            var b = e.target.closest('.quitar');
-            if (b) b.closest('.franja').remove();
-        });
-        if (!cont.querySelector('.franja')) cont.appendChild(tpl.content.cloneNode(true));
-        document.getElementById('form-horario').addEventListener('submit', function (e) {
-            var malo = Array.prototype.some.call(cont.querySelectorAll('.franja'), function (f) {
-                var i = f.querySelector('[name=inicio]').value, fin = f.querySelector('[name=fin]').value;
-                return i && fin && i >= fin;
-            });
-            if (malo) { e.preventDefault(); e.stopImmediatePropagation(); alertaFranja(); }
-        }, true);
-        function alertaFranja() {
-            var p = document.getElementById('error-franjas');
-            if (!p) { p = document.createElement('p'); p.id = 'error-franjas'; p.className = 'vl-field-error'; p.setAttribute('role', 'alert'); cont.after(p); }
-            p.textContent = 'En cada franja la hora de inicio debe ser anterior a la de fin';
+        var dias = Array.prototype.slice.call(document.querySelectorAll('.vl-dia-card'));
+        var contador = 0;
+
+        function aHora(s) { var p = (s || '').split(':'); return p.length < 2 ? null : (+p[0]) * 60 + (+p[1]); }
+        function texto(min) {
+            var h = Math.floor(min / 60), m = min % 60, h12 = h % 12 || 12;
+            return h12 + ':' + String(m).padStart(2, '0') + (h < 12 ? ' a. m.' : ' p. m.');
         }
+
+        function nuevaFranja(card, inicio, fin) {
+            var nodo = tpl.content.firstElementChild.cloneNode(true);
+            var d = card.dataset.dia, n = ++contador;
+            nodo.querySelector('[name=dia]').value = d;
+            var ini = nodo.querySelector('[name=inicio]'), fi = nodo.querySelector('[name=fin]');
+            ini.id = 'ini-n' + n; fi.id = 'fin-n' + n;
+            nodo.querySelectorAll('label')[0].htmlFor = ini.id;
+            nodo.querySelectorAll('label')[1].htmlFor = fi.id;
+            if (inicio) ini.value = inicio;
+            if (fin) fi.value = fin;
+            card.querySelector('.vl-franjas').appendChild(nodo);
+            return nodo;
+        }
+
+        /* Valida un día: inicio < fin y franjas sin cruces. Devuelve el mensaje de error o ''. */
+        function validarDia(card) {
+            var activo = card.querySelector('.dia-activo').checked;
+            var filas = Array.prototype.slice.call(card.querySelectorAll('.vl-franja'));
+            var error = '', tramos = [];
+            filas.forEach(function (f) { f.classList.remove('invalida'); });
+            if (activo) {
+                if (!filas.length) error = 'Agrega al menos una franja o desactiva el día.';
+                filas.forEach(function (f) {
+                    var a = aHora(f.querySelector('[name=inicio]').value), b = aHora(f.querySelector('[name=fin]').value);
+                    if (a === null || b === null) { f.classList.add('invalida'); error = error || 'Completa la hora de inicio y de fin.'; return; }
+                    if (a >= b) { f.classList.add('invalida'); error = error || 'La hora de inicio debe ser anterior a la de fin.'; return; }
+                    tramos.push({ a: a, b: b, f: f });
+                });
+                tramos.sort(function (x, y) { return x.a - y.a; });
+                for (var i = 1; i < tramos.length; i++) {
+                    if (tramos[i].a < tramos[i - 1].b) {
+                        tramos[i].f.classList.add('invalida'); tramos[i - 1].f.classList.add('invalida');
+                        error = error || 'Hay franjas que se cruzan este día.';
+                    }
+                }
+            }
+            var p = card.querySelector('.vl-dia-error');
+            p.textContent = error; p.hidden = !error;
+            var resumen = card.querySelector('.vl-dia-resumen');
+            resumen.textContent = !activo ? 'No laborable'
+                : (tramos.length ? tramos.map(function (t) { return texto(t.a) + ' – ' + texto(t.b); }).join(' · ') : 'Sin franjas');
+            return error;
+        }
+
+        function pintar(card) {
+            var activo = card.querySelector('.dia-activo').checked;
+            card.classList.toggle('activo', activo);
+            card.querySelector('.vl-franjas').hidden = !activo;
+            card.querySelector('.vl-dia-acciones').hidden = !activo;
+            // Los días inactivos no se envían (inputs deshabilitados).
+            card.querySelectorAll('.vl-franja input').forEach(function (i) { i.disabled = !activo; });
+            if (activo && !card.querySelector('.vl-franja')) nuevaFranja(card, '08:00', '12:00');
+            validarDia(card);
+        }
+
+        dias.forEach(function (card) {
+            card.querySelector('.dia-activo').addEventListener('change', function () { pintar(card); });
+            card.querySelector('.agregar').addEventListener('click', function () {
+                var filas = card.querySelectorAll('.vl-franja');
+                var ultima = filas.length ? filas[filas.length - 1].querySelector('[name=fin]').value : '';
+                var desde = ultima && aHora(ultima) <= 21 * 60 ? ultima : '14:00';
+                var hasta = texto2(Math.min(aHora(desde) + 240, 23 * 60 + 45));
+                var nodo = nuevaFranja(card, desde, hasta);
+                nodo.querySelector('[name=inicio]').focus();
+                validarDia(card);
+            });
+            card.addEventListener('click', function (e) {
+                var b = e.target.closest('.quitar');
+                if (!b) return;
+                b.closest('.vl-franja').remove();
+                if (!card.querySelector('.vl-franja')) card.querySelector('.dia-activo').checked = false;
+                pintar(card);
+            });
+            card.addEventListener('input', function () { validarDia(card); });
+            pintar(card);
+        });
+
+        function texto2(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
+
+        document.getElementById('copiar-habiles').addEventListener('click', function () {
+            var lunes = dias[0];
+            if (!lunes.querySelector('.dia-activo').checked) {
+                var e = document.getElementById('error-semana');
+                e.textContent = 'Activa y configura primero el lunes.'; e.hidden = false; return;
+            }
+            var franjas = Array.prototype.map.call(lunes.querySelectorAll('.vl-franja'), function (f) {
+                return [f.querySelector('[name=inicio]').value, f.querySelector('[name=fin]').value];
+            });
+            dias.slice(1, 5).forEach(function (card) {
+                card.querySelectorAll('.vl-franja').forEach(function (f) { f.remove(); });
+                card.querySelector('.dia-activo').checked = true;
+                franjas.forEach(function (fr) { nuevaFranja(card, fr[0], fr[1]); });
+                pintar(card);
+            });
+            document.getElementById('error-semana').hidden = true;
+        });
+
+        // Se valida antes que vl-confirm (fase de captura) para no pedir confirmación de un horario inválido.
+        form.addEventListener('submit', function (e) {
+            var errores = dias.map(validarDia).filter(Boolean);
+            var ninguno = !dias.some(function (c) { return c.querySelector('.dia-activo').checked; });
+            var general = document.getElementById('error-semana');
+            general.hidden = !ninguno;
+            general.textContent = ninguno ? 'Activa al menos un día con su horario.' : '';
+            if (errores.length || ninguno) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var primero = form.querySelector('.vl-franja.invalida input, .vl-dia-error:not([hidden])');
+                if (primero && primero.focus) primero.focus();
+                (form.querySelector('.vl-dia-error:not([hidden])') || general).scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }, true);
     })();
 </script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>

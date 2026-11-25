@@ -7,4 +7,8 @@ import java.util.List;
 
 public interface TelefonoRepository extends JpaRepository<Telefono, Integer> {
     List<Telefono> findByUsuario_IdUsuario(Integer idUsuario);
+
+    boolean existsByNumeroTelefonoAndUsuario_IdUsuarioNot(String numeroTelefono, Integer idUsuario);
+
+    boolean existsByNumeroTelefono(String numeroTelefono);
 }

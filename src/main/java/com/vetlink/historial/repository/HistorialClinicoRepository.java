@@ -38,5 +38,7 @@ public interface HistorialClinicoRepository extends JpaRepository<HistorialClini
 
     Optional<HistorialClinico> findByCita_IdCita(Integer idCita);
 
+    Optional<HistorialClinico> findByEmergencia_IdEmergencia(Integer idEmergencia);
+
     long countByVeterinario_IdUsuarioAndFechaRegistroAfter(Integer idVeterinario, LocalDateTime desde);
 }

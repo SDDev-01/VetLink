@@ -27,23 +27,30 @@
                     <div class="vl-chat-thread" id="hilo" aria-live="polite">
                         <div th:each="m : ${mensajes}" class="vl-chat-bubble-row" th:classappend="${m.remitente.idUsuario == usuario.idUsuario} ? ' mine' : ''">
                             <div class="vl-chat-bubble">
-                                <span th:text="${m.contenido}"></span>
+                                <span class="vl-chat-texto" th:text="${m.contenido}"></span>
                                 <small class="vl-chat-bubble-time" th:text="${@fmt.fechaHora(m.enviadoEn)} + (${m.remitente.idUsuario == usuario.idUsuario and m.leidoEn != null} ? ' · leído' : '')"></small>
                             </div>
                         </div>
                         <p class="vl-muted" th:if="${#lists.isEmpty(mensajes)}" style="text-align:center">Escribe el primer mensaje.</p>
                     </div>
-                    <form class="vl-chat-input-row" th:action="@{'/chat/' + ${conversacion.idConversacion} + '/mensajes'}" method="post">
+                    <form class="vl-chat-input-row" th:action="@{'/chat/' + ${conversacion.idConversacion} + '/mensajes'}" method="post"
+                          data-vl-chat data-vl-chat-hilo="hilo">
                         <label for="contenido" class="vl-sr-only">Mensaje</label>
-                        <textarea id="contenido" name="contenido" required maxlength="2000" placeholder="Escribe un mensaje..."></textarea>
+                        <textarea id="contenido" name="contenido" required maxlength="2000" rows="1"
+                                  placeholder="Escribe un mensaje..." aria-describedby="chat-ayuda"></textarea>
                         <button class="vl-btn vl-btn-primary" type="submit"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar</button>
                     </form>
+                    <div class="vl-chat-ayuda" id="chat-ayuda" data-vl-chat-ayuda>
+                        <span><kbd>Enter</kbd> envía · <kbd>Shift</kbd>+<kbd>Enter</kbd> nueva línea</span>
+                        <span class="vl-chat-error" role="status" aria-live="polite"></span>
+                        <span class="vl-chat-contador" aria-hidden="true"></span>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 </main>
-<script>var h = document.getElementById('hilo'); if (h) h.scrollTop = h.scrollHeight;</script>
+<script th:src="@{/js/vl-chat.js}"></script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

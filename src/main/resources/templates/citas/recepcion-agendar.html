@@ -20,70 +20,90 @@
         <div class="vl-section vl-section-active">
             <div class="vl-section-head">
                 <div><h1>Agendar cita</h1><p th:text="'En ' + ${veterinaria.nombre}">Veterinaria</p></div>
+                <div class="vl-section-actions">
+                    <a th:href="@{/agenda}" class="vl-btn vl-btn-ghost"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Citas de la clínica</a>
+                    <a th:href="@{/reportes/citas}" class="vl-btn vl-btn-ghost"><i class="fas fa-chart-column" aria-hidden="true"></i> Reporte de citas</a>
+                </div>
             </div>
 
-            <div class="vl-table-wrap" style="padding:28px; max-width:600px;">
-                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+            <div class="vl-alert vl-alert-err" role="alert" th:if="${errorGeneral}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span th:text="${errorGeneral}"></span></div>
 
+            <div class="vl-panel" style="max-width:920px">
                 <!-- VL-06: buscar al dueño por documento o correo -->
-                <form th:action="@{/citas/recepcion/agendar}" method="get"
-                      style="display:flex; gap:8px; align-items:flex-end; margin-bottom:20px;">
-                    <div class="vl-field" style="flex:1;">
-                        <label>Buscar dueño (documento o correo)</label>
-                        <input type="text" name="buscarDuenio" th:value="${buscarDuenio}" required
+                <form th:action="@{/citas/recepcion/agendar}" method="get" class="vl-row" style="align-items:flex-end;margin-bottom:6px">
+                    <div class="vl-field" style="flex:1 1 260px;margin:0">
+                        <label for="buscar-duenio">1. Buscar dueño (documento o correo)</label>
+                        <input type="text" id="buscar-duenio" name="buscarDuenio" th:value="${buscarDuenio}" required
                                placeholder="Ej.: 1012345678 o nombre@correo.com">
                     </div>
-                    <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-search"></i> Buscar</button>
+                    <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-search" aria-hidden="true"></i> Buscar</button>
                 </form>
-                <p class="form-message" style="color:#dc2626" th:if="${duenioNoEncontrado}" th:text="${duenioNoEncontrado}"></p>
+                <p class="vl-field-error" role="alert" th:if="${duenioNoEncontrado}" th:text="${duenioNoEncontrado}"></p>
 
-                <form th:action="@{/citas/recepcion/agendar}" th:object="${form}" method="post">
+                <div class="vl-divider"></div>
+
+                <form th:action="@{/citas/recepcion/agendar}" th:object="${form}" method="post" id="form-agendar" data-un-envio>
                     <input type="hidden" th:field="*{idVeterinaria}">
+                    <!-- REC-02: estos valores los fija el horario elegido en la grilla -->
+                    <input type="hidden" th:field="*{idCupo}" id="idCupo">
+                    <input type="hidden" th:field="*{idVeterinario}" id="idVeterinario">
+                    <input type="hidden" th:field="*{fecha}" id="fechaCupo">
+                    <input type="hidden" th:field="*{hora}" id="horaCupo">
 
-                    <div class="vl-form-grid">
-                        <div class="vl-field vl-full">
-                            <label>Mascota</label>
-                            <p th:if="${duenioEncontrado} != null" style="margin:0 0 6px; color:#334155;"
+                    <div class="vl-form-grid vl-form-grid-auto">
+                        <div class="vl-field">
+                            <label for="sel-mascota">2. Mascota *</label>
+                            <p class="vl-small" style="margin:0" th:if="${duenioEncontrado} != null"
                                th:text="'Dueño: ' + ${duenioEncontrado.nombre} + ' ' + ${duenioEncontrado.apellido}"></p>
-                            <select th:field="*{idMascota}">
+                            <select th:field="*{idMascota}" id="sel-mascota" required th:disabled="${duenioEncontrado == null}">
                                 <option value="" th:text="${duenioEncontrado} != null ? 'Selecciona' : 'Busca primero al dueño'">Selecciona</option>
                                 <option th:each="m : ${mascotas}" th:value="${m.idMascota}" th:text="${m.nombre}"></option>
                             </select>
-                            <p th:if="${duenioEncontrado} != null and ${#lists.isEmpty(mascotas)}" style="color:#94a3b8; font-size:0.85rem;">
-                                Este dueño no tiene mascotas activas.</p>
+                            <small class="vl-hint" th:if="${duenioEncontrado} != null and ${#lists.isEmpty(mascotas)}">Este dueño no tiene mascotas activas.</small>
                             <small class="vl-error" th:if="${#fields.hasErrors('idMascota')}" th:errors="*{idMascota}"></small>
                         </div>
-                        <div class="vl-field vl-full">
-                            <label>Veterinario</label>
-                            <select th:field="*{idVeterinario}" id="selectVeterinario">
-                                <option value="">Selecciona</option>
-                            </select>
-                            <small class="vl-error" th:if="${#fields.hasErrors('idVeterinario')}" th:errors="*{idVeterinario}"></small>
-                        </div>
-                        <div class="vl-field vl-full">
-                            <label>Servicio</label>
-                            <select th:field="*{idServicio}">
+                        <div class="vl-field">
+                            <label for="sel-servicio">3. Servicio *</label>
+                            <select th:field="*{idServicio}" id="sel-servicio" required>
                                 <option value="">Selecciona</option>
                                 <option th:each="s : ${servicios}" th:value="${s.idServicio}" th:text="${s.nombreServicio}"></option>
                             </select>
                             <small class="vl-error" th:if="${#fields.hasErrors('idServicio')}" th:errors="*{idServicio}"></small>
                         </div>
                         <div class="vl-field">
-                            <label>Fecha</label>
-                            <input type="date" th:field="*{fecha}" id="inputFecha" onchange="cargarHorarios()">
-                            <small class="vl-error" th:if="${#fields.hasErrors('fecha')}" th:errors="*{fecha}"></small>
+                            <label for="sel-veterinario">4. Veterinario</label>
+                            <select id="sel-veterinario" th:attr="data-actual=${form.idVeterinario}" disabled>
+                                <option value="">Elige primero el servicio</option>
+                            </select>
+                            <small class="vl-hint">Opcional: sin elegir, se muestran todos los habilitados para el servicio.</small>
                         </div>
                         <div class="vl-field">
-                            <label>Hora</label>
-                            <input type="time" th:field="*{hora}" id="inputHora">
-                            <small class="vl-error" th:if="${#fields.hasErrors('hora')}" th:errors="*{hora}"></small>
+                            <label for="sel-fecha">5. Fecha *</label>
+                            <input type="date" id="sel-fecha" th:value="${form.fecha}" th:min="${T(java.time.LocalDate).now()}" required data-no-pasado>
+                            <small class="vl-error" th:if="${#fields.hasErrors('fecha')}" th:errors="*{fecha}"></small>
                         </div>
                     </div>
 
-                    <div id="slotsContainer" style="margin:10px 0;"></div>
+                    <fieldset class="vl-field" style="border:none;padding:0;margin:14px 0 0">
+                        <legend class="vl-label">6. Horarios disponibles *</legend>
+                        <div id="slotsContainer" aria-live="polite">
+                            <p class="vl-small vl-muted">Elige servicio y fecha para ver los horarios.</p>
+                        </div>
+                        <div class="vl-slots-leyenda" aria-hidden="true">
+                            <span><i class="libre"></i>Disponible</span><span><i class="elegido"></i>Seleccionado</span><span><i class="ocupado"></i>Ocupado o bloqueado</span>
+                        </div>
+                        <small class="vl-error" id="error-horario" role="alert" th:text="${#fields.hasErrors('idCupo')} ? ${#fields.errors('idCupo')[0]} : ''"></small>
+                    </fieldset>
 
-                    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Agendar cita</button>
+                    <div class="vl-field" style="margin-top:12px">
+                        <label for="motivo">Motivo (opcional)</label>
+                        <textarea id="motivo" th:field="*{motivo}" maxlength="500" rows="2" placeholder="Ej.: control anual"></textarea>
+                        <small class="vl-error" th:if="${#fields.hasErrors('motivo')}" th:errors="*{motivo}"></small>
+                    </div>
+
+                    <div class="vl-form-actions">
+                        <a th:href="@{/agenda}" class="vl-btn vl-btn-ghost">Cancelar</a>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check" aria-hidden="true"></i> Agendar cita</button>
                     </div>
                 </form>
             </div>
@@ -93,71 +113,131 @@
 
 <script th:inline="javascript">
     var VL_ID_VETERINARIA = /*[[${veterinaria.idVeterinaria}]]*/ 0;
+    var VL_CUPO_PREVIO = /*[[${form.idCupo}]]*/ null;
+</script>
+<script>
+(function () {
+    'use strict';
+    var selServicio = document.getElementById('sel-servicio');
+    var selVet = document.getElementById('sel-veterinario');
+    var selMascota = document.getElementById('sel-mascota');
+    var inFecha = document.getElementById('sel-fecha');
+    var cont = document.getElementById('slotsContainer');
+    var error = document.getElementById('error-horario');
+    var form = document.getElementById('form-agendar');
+    var oculto = {
+        cupo: document.getElementById('idCupo'), vet: document.getElementById('idVeterinario'),
+        fecha: document.getElementById('fechaCupo'), hora: document.getElementById('horaCupo')
+    };
+    var peticion = 0;
 
-    document.addEventListener('DOMContentLoaded', function () {
-        fetch('/citas/veterinarios/' + VL_ID_VETERINARIA)
-            .then(r => r.json())
-            .then(function (data) {
-                var select = document.getElementById('selectVeterinario');
-                data.forEach(function (v) {
-                    var opt = document.createElement('option');
-                    opt.value = v.id;
-                    opt.textContent = v.nombre;
-                    select.appendChild(opt);
-                });
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+    function limpiarSeleccion() {
+        oculto.cupo.value = ''; oculto.vet.value = ''; oculto.hora.value = '';
+        oculto.fecha.value = inFecha.value || '';
+    }
+
+    function cargarVeterinarios() {
+        var servicio = selServicio.value;
+        var previo = selVet.value || selVet.dataset.actual || '';
+        selVet.innerHTML = '';
+        if (!servicio) {
+            selVet.disabled = true;
+            selVet.innerHTML = '<option value="">Elige primero el servicio</option>';
+            return Promise.resolve();
+        }
+        return fetch('/citas/api/veterinarios?idVeterinaria=' + VL_ID_VETERINARIA + '&idServicio=' + servicio, { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+            .then(function (lista) {
+                selVet.innerHTML = '<option value="">Cualquier veterinario habilitado</option>' + lista.map(function (v) {
+                    return '<option value="' + v.id + '">' + esc(v.nombre) + (v.especialidad ? ' · ' + esc(v.especialidad) : '') + '</option>';
+                }).join('');
+                if (previo && lista.some(function (v) { return String(v.id) === String(previo); })) selVet.value = previo;
+                selVet.disabled = false;
+                selVet.dataset.actual = '';
+            })
+            .catch(function () {
+                selVet.innerHTML = '<option value="">No se pudieron cargar los veterinarios</option>';
             });
-    });
-
-    function horaAMinutos(hhmm) {
-        var partes = hhmm.split(':');
-        return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
     }
 
     function cargarHorarios() {
-        var idVeterinario = document.getElementById('selectVeterinario').value;
-        var fecha = document.getElementById('inputFecha').value;
-        var cont = document.getElementById('slotsContainer');
-        if (!fecha) { cont.innerHTML = ''; return; }
-
-        var url = '/citas/horarios-disponibles?idVeterinaria=' + VL_ID_VETERINARIA + '&fecha=' + fecha
-            + (idVeterinario ? '&idVeterinario=' + idVeterinario : '');
-
-        fetch(url).then(r => r.json()).then(function (data) {
-            if (data.cerrado || !data.apertura) {
-                cont.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">La veterinaria no atiende ese día.</p>';
-                return;
-            }
-            // VL-14: se recorren todos los rangos del día (p. ej. 08:00-12:00 y 14:00-18:00).
-            var rangos = (data.rangos && data.rangos.length) ? data.rangos : [{apertura: data.apertura, cierre: data.cierre}];
-            var slots = [];
-            rangos.forEach(function (rango) {
-                var cursor = horaAMinutos(rango.apertura);
-                var fin = horaAMinutos(rango.cierre);
-                while (cursor + 30 <= fin) {
-                    var hh = String(Math.floor(cursor / 60)).padStart(2, '0');
-                    var mm = String(cursor % 60).padStart(2, '0');
-                    var horaStr = hh + ':' + mm;
-                    if (data.ocupadas.indexOf(horaStr) === -1 && slots.indexOf(horaStr) === -1) slots.push(horaStr);
-                    cursor += 30;
+        limpiarSeleccion();
+        error.textContent = '';
+        var servicio = selServicio.value, fecha = inFecha.value;
+        if (!servicio || !fecha) {
+            cont.innerHTML = '<p class="vl-small vl-muted">Elige servicio y fecha para ver los horarios.</p>';
+            return;
+        }
+        var n = ++peticion;
+        cont.innerHTML = '<p class="vl-small vl-muted"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Consultando disponibilidad…</p>';
+        var url = '/citas/api/disponibilidad/grilla?idVeterinaria=' + VL_ID_VETERINARIA + '&idServicio=' + servicio + '&fecha=' + fecha
+            + (selVet.value ? '&idVeterinario=' + selVet.value : '') + (selMascota && selMascota.value ? '&idMascota=' + selMascota.value : '');
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+            .then(function (celdas) {
+                if (n !== peticion) return; // respuesta vieja
+                if (!celdas.length) {
+                    cont.innerHTML = '<p class="vl-small vl-muted">No hay horarios para ese día. Prueba otra fecha u otro veterinario.</p>';
+                    return;
                 }
+                var varios = new Set(celdas.map(function (c) { return c.idVeterinario; })).size > 1;
+                var libres = celdas.filter(function (c) { return c.libre; }).length;
+                cont.innerHTML = '<p class="vl-small" style="margin:0 0 6px">' + libres + (libres === 1 ? ' horario disponible' : ' horarios disponibles') + '</p>'
+                    + '<div class="vl-slots-grid" role="group" aria-label="Horarios del día">' + celdas.map(function (c) {
+                        var nombre = varios ? '<small>' + esc(c.veterinario) + '</small>' : '';
+                        if (!c.libre) {
+                            return '<button type="button" class="vl-slot-btn" disabled aria-disabled="true" title="' + esc(c.motivo) + '">'
+                                + esc(c.etiqueta) + '<small>' + esc(c.motivo) + '</small>' + nombre + '</button>';
+                        }
+                        return '<button type="button" class="vl-slot-btn" aria-pressed="false" data-cupo="' + c.idCupo + '" data-vet="' + c.idVeterinario
+                            + '" data-hora="' + esc(c.hora) + '" aria-label="' + esc(c.etiqueta + ' con ' + c.veterinario) + '">' + esc(c.etiqueta) + nombre + '</button>';
+                    }).join('') + '</div>';
+                if (VL_CUPO_PREVIO) {
+                    var previo = cont.querySelector('[data-cupo="' + VL_CUPO_PREVIO + '"]');
+                    if (previo) elegir(previo);
+                    VL_CUPO_PREVIO = null;
+                }
+            })
+            .catch(function () {
+                if (n !== peticion) return;
+                cont.innerHTML = '<p class="vl-field-error" role="alert">No se pudo consultar la disponibilidad. Inténtalo de nuevo.</p>';
             });
-            var textoRangos = rangos.map(function (r) { return r.apertura + ' - ' + r.cierre; }).join(' y ');
-            cont.innerHTML = slots.length
-                ? '<label style="font-size:0.8rem; font-weight:700; color:#334155;">Horarios disponibles (atiende ' + textoRangos + ')</label><div class="vl-slots-grid">'
-                    + slots.map(h => '<button type="button" class="vl-slot-btn" data-hora="' + h + '">' + h + '</button>').join('') + '</div>'
-                : '<p style="color:#94a3b8; font-size:0.85rem;">No hay horarios disponibles ese día.</p>';
-
-            cont.querySelectorAll('.vl-slot-btn').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    cont.querySelectorAll('.vl-slot-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    document.getElementById('inputHora').value = btn.dataset.hora;
-                });
-            });
-        });
     }
 
-    document.getElementById('selectVeterinario') && document.getElementById('selectVeterinario').addEventListener('change', cargarHorarios);
+    function elegir(btn) {
+        cont.querySelectorAll('.vl-slot-btn[aria-pressed]').forEach(function (b) { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); });
+        btn.classList.add('selected');
+        btn.setAttribute('aria-pressed', 'true');
+        oculto.cupo.value = btn.dataset.cupo;
+        oculto.vet.value = btn.dataset.vet;
+        oculto.hora.value = btn.dataset.hora;
+        oculto.fecha.value = inFecha.value;
+        error.textContent = '';
+    }
+
+    cont.addEventListener('click', function (e) {
+        var btn = e.target.closest('.vl-slot-btn');
+        if (btn && !btn.disabled && btn.dataset.cupo) elegir(btn);
+    });
+    selServicio.addEventListener('change', function () { cargarVeterinarios().then(cargarHorarios); });
+    selVet.addEventListener('change', cargarHorarios);
+    inFecha.addEventListener('change', cargarHorarios);
+    if (selMascota) selMascota.addEventListener('change', cargarHorarios);
+
+    // Se exige un horario antes de enviar (el servidor lo vuelve a validar).
+    form.addEventListener('submit', function (e) {
+        if (!oculto.cupo.value) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            error.textContent = 'Selecciona un horario disponible';
+            cont.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    }, true);
+
+    cargarVeterinarios().then(function () { if (inFecha.value) cargarHorarios(); });
+})();
 </script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>

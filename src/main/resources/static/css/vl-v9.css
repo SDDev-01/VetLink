@@ -1,0 +1,149 @@
+/* =========================================================
+   VETLINK · V9 — Correcciones de distribución y componentes
+   (perfiles, horario semanal, calendario de recepción, cupos,
+   chat, perfil institucional). Reutiliza los tokens de vl-ui.css.
+   ========================================================= */
+
+/* Formularios: ningún campo desborda su columna (fechas, selects largos, datetime-local). */
+.vl-form-grid > * { min-width: 0; }
+.vl-field { min-width: 0; }
+.vl-field input, .vl-field select, .vl-field textarea { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.vl-field input[type=checkbox], .vl-field input[type=radio] { width: auto; }
+.vl-field input[type=date], .vl-field input[type=datetime-local], .vl-field input[type=time] { min-height: 44px; font-variant-numeric: tabular-nums; }
+.vl-field .vl-hint, .vl-field .vl-field-error, .vl-field small { overflow-wrap: anywhere; }
+.vl-field .vl-label { font-size: .8rem; font-weight: 700; color: #334155; display: inline-flex; gap: 6px; align-items: center; }
+/* Grilla que se adapta al espacio real del panel (no solo al ancho de la pantalla). */
+.vl-form-grid.vl-form-grid-auto { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.vl-form-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--vl-borde); }
+
+/* Datos de solo lectura (DUE-01). */
+.vl-readonly { border: 1.5px dashed #cbd5e1; background: #f8fafc; color: #475569; border-radius: 11px; padding: 11px 14px; font-size: .9rem; font-weight: 600; min-height: 44px; display: flex; align-items: center; cursor: not-allowed; }
+.vl-lock { color: #94a3b8; font-size: .72rem; }
+
+/* Buscador de razas (DUE-02). */
+.vl-raza-buscador { margin-bottom: 6px; }
+
+/* ---------- Perfil (GEN-02) ---------- */
+.vl-profile-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: linear-gradient(135deg, #eff6ff 0%, #fff 70%); border: 1px solid var(--vl-borde); border-radius: 20px; padding: 22px; margin-bottom: 18px; }
+.vl-profile-avatar { width: 76px; height: 76px; border-radius: 22px; background: var(--vl-azul); color: #fff; display: grid; place-items: center; font-size: 1.7rem; font-weight: 800; flex-shrink: 0; text-transform: uppercase; }
+.vl-profile-id { flex: 1 1 240px; min-width: 0; }
+.vl-profile-id h1 { margin: 0 0 6px; font-size: 1.5rem; color: var(--vl-texto); overflow-wrap: anywhere; }
+.vl-chip-rol { background: var(--vl-azul-suave); color: #1e40af; }
+.vl-profile-edit-btn { margin-left: auto; }
+.vl-profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; align-items: start; }
+.vl-profile-form { margin-bottom: 18px; border-color: #bfdbfe; box-shadow: 0 0 0 4px #eff6ff; }
+.vl-profile-clinica-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 14px; background: #eff6ff; flex-shrink: 0; }
+.vl-profile-danger { margin-top: 18px; border-color: #fecaca; }
+.vl-profile-danger h3 { color: #b91c1c; }
+
+/* ---------- Chat (GEN-01) ---------- */
+.vl-chat-texto { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.vl-chat-input-row textarea { resize: none; min-height: 44px; max-height: 160px; overflow-y: auto; line-height: 1.4; }
+.vl-chat-ayuda { font-size: .74rem; color: var(--vl-gris-texto); padding: 0 16px 10px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.vl-chat-ayuda .vl-chat-error { color: var(--vl-err); font-weight: 600; }
+
+/* ---------- Calendario de recepción (REC-01): forma + color ---------- */
+.vl-day-marks { display: flex; flex-direction: column; gap: 3px; margin-top: auto; }
+.vl-day-dots { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+.vl-mk-cita { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--vl-azul); }
+.vl-mk-pendiente { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #9333ea; box-shadow: 0 0 0 2px #f3e8ff; }
+.vl-mk-cancelada { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: transparent; border: 2px solid #dc2626; box-sizing: border-box; }
+.vl-mk-cupo { display: inline-block; width: 18px; height: 3px; border-radius: 3px; background: #eab308; }
+.vl-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: .8rem; color: var(--vl-texto-2); }
+.vl-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Cupos de agendamiento (REC-02 / REC-04) ---------- */
+.vl-slot-btn:disabled, .vl-slot-btn[aria-disabled=true] { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; border-style: dashed; cursor: not-allowed; }
+.vl-slot-btn:disabled:hover { border-color: #e2e8f0; color: #94a3b8; }
+.vl-slot-btn small { display: block; font-size: .64rem; font-weight: 600; }
+.vl-slot-btn:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.vl-slots-leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: .76rem; color: var(--vl-texto-2); margin-top: 8px; }
+.vl-slots-leyenda i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; vertical-align: -2px; margin-right: 4px; border: 1.5px solid #e2e8f0; }
+.vl-slots-leyenda .libre { background: #fff; }
+.vl-slots-leyenda .elegido { background: var(--vl-azul); border-color: var(--vl-azul); }
+.vl-slots-leyenda .ocupado { background: #f1f5f9; border-style: dashed; }
+
+/* ---------- Acciones en tablas (REC-03) ---------- */
+.vl-table td.vl-td-acciones { white-space: nowrap; width: 1%; padding-right: 16px; }
+.vl-acciones { display: inline-flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.vl-acciones form { margin: 0; display: inline-flex; }
+.vl-acciones .vl-btn-icon { flex-shrink: 0; }
+
+/* ---------- Horario semanal del veterinario (VET-01) ---------- */
+.vl-semana { display: grid; gap: 10px; }
+.vl-dia-card { border: 1.5px solid var(--vl-borde); border-radius: 14px; padding: 12px 14px; background: #fff; transition: border-color .15s, background .15s; }
+.vl-dia-card.activo { border-color: #93c5fd; background: #f8fbff; }
+.vl-dia-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.vl-dia-toggle { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; color: var(--vl-texto); cursor: pointer; }
+.vl-dia-toggle input { width: 18px; height: 18px; accent-color: var(--vl-azul); }
+.vl-dia-resumen { font-size: .78rem; color: var(--vl-gris-texto); }
+.vl-dia-card.activo .vl-dia-resumen { color: #1d4ed8; font-weight: 700; }
+.vl-franjas { display: grid; gap: 8px; margin-top: 10px; }
+.vl-franja { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.vl-franja .vl-field { margin: 0; }
+.vl-franja-sep { padding-bottom: 12px; color: var(--vl-gris-texto); font-weight: 700; }
+.vl-franja.invalida input { border-color: #ef4444; background: #fef2f2; }
+.vl-dia-error { color: var(--vl-err); font-size: .78rem; font-weight: 600; margin-top: 6px; }
+.vl-dia-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+@media (max-width: 480px) {
+    .vl-franja { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+    .vl-franja-sep { display: none; }
+}
+
+/* ---------- Bloques diferenciados (REC-07 / REC-08) ---------- */
+.vl-equipo-lista { display: grid; gap: 12px; }
+.vl-equipo-card { border: 1px solid var(--vl-borde); border-radius: 14px; padding: 14px 16px; background: #fff; }
+.vl-equipo-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.vl-equipo-card h4 { margin: 0; font-size: .95rem; color: var(--vl-texto); display: flex; gap: 8px; align-items: center; }
+.vl-equipo-sub { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--vl-gris-texto); font-weight: 800; margin: 12px 0 6px; }
+.vl-horario-lista { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.vl-horario-lista li { background: var(--vl-fondo); border-radius: 10px; padding: 6px 10px; font-size: .8rem; color: var(--vl-texto-2); }
+.vl-horario-lista li strong { display: block; color: var(--vl-texto); font-size: .78rem; }
+
+/* ---------- Perfil institucional (REC-09) ---------- */
+.vl-inst-hero { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid var(--vl-borde); border-radius: 20px; padding: 22px; margin-bottom: 18px; }
+.vl-inst-logo { width: 96px; height: 96px; border-radius: 22px; object-fit: contain; background: #eff6ff; flex-shrink: 0; border: 1px solid var(--vl-borde); }
+.vl-inst-hero .info { flex: 1 1 260px; min-width: 0; }
+.vl-inst-hero h1 { margin: 0 0 6px; font-size: 1.5rem; overflow-wrap: anywhere; }
+.vl-inst-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--vl-borde); }
+.vl-inst-nav a { padding: 10px 14px; font-weight: 700; font-size: .86rem; color: var(--vl-texto-2); text-decoration: none; border-bottom: 3px solid transparent; }
+.vl-inst-nav a:hover, .vl-inst-nav a:focus-visible { color: var(--vl-azul); border-bottom-color: var(--vl-azul); }
+.vl-inst-section { scroll-margin-top: 20px; margin-bottom: 22px; }
+.vl-persona-card { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--vl-borde); border-radius: 14px; padding: 14px; background: #fff; min-width: 0; }
+.vl-persona-card .avatar { width: 42px; height: 42px; border-radius: 12px; background: var(--vl-azul-suave); color: #1d4ed8; display: grid; place-items: center; font-weight: 800; flex-shrink: 0; }
+.vl-persona-card .datos { min-width: 0; flex: 1; }
+.vl-persona-card .datos strong { display: block; overflow-wrap: anywhere; }
+.vl-persona-card details { margin-top: 8px; }
+.vl-persona-card summary { cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--vl-azul); }
+.vl-cards-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.vl-servicio-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; border: 1px solid var(--vl-borde); border-radius: 14px; padding: 12px 14px; background: #fff; }
+.vl-servicio-row .vl-field { margin: 0; }
+@media (max-width: 700px) {
+    .vl-servicio-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .vl-servicio-row > :first-child { grid-column: 1 / -1; }
+}
+
+/* ---------- Ubicación manual (DUE-06) ---------- */
+.vl-mapa-picker { height: 280px; border-radius: 14px; border: 1px solid var(--vl-borde); margin-top: 10px; }
+
+/* ---------- Campana de notificaciones: cerrada no ocupa espacio; en móvil no se sale de la pantalla ---------- */
+.vl-bell .vl-notif-panel { visibility: hidden; }
+.vl-bell .vl-notif-panel.open { visibility: visible; }
+@media (max-width: 768px) {
+    .vl-bell .vl-notif-panel { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; max-width: none; max-height: 70vh; }
+}
+
+/* Rejillas con columnas fijadas en línea (style="grid-template-columns:…"): en pantallas angostas
+   pasan a una columna; antes el estilo en línea impedía el colapso y los paneles quedaban de ~80 px. */
+@media (max-width: 680px) {
+    .vl-grid-2[style*="grid-template-columns"], .vl-grid-3[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Perfil: columnas fluidas (tipo mosaico) para que las tarjetas cortas no dejen huecos. */
+.vl-profile-grid { display: block; columns: 3 300px; column-gap: 18px; }
+.vl-profile-grid > * { break-inside: avoid; margin: 0 0 18px; display: block; width: 100%; box-sizing: border-box; }
+.vl-horario-lista { grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); }
+.vl-horario-lista li span { white-space: nowrap; }
+
+/* Enlaces con apariencia de botón: sin subrayado (coherente con los <button>). */
+a.vl-btn, a.vl-btn-icon { text-decoration: none; }

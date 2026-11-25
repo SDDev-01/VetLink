@@ -21,6 +21,7 @@
             <div class="vl-alert vl-alert-ok" role="status" th:if="${param.creada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Solicitud enviada. Está pendiente de asignación.</div>
             <div class="vl-alert vl-alert-ok" role="status" th:if="${param.asignada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Emergencia asignada.</div>
             <div class="vl-alert vl-alert-err" role="alert" th:if="${error}" th:text="${error}"></div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
 
             <form th:if="${usuario.rol.name() == 'TUTOR'}" class="vl-panel" style="margin-bottom:18px" th:action="@{/emergencias}" th:object="${form}" method="post"
                   data-confirm="Se enviará una solicitud de emergencia a la clínica. No es una atención garantizada hasta que la clínica la confirme y asigne un veterinario."
@@ -36,7 +37,8 @@
                                     th:text="${v.nombre} + ' — ' + (${disponibles[v.idVeterinaria] > 0} ? ${disponibles[v.idVeterinaria]} + ' disponible(s) ahora' : 'sin veterinarios disponibles ahora')"></option></select>
                         <a class="vl-small" th:href="@{/directorio(buscar=1,emergencia=true)}">Buscar la más cercana con disponibilidad</a></div>
                     <div class="vl-field"><label for="em-motivo">Motivo *</label>
-                        <input id="em-motivo" th:field="*{motivo}" required maxlength="255" placeholder="Ej.: dificultad respiratoria"></div>
+                        <input id="em-motivo" th:field="*{motivo}" required maxlength="255" placeholder="Ej.: dificultad respiratoria">
+                        <small class="vl-error" th:if="${#fields.hasErrors('motivo')}" th:errors="*{motivo}"></small></div>
                     <div class="vl-field"><label for="em-detalle">Síntomas y detalles</label>
                         <textarea id="em-detalle" th:field="*{detalle}" maxlength="2000" placeholder="Describe signos, tiempo de evolución y cualquier dato importante"></textarea></div>
                 </div>
@@ -57,6 +59,7 @@
                         <div class="vl-cita-main">
                             <div class="vl-cita-titulo" th:text="${e.mascota != null ? e.mascota.nombre : 'Paciente'} + ' · ' + ${e.motivo}"></div>
                             <div class="vl-cita-meta">
+                                <span th:if="${e.mascota != null}"><i class="fas fa-paw" aria-hidden="true"></i><span th:text="${e.mascota.especie.nombreEspecie} + ' · ' + ${e.mascota.raza.nombreRaza}"></span></span>
                                 <span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${e.veterinaria.nombre}"></span></span>
                                 <span><i class="far fa-clock" aria-hidden="true"></i><span th:text="${@fmt.fechaHora(e.creadaEn)}"></span></span>
                                 <span th:if="${e.veterinario != null}"><i class="fas fa-user-doctor" aria-hidden="true"></i><span th:text="${e.veterinario.nombre} + ' ' + ${e.veterinario.apellido}"></span></span>

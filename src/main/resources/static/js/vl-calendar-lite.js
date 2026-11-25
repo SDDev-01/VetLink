@@ -36,11 +36,32 @@ const VlCalendarLite = {
             for (let d = 1; d <= daysInMonth; d++) {
                 const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const marks = opts.marks && opts.marks[fechaStr] ? opts.marks[fechaStr] : [];
-                const dotsHTML = marks.length ? `<div class="vl-day-dot-row">${marks.slice(0, 4).map(m => `<span class="vl-day-dot ${m.cls || ''}"></span>`).join('')}</div>` : '';
+                // Marcas con «tipo» (REC-01): se distinguen por forma y color; las antiguas ({cls}) siguen como puntos.
+                const tipos = { cita: 0, pendiente: 0, cancelada: 0, cupo: 0 };
+                const legado = [];
+                marks.forEach(m => { if (m.tipo && m.tipo in tipos) tipos[m.tipo]++; else legado.push(m); });
+                let dotsHTML = '';
+                let etiqueta = '';
+                if (tipos.cita || tipos.pendiente || tipos.cancelada || tipos.cupo) {
+                    const puntos = (tipos.cita ? '<span class="vl-mk-cita"></span>' : '')
+                        + (tipos.pendiente ? '<span class="vl-mk-pendiente"></span>' : '')
+                        + (tipos.cancelada ? '<span class="vl-mk-cancelada"></span>' : '');
+                    dotsHTML = `<div class="vl-day-marks" aria-hidden="true">${puntos ? `<div class="vl-day-dots">${puntos}</div>` : ''}`
+                        + (tipos.cupo ? '<span class="vl-mk-cupo"></span>' : '') + '</div>';
+                    const partes = [];
+                    if (tipos.cita) partes.push(tipos.cita + (tipos.cita === 1 ? ' cita' : ' citas'));
+                    if (tipos.pendiente) partes.push(tipos.pendiente + (tipos.pendiente === 1 ? ' reserva pendiente' : ' reservas pendientes'));
+                    if (tipos.cancelada) partes.push(tipos.cancelada + (tipos.cancelada === 1 ? ' cancelada' : ' canceladas'));
+                    if (tipos.cupo) partes.push(tipos.cupo + (tipos.cupo === 1 ? ' cupo disponible' : ' cupos disponibles'));
+                    etiqueta = partes.join(', ');
+                } else if (legado.length) {
+                    dotsHTML = `<div class="vl-day-dot-row">${legado.slice(0, 4).map(m => `<span class="vl-day-dot ${m.cls || ''}"></span>`).join('')}</div>`;
+                }
                 const classes = ['vl-calendar-day'];
                 if (fechaStr === hoyStr) classes.push('vl-day-today');
                 if (fechaStr === state.selected) classes.push('vl-day-selected');
-                cells += `<div class="${classes.join(' ')}" data-fecha="${fechaStr}"><span class="vl-day-num">${d}</span>${dotsHTML}</div>`;
+                const titulo = etiqueta ? ` title="${vlLiteEsc(etiqueta)}" aria-label="${d}: ${vlLiteEsc(etiqueta)}"` : '';
+                cells += `<div class="${classes.join(' ')}" data-fecha="${fechaStr}" role="button" tabindex="0"${titulo}><span class="vl-day-num">${d}</span>${dotsHTML}</div>`;
             }
             const totalCells = startOffset + daysInMonth;
             const trailing = (7 - (totalCells % 7)) % 7;
@@ -68,11 +89,19 @@ const VlCalendarLite = {
                 state.current.setMonth(state.current.getMonth() + Number(btn.dataset.nav));
                 paint();
             }));
-            container.querySelectorAll('.vl-calendar-day[data-fecha]').forEach(cell => cell.addEventListener('click', () => {
+            const elegir = (cell) => {
                 state.selected = cell.dataset.fecha;
                 paint();
                 if (opts.onSelectDay) opts.onSelectDay(cell.dataset.fecha);
-            }));
+                const enfocada = container.querySelector(`.vl-calendar-day[data-fecha="${state.selected}"]`);
+                if (enfocada) enfocada.focus();
+            };
+            container.querySelectorAll('.vl-calendar-day[data-fecha]').forEach(cell => {
+                cell.addEventListener('click', () => elegir(cell));
+                cell.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir(cell); }
+                });
+            });
         };
 
         paint();

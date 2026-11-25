@@ -35,7 +35,8 @@ def cargar() -> Config:
         db_user=os.environ.get("DB_USER", "vetlink_fast"),
         db_password=os.environ.get("DB_PASSWORD", ""),
         internal_token=os.environ.get("INTERNAL_TOKEN", ""),
-        public_base_url=os.environ.get("PUBLIC_BASE_URL", "http://localhost").rstrip("/"),
+        public_base_url=resolver_url_publica(os.environ.get("PUBLIC_BASE_URL"), os.environ.get("IP"),
+                                             os.environ.get("NGINX_HTTP_PORT")),
         entorno=os.environ.get("VETLINK_ENTORNO", "desarrollo").strip().lower(),
         # Por privacidad, el pasaporte público no muestra motivos, diagnósticos ni medicamentos
         # salvo que se habilite explícitamente.
@@ -43,6 +44,42 @@ def cargar() -> Config:
         uploads_dir=os.environ.get("UPLOADS_DIR", "/uploads"),
         zona_horaria=os.environ.get("TZ", "America/Bogota"),
     )
+
+
+_HOSTS_LOCALES = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
+
+
+def _host_valido(valor: str) -> bool:
+    """IPv4/IPv6 o nombre de host (sin esquema, ruta ni puerto)."""
+    try:
+        ipaddress.ip_address(valor)
+        return True
+    except ValueError:
+        pass
+    partes = valor.split(".")
+    return all(p and len(p) <= 63 and p.replace("-", "").isalnum() and not p.startswith("-") for p in partes)
+
+
+def resolver_url_publica(public_base_url: str | None, ip: str | None, puerto: str | None) -> str:
+    """DUE-04: URL que va dentro del QR.
+
+    - Si se configuró IP (p. ej. IP=192.168.1.100) y PUBLIC_BASE_URL está vacía o apunta a
+      localhost, se usa http://IP[:puerto]: el QR abre desde otros dispositivos de la misma red.
+    - Si PUBLIC_BASE_URL es pública (dominio o túnel HTTPS), tiene prioridad.
+    - Sin ninguna de las dos, se usa http://localhost (solo funciona en este equipo).
+    El puerto es el que publica Nginx (NGINX_HTTP_PORT); el 80 no se escribe.
+    """
+    base = (public_base_url or "").strip().rstrip("/")
+    ip = (ip or "").strip()
+    partes = urlparse(base) if base else None
+    host_base = (partes.hostname or "").lower() if partes else ""
+    if ip and _host_valido(ip) and (not base or host_base in _HOSTS_LOCALES):
+        esquema = partes.scheme if partes and partes.scheme in ("http", "https") else "http"
+        p = str(partes.port) if partes and partes.port else (puerto or "").strip()
+        defecto = "443" if esquema == "https" else "80"
+        host = f"[{ip}]" if ":" in ip else ip
+        return f"{esquema}://{host}" + ("" if p in ("", defecto) else f":{p}")
+    return base or "http://localhost"
 
 
 def problemas_url_publica(url: str, entorno: str = "desarrollo") -> list[str]:

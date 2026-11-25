@@ -238,7 +238,9 @@ function validateStep3() {
             return;
         }
 
-        if (pNombre.value.trim().length < 2) { showError('pet-nombre', "Nombre requerido"); valid = false; } else clearError('pet-nombre');
+        if (pNombre.value.trim().length < 2) { showError('pet-nombre', "Nombre requerido"); valid = false; }
+        else if (!/^[\p{L}\p{M}]+(?:[ '’.\-]{1,2}[\p{L}\p{M}]+)*\.?$/u.test(pNombre.value.trim().replace(/\s+/g, ' '))) { showError('pet-nombre', "El nombre no puede tener números ni símbolos"); valid = false; }
+        else clearError('pet-nombre');
         if (!pFecha.value) { showError('pet-fecha', "Selecciona fecha"); valid = false; }
         else if (new Date(pFecha.value) > new Date()) { showError('pet-fecha', "Fecha inválida"); valid = false; }
         else clearError('pet-fecha');
