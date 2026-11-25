@@ -17,77 +17,219 @@
     <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
 
     <section class="container">
-        <div class="vl-section vl-section-active">
-            <div class="vl-social-profile-header">
-                <div class="vl-social-avatar" th:text="${#strings.substring(usuario.nombre,0,1)} + ${#strings.substring(usuario.apellido,0,1)}">--</div>
-                <div>
-                    <h2 th:text="${usuario.rol.name() == 'VETERINARIO' ? 'Dr(a). ' : ''} + ${usuario.nombre} + ' ' + ${usuario.apellido}">Nombre</h2>
-                    <p><i class="fas fa-envelope"></i> <span th:text="${correo}">correo</span></p>
-                    <p><i class="fas fa-id-badge"></i> <span th:text="${usuario.rol}">Rol</span></p>
+        <div class="vl-section vl-section-active" th:with="rol=${perfil.rol.name()}">
+
+            <!-- Cabecera -->
+            <div class="vl-profile-hero">
+                <div class="vl-profile-avatar" aria-hidden="true"
+                     th:text="${#strings.substring(perfil.nombre,0,1)} + ${#strings.substring(perfil.apellido,0,1)}">--</div>
+                <div class="vl-profile-id">
+                    <h1 th:text="${rol == 'VETERINARIO' ? 'Dr(a). ' : ''} + ${perfil.nombre} + ' ' + ${perfil.apellido}">Nombre</h1>
+                    <div class="vl-row vl-small">
+                        <span class="vl-chip vl-chip-rol"><i class="fas fa-id-badge" aria-hidden="true"></i> <span th:text="${rolEtiqueta}">Rol</span></span>
+                        <span class="vl-muted"><i class="fas fa-envelope" aria-hidden="true"></i> <span th:text="${correo}">correo</span></span>
+                    </div>
                 </div>
+                <button type="button" class="vl-btn vl-btn-ghost vl-profile-edit-btn" id="btn-editar-perfil"
+                        aria-controls="panel-edicion" th:hidden="${modoEdicion}" title="Editar perfil">
+                    <i class="fas fa-pen" aria-hidden="true"></i> <span>Editar perfil</span>
+                </button>
             </div>
 
-            <div class="vl-table-wrap" style="padding:24px; max-width:640px;">
-                <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Perfil actualizado correctamente.</p>
-                <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.actualizado}"><i class="fas fa-circle-check" aria-hidden="true"></i>
+                <span>Perfil actualizado correctamente.</span></div>
+            <div class="vl-alert vl-alert-err" role="alert" th:if="${errorGeneral}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                <span th:text="${errorGeneral}"></span></div>
 
-                <div class="vl-form-section-title"><i class="fas fa-id-card"></i> Información personal</div>
-                <form th:action="@{/perfil}" th:object="${form}" method="post">
-                    <div class="vl-form-grid">
-                        <div class="vl-field">
-                            <label>Nombres</label>
-                            <input type="text" th:field="*{nombre}">
-                            <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
-                        </div>
-                        <div class="vl-field">
-                            <label>Apellidos</label>
-                            <input type="text" th:field="*{apellido}">
-                            <small class="vl-error" th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
-                        </div>
-                        <div class="vl-field vl-full">
-                            <label>Correo (con él inicias sesión)</label>
-                            <input type="email" th:field="*{correo}">
-                            <small class="vl-error" th:if="${#fields.hasErrors('correo')}" th:errors="*{correo}"></small>
-                            <small style="color:#64748b">Si lo cambias, tendrás que iniciar sesión de nuevo con el correo nuevo.</small>
-                        </div>
-                        <div class="vl-field vl-full">
-                            <label>Teléfono</label>
-                            <input type="text" th:field="*{telefono}">
-                            <small class="vl-error" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></small>
-                        </div>
+            <!-- Modo edición (solo datos personales y credenciales) -->
+            <form class="vl-panel vl-profile-form" id="panel-edicion" th:action="@{/perfil}" th:object="${form}" method="post"
+                  th:hidden="${!modoEdicion}" data-un-envio aria-labelledby="titulo-edicion">
+                <div class="vl-panel-head">
+                    <h3 id="titulo-edicion"><i class="fas fa-user-pen" aria-hidden="true"></i> Editar perfil</h3>
+                    <span class="vl-small vl-muted">Los campos con * son obligatorios.</span>
+                </div>
+                <div class="vl-form-grid">
+                    <div class="vl-field">
+                        <label for="pf-nombre">Nombres *</label>
+                        <input type="text" id="pf-nombre" th:field="*{nombre}" th:attr="data-original=${perfil.nombre}" required maxlength="50" data-tipo="nombre" autocomplete="given-name">
+                        <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
                     </div>
+                    <div class="vl-field">
+                        <label for="pf-apellido">Apellidos *</label>
+                        <input type="text" id="pf-apellido" th:field="*{apellido}" th:attr="data-original=${perfil.apellido}" required maxlength="50" data-tipo="nombre" autocomplete="family-name">
+                        <small class="vl-error" th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
+                    </div>
+                    <div class="vl-field">
+                        <label for="pf-correo">Correo (con él inicias sesión) *</label>
+                        <input type="email" id="pf-correo" th:field="*{correo}" th:attr="data-original=${correo}" required maxlength="45" autocomplete="email">
+                        <small class="vl-hint">Si lo cambias, tendrás que iniciar sesión de nuevo.</small>
+                        <small class="vl-error" th:if="${#fields.hasErrors('correo')}" th:errors="*{correo}"></small>
+                    </div>
+                    <div class="vl-field">
+                        <label for="pf-telefono">Teléfono *</label>
+                        <input type="tel" id="pf-telefono" th:field="*{telefono}" th:attr="data-original=${telefono}" required maxlength="15" inputmode="numeric" data-tipo="telefono" autocomplete="tel">
+                        <small class="vl-error" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></small>
+                    </div>
+                    <div class="vl-field vl-full" th:if="${rol == 'TUTOR'}">
+                        <label for="pf-direccion">Dirección *</label>
+                        <input type="text" id="pf-direccion" th:field="*{direccion}" th:attr="data-original=${perfil.tutor != null ? perfil.tutor.direccion : ''}" required maxlength="45" autocomplete="street-address">
+                        <small class="vl-error" th:if="${#fields.hasErrors('direccion')}" th:errors="*{direccion}"></small>
+                    </div>
+                </div>
 
-                    <div class="vl-divider"></div>
-                    <div class="vl-form-section-title"><i class="fas fa-key"></i> Cambiar contraseña</div>
-                    <div class="vl-form-grid">
-                        <div class="vl-field">
-                            <label>Contraseña actual</label>
-                            <input type="password" th:field="*{passwordActual}" autocomplete="current-password" placeholder="Solo si vas a cambiarla">
-                            <small class="vl-error" th:if="${#fields.hasErrors('passwordActual')}" th:errors="*{passwordActual}"></small>
-                        </div>
-                        <div class="vl-field">
-                            <label>Nueva contraseña</label>
-                            <input type="password" th:field="*{nuevaPassword}" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
-                            <small class="vl-error" th:if="${#fields.hasErrors('nuevaPassword')}" th:errors="*{nuevaPassword}"></small>
-                        </div>
+                <div class="vl-divider"></div>
+                <div class="vl-form-section-title"><i class="fas fa-key" aria-hidden="true"></i> Cambiar contraseña (opcional)</div>
+                <div class="vl-form-grid">
+                    <div class="vl-field">
+                        <label for="pf-pass-actual">Contraseña actual</label>
+                        <input type="password" id="pf-pass-actual" th:field="*{passwordActual}" data-original="" autocomplete="current-password" placeholder="Solo si vas a cambiarla">
+                        <small class="vl-error" th:if="${#fields.hasErrors('passwordActual')}" th:errors="*{passwordActual}"></small>
                     </div>
+                    <div class="vl-field">
+                        <label for="pf-pass-nueva">Nueva contraseña</label>
+                        <input type="password" id="pf-pass-nueva" th:field="*{nuevaPassword}" data-original="" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                        <small class="vl-error" th:if="${#fields.hasErrors('nuevaPassword')}" th:errors="*{nuevaPassword}"></small>
+                    </div>
+                </div>
+                <p class="vl-small vl-muted" style="margin-top:12px"><i class="fas fa-lock" aria-hidden="true"></i>
+                    El rol, el documento y la vinculación con la veterinaria no se modifican desde el perfil.</p>
+                <div class="vl-row" style="justify-content:flex-end;margin-top:8px">
+                    <a th:href="@{/perfil}" class="vl-btn vl-btn-ghost" id="btn-cancelar-perfil">Cancelar</a>
+                    <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check" aria-hidden="true"></i> Guardar cambios</button>
+                </div>
+            </form>
 
-                    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check"></i> Guardar cambios</button>
+            <!-- Modo consulta: siempre visible -->
+            <div class="vl-profile-grid">
+                <article class="vl-panel">
+                    <h3><i class="fas fa-id-card" aria-hidden="true"></i> Información personal</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Nombres</dt><dd th:text="${perfil.nombre}"></dd></div>
+                        <div><dt>Apellidos</dt><dd th:text="${perfil.apellido}"></dd></div>
+                        <div><dt>Documento</dt><dd th:text="${perfil.tipoDocumento.nombreTipo} + ' ' + ${perfil.numeroDocumento}"></dd></div>
+                        <div><dt>Rol</dt><dd th:text="${rolEtiqueta}"></dd></div>
+                        <div class="full" th:if="${rol == 'TUTOR'}"><dt>Dirección</dt>
+                            <dd th:text="${perfil.tutor != null and !#strings.isEmpty(perfil.tutor.direccion)} ? ${perfil.tutor.direccion} : 'No registrada'"></dd></div>
+                    </dl>
+                </article>
+
+                <article class="vl-panel">
+                    <h3><i class="fas fa-address-book" aria-hidden="true"></i> Contacto</h3>
+                    <dl class="vl-dl">
+                        <div class="full"><dt>Correo</dt><dd th:text="${correo}"></dd></div>
+                        <div class="full"><dt>Teléfono</dt><dd th:text="${telefono} ?: 'No registrado'"></dd></div>
+                    </dl>
+                </article>
+
+                <article class="vl-panel" th:if="${rol == 'TUTOR'}">
+                    <h3><i class="fas fa-paw" aria-hidden="true"></i> Mis mascotas</h3>
+                    <p class="vl-kpi-num" th:text="${totalMascotas}">0</p>
+                    <p class="vl-small vl-muted" th:text="${totalMascotas == 1} ? 'mascota activa registrada' : 'mascotas activas registradas'"></p>
+                    <a th:href="@{/mascotas}" class="vl-btn vl-btn-ghost vl-btn-sm" style="margin-top:10px">Ver mis mascotas</a>
+                </article>
+
+                <article class="vl-panel" th:if="${rol == 'VETERINARIO'}">
+                    <h3><i class="fas fa-user-doctor" aria-hidden="true"></i> Información profesional</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Cargo</dt><dd>Médico(a) veterinario(a)</dd></div>
+                        <div><dt>Licencia profesional</dt><dd th:text="${perfil.veterinario.licencia}"></dd></div>
+                        <div class="full"><dt>Especialidad</dt>
+                            <dd th:text="${perfil.veterinario.especialidad != null} ? ${perfil.veterinario.especialidad.nombreEspecialidad} : 'Medicina general'"></dd></div>
+                        <div class="full"><dt>Servicios autorizados</dt>
+                            <dd><span class="vl-chip" th:each="s : ${serviciosAutorizados}" th:text="${s.servicio.nombreServicio}"></span>
+                                <span class="vl-muted" th:if="${#lists.isEmpty(serviciosAutorizados)}">Sin servicios autorizados todavía.</span></dd></div>
+                        <div class="full"><dt>Horario aprobado</dt>
+                            <dd><span class="vl-chip" th:each="h : ${horarioAprobado}" th:text="${h.nombreDia} + ' ' + ${@fmt.hora(h.horaInicio)} + '–' + ${@fmt.hora(h.horaFin)}"></span>
+                                <span class="vl-muted" th:if="${#lists.isEmpty(horarioAprobado)}">Aún no tienes un horario aprobado.</span></dd></div>
+                    </dl>
+                    <a th:href="@{/disponibilidad}" class="vl-btn vl-btn-ghost vl-btn-sm" style="margin-top:10px">Gestionar mi disponibilidad</a>
+                </article>
+
+                <article class="vl-panel" th:if="${rol == 'RECEPCIONISTA'}">
+                    <h3><i class="fas fa-headset" aria-hidden="true"></i> Información laboral</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Cargo</dt><dd th:text="${perfil.recepcionista.esPrincipal} ? 'Recepcionista principal' : 'Recepcionista'"></dd></div>
+                        <div><dt>Turno</dt><dd th:text="${perfil.recepcionista.turno}"></dd></div>
+                        <div><dt>Fecha de contratación</dt><dd th:text="${@fmt.fecha(perfil.recepcionista.fechaContratacion)}"></dd></div>
+                    </dl>
+                </article>
+
+                <!-- VET-05: veterinaria vinculada (desde la base de datos; no se edita aquí) -->
+                <article class="vl-panel vl-profile-clinica" th:if="${rol != 'TUTOR'}">
+                    <h3><i class="fas fa-hospital" aria-hidden="true"></i> Veterinaria vinculada</h3>
+                    <th:block th:if="${clinica != null}">
+                        <div class="vl-row" style="align-items:flex-start;flex-wrap:nowrap">
+                            <img class="vl-profile-clinica-logo" th:src="@{${clinica.logo}}" th:alt="'Logo de ' + ${clinica.nombre}">
+                            <div style="min-width:0">
+                                <strong th:text="${clinica.nombre}">Clínica</strong>
+                                <div class="vl-small vl-muted" th:text="'NIT ' + ${clinica.nit}"></div>
+                                <span class="vl-badge" th:classappend="${clinica.activa} ? 'vl-badge-ok' : 'vl-badge-warn'"
+                                      th:text="${clinica.activa} ? 'Activa' : 'Pendiente de activación'"></span>
+                            </div>
+                        </div>
+                        <dl class="vl-dl" style="margin-top:12px">
+                            <div class="full"><dt>Dirección</dt><dd th:text="${#strings.isEmpty(clinica.direccion)} ? 'No registrada' : ${clinica.direccion}"></dd></div>
+                            <div><dt>Teléfonos</dt><dd>
+                                <a th:each="t, i : ${clinica.telefonos}" th:href="'tel:' + ${t}" th:text="${t} + (${i.last} ? '' : ', ')"></a>
+                                <span th:if="${#lists.isEmpty(clinica.telefonos)}">No registrados</span></dd></div>
+                            <div><dt>Correos</dt><dd>
+                                <a th:each="c, i : ${clinica.correos}" th:href="'mailto:' + ${c}" th:text="${c} + (${i.last} ? '' : ', ')"></a>
+                                <span th:if="${#lists.isEmpty(clinica.correos)}">No registrados</span></dd></div>
+                            <div class="full" th:if="${clinica.web != null}"><dt>Página web</dt><dd th:text="${clinica.web}"></dd></div>
+                        </dl>
+                    </th:block>
+                    <div class="vl-empty-state" th:if="${clinica == null}">
+                        <i class="fas fa-hospital" aria-hidden="true"></i>
+                        No estás vinculado(a) a ninguna veterinaria. La vinculación la gestiona la recepción de la clínica.
                     </div>
-                </form>
+                </article>
             </div>
-            <div class="vl-table-wrap" style="padding:24px; max-width:640px; margin-top:22px; border-color:#fecaca;">
-                <div class="vl-form-section-title" style="color:#b91c1c"><i class="fas fa-triangle-exclamation"></i> Zona de cuenta</div>
-                <p style="color:#64748b; margin-bottom:14px;">Desactivar tu cuenta cierra el acceso, pero conserva los registros clínicos y citas por seguridad médica.</p>
-                <form th:action="@{/perfil/eliminar}" method="post" onsubmit="return confirm('¿Confirmas que deseas desactivar tu cuenta?');">
-                    <div class="vl-field"><label>Confirma tu contraseña actual</label><input type="password" name="passwordActual" required></div>
-                    <button type="submit" class="vl-btn vl-btn-danger" style="margin-top:12px">Desactivar cuenta</button>
+
+            <div class="vl-panel vl-profile-danger">
+                <h3><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Zona de cuenta</h3>
+                <p class="vl-small vl-muted">Desactivar tu cuenta cierra el acceso, pero conserva los registros clínicos y citas por seguridad médica.</p>
+                <form th:action="@{/perfil/eliminar}" method="post" class="vl-row" style="align-items:flex-end"
+                      data-confirm="Tu cuenta quedará desactivada y se cerrará la sesión." data-confirm-title="¿Desactivar tu cuenta?"
+                      data-confirm-ok="Desactivar" data-confirm-tipo="peligro">
+                    <div class="vl-field" style="flex:1 1 220px;margin:0"><label for="pf-pass-baja">Confirma tu contraseña actual</label>
+                        <input type="password" id="pf-pass-baja" name="passwordActual" required autocomplete="current-password"></div>
+                    <button type="submit" class="vl-btn vl-btn-danger">Desactivar cuenta</button>
                 </form>
             </div>
         </div>
     </section>
 </main>
+<script>
+    (function () {
+        var form = document.getElementById('panel-edicion');
+        var editar = document.getElementById('btn-editar-perfil');
+        var cancelar = document.getElementById('btn-cancelar-perfil');
+        if (!form || !editar || !cancelar) return;
+        function abrir() {
+            form.hidden = false;
+            editar.hidden = true;
+            var primero = form.querySelector('input:not([type=hidden])');
+            if (primero) primero.focus();
+        }
+        function cerrar() {
+            // Restaura los valores guardados y limpia los mensajes de validación.
+            form.querySelectorAll('[data-original]').forEach(function (el) {
+                el.value = el.getAttribute('data-original') || '';
+                el.classList.remove('vl-invalid', 'vl-valid');
+                el.removeAttribute('aria-invalid');
+                el._vlTocado = false;
+                if (el._vlError) el._vlError.textContent = '';
+            });
+            form.querySelectorAll('small.vl-error').forEach(function (s) { s.textContent = ''; });
+            form.hidden = true;
+            editar.hidden = false;
+            editar.focus();
+        }
+        editar.addEventListener('click', abrir);
+        cancelar.addEventListener('click', function (e) { e.preventDefault(); cerrar(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !form.hidden) cerrar(); });
+    })();
+</script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

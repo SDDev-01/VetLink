@@ -26,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URI;
-import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -44,11 +43,14 @@ public class MascotaController {
     private final FotoMascotaService fotoMascotaService;
     private final AccesoPacienteService accesoPacienteService;
     private final GestionMascotaService gestion;
+    private final com.vetlink.mascota.service.RazaCatalogoService catalogoRazas;
 
     public MascotaController(MascotaService mascotaService, EspecieRepository especieRepository, RazaRepository razaRepository,
                              CitaService citaService, HistorialClinicoService historialClinicoService,
                              CarnetVacunaService carnetVacunaService, FotoMascotaService fotoMascotaService,
-                             AccesoPacienteService accesoPacienteService, GestionMascotaService gestion) {
+                             AccesoPacienteService accesoPacienteService, GestionMascotaService gestion,
+                             com.vetlink.mascota.service.RazaCatalogoService catalogoRazas) {
+        this.catalogoRazas = catalogoRazas;
         this.mascotaService = mascotaService;
         this.especieRepository = especieRepository;
         this.razaRepository = razaRepository;
@@ -87,6 +89,7 @@ public class MascotaController {
                         @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
                         @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
         validarFoto(archivoFoto, result);
+        validarRaza(form, result);
         if (result.hasErrors()) {
             cargarShell(model, principal);
             cargarCatalogos(model);
@@ -120,6 +123,7 @@ public class MascotaController {
         cargarShell(model, principal);
         cargarCatalogos(model);
         model.addAttribute("form", form);
+        model.addAttribute("mascotaActual", mascota);
         return "mascotas/formulario";
     }
 
@@ -127,24 +131,47 @@ public class MascotaController {
     public String actualizar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
                              @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+        var actual = mascotaService.buscarPorId(id);
+        verificarPropietario(actual, principal);
         form.setIdMascota(id);
+        // DUE-01: especie, género y fecha de nacimiento no se editan: se usan los guardados
+        // (lo que llegue en la petición se descarta y sus errores de validación no aplican).
+        form.setIdEspecie(actual.getEspecie().getIdEspecie());
+        form.setGenero(actual.getGenero());
+        form.setFechaNacimiento(actual.getFechaNacimiento());
         validarFoto(archivoFoto, result);
-        if (result.hasErrors()) {
-            form.setFoto(mascotaService.buscarPorId(id).getFotoUrl());
-            cargarShell(model, principal);
-            cargarCatalogos(model);
-            return "mascotas/formulario";
+        validarRaza(form, result);
+        boolean hayErrores = result.hasGlobalErrors() || result.getFieldErrors().stream()
+                .anyMatch(e -> !MascotaForm.CAMPOS_INMUTABLES.contains(e.getField()));
+        if (hayErrores) {
+            return volverAEditar(form, actual, principal, model, null);
         }
         try {
             var mascota = mascotaService.actualizar(form, principal.getUsuario().getIdUsuario());
             fotoMascotaService.guardar(mascota, archivoFoto);
+        } catch (SecurityException e) {
+            throw new org.springframework.security.access.AccessDeniedException(e.getMessage());
         } catch (RuntimeException e) {
-            model.addAttribute("errorGeneral", e.getMessage());
-            cargarShell(model, principal);
-            cargarCatalogos(model);
-            return "mascotas/formulario";
+            return volverAEditar(form, actual, principal, model, e.getMessage());
         }
         return "redirect:/mascotas?actualizada";
+    }
+
+    private String volverAEditar(MascotaForm form, com.vetlink.mascota.model.Mascota actual,
+                                 VetlinkUserPrincipal principal, Model model, String error) {
+        form.setFoto(actual.getFotoUrl());
+        if (error != null) model.addAttribute("errorGeneral", error);
+        model.addAttribute("mascotaActual", actual);
+        cargarShell(model, principal);
+        cargarCatalogos(model);
+        return "mascotas/formulario";
+    }
+
+    /** DUE-02: una raza del catálogo o «Otra raza» con su nombre. */
+    private static void validarRaza(MascotaForm form, BindingResult result) {
+        if (form.getIdRaza() == null && !form.usaRazaPersonalizada()) {
+            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza o elige «Otra raza» y escríbela");
+        }
     }
 
     /** El borrado directo se reemplazó por transferencia y reporte de situación. */
@@ -277,13 +304,11 @@ public class MascotaController {
         }
     }
 
-    /** Las razas viajan con su especie para que el formulario solo muestre las que corresponden. */
+    /** Razas ordenadas alfabéticamente; viajan con su especie para que el formulario solo muestre las que corresponden. */
     private void cargarCatalogos(Model model) {
-        model.addAttribute("especies", especieRepository.findAll());
-        model.addAttribute("razas", razaRepository.findAll());
-        Map<Integer, Integer> especieDeRaza = razaRepository.findAll().stream()
-                .collect(Collectors.toMap(r -> r.getIdRaza(), r -> r.getEspecie().getIdEspecie()));
-        model.addAttribute("especieDeRaza", especieDeRaza);
+        model.addAttribute("especies", especieRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(com.vetlink.mascota.model.Especie::getNombreEspecie)).toList());
+        model.addAttribute("razas", catalogoRazas.todasOrdenadas());
     }
 
     private void cargarShell(Model model, VetlinkUserPrincipal principal) {

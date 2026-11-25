@@ -15,6 +15,7 @@ import java.util.List;
 public class ApiPublicoController {
 
     private final RazaRepository razaRepository;
+    private static final java.text.Collator ORDEN = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("es-CO"));
 
     public ApiPublicoController(RazaRepository razaRepository) {
         this.razaRepository = razaRepository;
@@ -24,6 +25,7 @@ public class ApiPublicoController {
     public List<RazaOption> razasPorEspecie(@PathVariable Integer idEspecie) {
         return razaRepository.findByEspecie_IdEspecie(idEspecie).stream()
                 .map(r -> new RazaOption(r.getIdRaza(), r.getNombreRaza()))
+                .sorted(java.util.Comparator.comparing(RazaOption::nombre, ORDEN))
                 .toList();
     }
 

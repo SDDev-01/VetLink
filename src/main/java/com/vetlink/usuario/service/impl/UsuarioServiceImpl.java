@@ -50,8 +50,22 @@ public class UsuarioServiceImpl implements UsuarioService {
     public Usuario actualizarPerfil(Integer idUsuario, com.vetlink.usuario.dto.PerfilForm form) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-        usuario.setNombre(form.getNombre());
-        usuario.setApellido(form.getApellido());
+        String nombre = com.vetlink.comun.validacion.Textos.normalizar(form.getNombre());
+        String apellido = com.vetlink.comun.validacion.Textos.normalizar(form.getApellido());
+        if (!com.vetlink.comun.validacion.Textos.esNombreValido(nombre) || !com.vetlink.comun.validacion.Textos.esNombreValido(apellido)) {
+            throw new IllegalArgumentException(com.vetlink.comun.validacion.Textos.MENSAJE_NOMBRE);
+        }
+        if (!com.vetlink.comun.validacion.Textos.esTelefonoValido(form.getTelefono())) {
+            throw new IllegalArgumentException(com.vetlink.comun.validacion.Textos.MENSAJE_TELEFONO);
+        }
+        if (telefonoRepository.existsByNumeroTelefonoAndUsuario_IdUsuarioNot(form.getTelefono().strip(), idUsuario)) {
+            throw new IllegalArgumentException("Ese teléfono ya está registrado en otra cuenta");
+        }
+        usuario.setNombre(nombre);
+        usuario.setApellido(apellido);
+        if (usuario.getTutor() != null && form.getDireccion() != null && !form.getDireccion().isBlank()) {
+            usuario.getTutor().setDireccion(form.getDireccion().strip());
+        }
         // VL-20: cambiar la contraseña exige la actual y al menos 8 caracteres
         // (el controlador ya lo valida por campo; aquí se repite como defensa).
         if (form.cambiaPassword()) {
@@ -69,7 +83,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         var telefonos = telefonoRepository.findByUsuario_IdUsuario(idUsuario);
         Telefono telefono = telefonos.isEmpty() ? new Telefono() : telefonos.get(0);
         telefono.setUsuario(usuario);
-        telefono.setNumeroTelefono(form.getTelefono());
+        telefono.setNumeroTelefono(form.getTelefono().strip());
         telefonoRepository.save(telefono);
 
         // VL-20: cambio de correo (el de login).
@@ -126,6 +140,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
         if (documentoEnUso(form.getNumeroDocumento())) {
             throw new IllegalArgumentException("Ya existe una cuenta con ese numero de documento");
+        }
+        if (form.getTelefono() != null && telefonoRepository.existsByNumeroTelefono(form.getTelefono().strip())) {
+            throw new IllegalArgumentException("Ya existe una cuenta con ese número de teléfono");
         }
 
         TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(form.getIdTipoDocumento())

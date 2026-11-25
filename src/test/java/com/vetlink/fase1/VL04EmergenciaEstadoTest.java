@@ -90,17 +90,18 @@ class VL04EmergenciaEstadoTest extends PruebaWebBase {
                 .andExpect(status().isForbidden());
     }
 
+    /** VET-03: ya no existe el cierre manual; solo el registro clínico la marca como atendida. */
     @Test
-    void veterinarioAsignadoMarcaAtendida() throws Exception {
+    void veterinarioAsignadoNoPuedeMarcarAtendidaDirectamente() throws Exception {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var e = crearEmergencia(crearMascota(crearDuenio()), clinica, vet, EstadoEmergencia.ASIGNADA);
 
         mockMvc.perform(post("/emergencias/" + e.getIdEmergencia() + "/estado").with(csrf()).with(como(vet))
                         .param("estado", "ATENDIDA"))
-                .andExpect(redirectedUrl("/emergencias?actualizada"));
+                .andExpect(status().isForbidden());
 
-        assertThat(estadoDe(e)).isEqualTo(EstadoEmergencia.ATENDIDA);
+        assertThat(estadoDe(e)).isEqualTo(EstadoEmergencia.ASIGNADA);
     }
 
     @Test

@@ -38,8 +38,9 @@
                 <label>Ubicación</label>
                 <div class="vl-row">
                     <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-ubicacion"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> Usar mi ubicación</button>
-                    <span class="vl-small" id="estado-ubicacion" aria-live="polite" th:text="${f.tieneUbicacion()} ? 'Ubicación actual en uso' : ''"></span>
+                    <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-elegir-mapa" aria-expanded="false" aria-controls="mapa-picker-wrap"><i class="fas fa-map-pin" aria-hidden="true"></i> Elegir en el mapa</button>
                 </div>
+                <span class="vl-small" id="estado-ubicacion" role="status" aria-live="polite" th:text="${f.tieneUbicacion()} ? 'Ubicación en uso: los resultados se ordenan por distancia' : ''"></span>
                 <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-quitar-ubicacion" th:hidden="${!f.tieneUbicacion()}" style="margin-top:6px">Quitar ubicación</button>
             </div>
             <div class="vl-field">
@@ -82,6 +83,11 @@
                     <span><i class="fas fa-truck-medical" aria-hidden="true"></i> Es una emergencia (muestra solo clínicas con urgencias y veterinarios disponibles ahora, por cercanía)</span>
                 </label>
             </div>
+        </div>
+        <!-- DUE-06: alternativa cuando el navegador no permite la geolocalización (HTTP por IP, permiso denegado) -->
+        <div id="mapa-picker-wrap" hidden style="margin:6px 0 14px">
+            <p class="vl-small vl-muted" style="margin:0">Haz clic (o toca) en el mapa sobre el lugar desde donde buscas. Puedes mover el marcador.</p>
+            <div id="mapa-picker" class="vl-mapa-picker" role="application" aria-label="Mapa para elegir tu ubicación"></div>
         </div>
         <div class="vl-row" style="justify-content:flex-end">
             <a th:if="${buscando}" th:href="@{/directorio}" class="vl-btn vl-btn-ghost">Nueva búsqueda</a>
@@ -145,19 +151,83 @@
     var lat = document.getElementById('lat'), lng = document.getElementById('lng');
     var estado = document.getElementById('estado-ubicacion');
     var quitar = document.getElementById('btn-quitar-ubicacion');
-    document.getElementById('btn-ubicacion').addEventListener('click', function () {
-        if (!navigator.geolocation) { estado.textContent = 'Tu navegador no permite geolocalización; elige la ciudad manualmente.'; return; }
-        estado.textContent = 'Solicitando permiso…';
-        navigator.geolocation.getCurrentPosition(function (pos) {
-            lat.value = pos.coords.latitude.toFixed(6);
-            lng.value = pos.coords.longitude.toFixed(6);
-            estado.textContent = 'Ubicación actual en uso';
-            quitar.hidden = false;
-        }, function () {
-            estado.textContent = 'No se pudo obtener tu ubicación. Puedes continuar eligiendo la ciudad manualmente.';
-        }, { timeout: 10000, maximumAge: 300000 });
+    var form = document.getElementById('form-busqueda');
+    var btnUbicacion = document.getElementById('btn-ubicacion');
+    var btnMapa = document.getElementById('btn-elegir-mapa');
+    var pickerWrap = document.getElementById('mapa-picker-wrap');
+    var picker = null, pickerMarca = null;
+
+    /* DUE-06: la ubicación se usa para ordenar por distancia. Si ya hay resultados en pantalla,
+       se vuelve a buscar con la nueva ubicación para actualizar distancias y orden. */
+    function usarUbicacion(la, ln, mensaje) {
+        lat.value = Number(la).toFixed(6);
+        lng.value = Number(ln).toFixed(6);
+        estado.textContent = mensaje;
+        quitar.hidden = false;
+        if (BUSCANDO) { estado.textContent = mensaje + ' Actualizando resultados…'; form.requestSubmit ? form.requestSubmit() : form.submit(); }
+    }
+
+    function abrirPicker() {
+        pickerWrap.hidden = false;
+        btnMapa.setAttribute('aria-expanded', 'true');
+        if (typeof L === 'undefined') { estado.textContent = 'No se pudo cargar el mapa. Elige la ciudad y la localidad manualmente.'; return; }
+        if (!picker) {
+            var inicio = lat.value && lng.value ? [Number(lat.value), Number(lng.value)] : [4.65, -74.1];
+            picker = L.map('mapa-picker').setView(inicio, lat.value ? 14 : 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', maxZoom: 19
+            }).addTo(picker);
+            function crearMarca(ll) {
+                pickerMarca = L.marker(ll, { draggable: true }).addTo(picker);
+                pickerMarca.on('dragend', function () { var p = pickerMarca.getLatLng(); usarUbicacion(p.lat, p.lng, 'Ubicación elegida en el mapa.'); });
+            }
+            if (lat.value && lng.value) crearMarca(inicio);
+            function fijar(ll) {
+                if (!pickerMarca) crearMarca(ll); else pickerMarca.setLatLng(ll);
+                usarUbicacion(ll.lat, ll.lng, 'Ubicación elegida en el mapa.');
+            }
+            picker.on('click', function (e) { fijar(e.latlng); });
+        }
+        setTimeout(function () { picker.invalidateSize(); }, 150);
+    }
+
+    btnMapa.addEventListener('click', function () {
+        if (pickerWrap.hidden) abrirPicker();
+        else { pickerWrap.hidden = true; btnMapa.setAttribute('aria-expanded', 'false'); }
     });
-    quitar.addEventListener('click', function () { lat.value = ''; lng.value = ''; estado.textContent = ''; quitar.hidden = true; });
+
+    btnUbicacion.addEventListener('click', function () {
+        // Los navegadores solo entregan la ubicación en HTTPS o en localhost (contexto seguro).
+        if (!window.isSecureContext) {
+            estado.textContent = 'Tu navegador solo permite la ubicación automática con HTTPS o en localhost. Elige tu ubicación en el mapa.';
+            abrirPicker();
+            return;
+        }
+        if (!navigator.geolocation) {
+            estado.textContent = 'Tu navegador no permite geolocalización. Elige tu ubicación en el mapa o la ciudad.';
+            abrirPicker();
+            return;
+        }
+        estado.textContent = 'Solicitando permiso de ubicación…';
+        btnUbicacion.disabled = true;
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            btnUbicacion.disabled = false;
+            usarUbicacion(pos.coords.latitude, pos.coords.longitude, 'Ubicación actual en uso (precisión aprox. ' + Math.round(pos.coords.accuracy) + ' m).');
+        }, function (err) {
+            btnUbicacion.disabled = false;
+            var motivos = {
+                1: 'Bloqueaste el permiso de ubicación. Actívalo en la configuración del navegador o elige tu ubicación en el mapa.',
+                2: 'No se pudo determinar tu ubicación (GPS o red no disponibles). Elige tu ubicación en el mapa.',
+                3: 'La ubicación tardó demasiado en responder. Inténtalo de nuevo o elígela en el mapa.'
+            };
+            estado.textContent = motivos[err && err.code] || 'No se pudo obtener tu ubicación. Elígela en el mapa o usa la ciudad.';
+            abrirPicker();
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    });
+    quitar.addEventListener('click', function () {
+        lat.value = ''; lng.value = ''; estado.textContent = ''; quitar.hidden = true;
+        if (pickerMarca && picker) { picker.removeLayer(pickerMarca); pickerMarca = null; }
+    });
 
     // Localidades dependientes de la ciudad
     var ciudad = document.getElementById('idCiudad'), localidad = document.getElementById('idLocalidad');

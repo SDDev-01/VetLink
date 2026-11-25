@@ -8,6 +8,7 @@ los campos vacíos se omiten, nunca se inventa información clínica.
 import io
 import os
 from datetime import date, datetime
+from functools import lru_cache
 from typing import Any
 
 from reportlab.lib import colors
@@ -15,6 +16,7 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.platypus import (Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table,
                                 TableStyle)
@@ -90,9 +92,51 @@ class _CanvasNumerado(rl_canvas.Canvas):
         super().save()
 
 
+# DUE-05: marca de agua con el logo oficial de VetLink (copiado de
+# src/main/resources/static/resource/1-removebg-preview.png).
+MARCA_AGUA_PATH = os.path.join(os.path.dirname(__file__), "static", "vetlink-logo.png")
+MARCA_AGUA_OPACIDAD = 0.08  # 8 %: visible pero no compite con el texto
+MARCA_AGUA_ANCHO = 130 * mm
+
+
+@lru_cache(maxsize=1)
+def _marca_agua() -> tuple[ImageReader, float] | None:
+    """Logo recortado y con la transparencia aplicada en el propio canal alfa.
+
+    La opacidad se «hornea» en la imagen (no depende del visor PDF), así aparece igual en la
+    vista previa del navegador, en el archivo descargado y al imprimir.
+    Devuelve (imagen, alto/ancho) o None si el recurso no está disponible.
+    """
+    try:
+        from PIL import Image
+        with Image.open(MARCA_AGUA_PATH) as original:
+            img = original.convert("RGBA")
+        caja = img.getbbox()
+        if caja:
+            img = img.crop(caja)
+        alfa = img.getchannel("A").point(lambda a: int(a * MARCA_AGUA_OPACIDAD))
+        img.putalpha(alfa)
+        return ImageReader(img), img.height / img.width
+    except Exception:  # recurso ausente o corrupto: el reporte se genera sin marca de agua
+        return None
+
+
+def _dibujar_marca_agua(c) -> None:
+    marca = _marca_agua()
+    if not marca:
+        return
+    imagen, proporcion = marca
+    ancho_pag, alto_pag = LETTER
+    ancho = MARCA_AGUA_ANCHO
+    alto = ancho * proporcion
+    c.drawImage(imagen, (ancho_pag - ancho) / 2, (alto_pag - alto) / 2, width=ancho, height=alto, mask="auto")
+
+
 def _encabezado(titulo: str, emisor: dict | None, logo_path: str | None, generado: datetime):
     def dibujar(c, doc):
         c.saveState()
+        # Se dibuja antes que el contenido de la página: queda al fondo, en todas las páginas.
+        _dibujar_marca_agua(c)
         ancho, alto = LETTER
         y = alto - 14 * mm
         x = 18 * mm

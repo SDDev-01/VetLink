@@ -19,6 +19,15 @@ public interface HistorialClinicoService {
 
     Optional<HistorialClinico> buscarPorCita(Integer idCita);
 
+    /**
+     * VET-03: registro clínico de una emergencia ASIGNADA al veterinario. Las reglas de la
+     * emergencia (asignación, estado, bloqueo) las valida EmergenciaAtencionService.
+     */
+    HistorialClinico crearParaEmergencia(HistorialClinicoForm form, com.vetlink.emergencia.model.Emergencia emergencia,
+                                         Integer idVeterinario);
+
+    Optional<HistorialClinico> buscarPorEmergencia(Integer idEmergencia);
+
     HistorialClinico buscarPorId(Integer numeroHistorial);
 
     /** RF0041 — solo quien lo creó puede editarlo, y solo durante las 24 horas siguientes (VL-19). */

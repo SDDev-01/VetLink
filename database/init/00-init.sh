@@ -58,6 +58,10 @@ echo "[5/6] Reglas de negocio, disponibilidad, notificaciones y reportes (V8)...
 
 mysql_exec < "${DATABASE_DIR}/migrations/V8_reglas_negocio.sql"
 
+echo "[5b/6] Catálogo de razas y trazabilidad de emergencias (V9)..."
+
+mysql_exec < "${DATABASE_DIR}/migrations/V9_mejoras_integrales.sql"
+
 echo "[6/6] Creando usuarios y asignando permisos..."
 
 mysql_exec --execute="

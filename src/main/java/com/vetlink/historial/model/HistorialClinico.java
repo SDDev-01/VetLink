@@ -60,6 +60,14 @@ public class HistorialClinico {
     @JoinColumn(name = "idCita", unique = true)
     private com.vetlink.cita.model.Cita cita;
 
+    /**
+     * Emergencia atendida con este registro (V9). Única: guardar el registro cierra la
+     * emergencia (pasa a ATENDIDA) en la misma transacción.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idEmergencia", unique = true)
+    private com.vetlink.emergencia.model.Emergencia emergencia;
+
     /** Establecimiento responsable del registro. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idVeterinaria")

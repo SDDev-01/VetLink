@@ -50,12 +50,18 @@ public class EmergenciaController {
     private final NotificacionService notificaciones;
     private final AuditoriaService auditoria;
     private final Clock reloj;
+    private final com.vetlink.emergencia.service.EmergenciaAtencionService atencion;
+    private final com.vetlink.historial.service.HistorialClinicoService historiales;
 
     public EmergenciaController(EmergenciaRepository repo, MascotaRepository mascotas, VeterinariaRepository veterinarias,
                                 UsuarioRepository usuarios, VeterinarioRepository veterinarios,
                                 RecepcionistaRepository recepcionistas, TelefonoRepository telefonos,
                                 EmergenciaDisponibilidadService disponibilidad, VeterinariaInfoService infoVeterinaria,
-                                NotificacionService notificaciones, AuditoriaService auditoria, Clock reloj) {
+                                NotificacionService notificaciones, AuditoriaService auditoria, Clock reloj,
+                                com.vetlink.emergencia.service.EmergenciaAtencionService atencion,
+                                com.vetlink.historial.service.HistorialClinicoService historiales) {
+        this.atencion = atencion;
+        this.historiales = historiales;
         this.repo = repo;
         this.mascotas = mascotas;
         this.veterinarias = veterinarias;
@@ -77,7 +83,8 @@ public class EmergenciaController {
         var u = p.getUsuario();
         switch (u.getRol()) {
             case TUTOR -> {
-                m.addAttribute("emergencias", repo.findByMascota_Tutor_IdUsuarioOrderByCreadaEnDesc(u.getIdUsuario()));
+                // DUE-07: solo las solicitudes que envió este dueño (consulta por solicitante, no filtro visual).
+                m.addAttribute("emergencias", repo.deSolicitante(u.getIdUsuario()));
                 m.addAttribute("mascotas", mascotas.findByTutor_IdUsuarioAndEstado(u.getIdUsuario(), (byte) 1).stream()
                         .filter(x -> x.isAgendable()).toList());
                 Map<Integer, Integer> disponibles = new LinkedHashMap<>();
@@ -109,6 +116,7 @@ public class EmergenciaController {
         Emergencia e = autorizada(id, p);
         shell(m, p);
         m.addAttribute("e", e);
+        m.addAttribute("registroClinico", historiales.buscarPorEmergencia(id).orElse(null));
         m.addAttribute("direccionClinica", infoVeterinaria.direccion(e.getVeterinaria().getIdVeterinaria()));
         m.addAttribute("telefonosClinica", infoVeterinaria.telefonos(e.getVeterinaria().getIdVeterinaria()));
         Usuario u = p.getUsuario();
@@ -125,23 +133,42 @@ public class EmergenciaController {
     @PostMapping
     public String crear(@AuthenticationPrincipal VetlinkUserPrincipal p,
                         @Valid @ModelAttribute("form") EmergenciaForm f, BindingResult r, Model m) {
+        if (p.getUsuario().getRol() != Rol.TUTOR) {
+            throw new AccessDeniedException("Solo los dueños solicitan emergencias");
+        }
+        String motivo = f.getMotivo() == null ? "" : f.getMotivo().strip();
+        if (!r.hasFieldErrors("motivo") && motivo.length() > 255) {
+            r.rejectValue("motivo", "largo", "El motivo no puede superar 255 caracteres");
+        }
+        if (f.getDetalle() != null && f.getDetalle().length() > 2000) {
+            r.rejectValue("detalle", "largo", "Los detalles no pueden superar 2000 caracteres");
+        }
         if (r.hasErrors()) {
             return listar(f.getIdVeterinaria(), p, m);
         }
+        // DUE-07: la mascota debe ser del dueño autenticado (se valida en el servidor, no en la vista).
         var mascota = mascotas.findById(f.getIdMascota()).orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
-        if (!mascota.getTutor().getIdUsuario().equals(p.getUsuario().getIdUsuario())) {
+        if (mascota.getTutor() == null || !mascota.getTutor().getIdUsuario().equals(p.getUsuario().getIdUsuario())) {
             throw new AccessDeniedException("La mascota no te pertenece");
+        }
+        if (!mascota.isAgendable()) {
+            throw new IllegalStateException("No se pueden solicitar emergencias para esta mascota (inactiva o fallecida).");
         }
         var veterinaria = veterinarias.findById(f.getIdVeterinaria())
                 .orElseThrow(() -> new IllegalArgumentException("Veterinaria no encontrada"));
         if (!veterinaria.isActiva()) {
             throw new IllegalArgumentException("Veterinaria no encontrada");
         }
+        if (repo.existeAbiertaParaMascota(mascota.getIdMascota(),
+                java.util.EnumSet.of(EstadoEmergencia.PENDIENTE, EstadoEmergencia.ASIGNADA))) {
+            throw new IllegalStateException(mascota.getNombre() + " ya tiene una solicitud de emergencia en curso.");
+        }
         Emergencia e = new Emergencia();
         e.setMascota(mascota);
+        e.setSolicitante(p.getUsuario());
         e.setVeterinaria(veterinaria);
-        e.setMotivo(f.getMotivo().trim().substring(0, Math.min(255, f.getMotivo().trim().length())));
-        e.setDetalle(f.getDetalle());
+        e.setMotivo(motivo);
+        e.setDetalle(f.getDetalle() == null || f.getDetalle().isBlank() ? null : f.getDetalle().strip());
         e.setCreadaEn(LocalDateTime.now(reloj));
         repo.save(e);
         auditoria.registrar(p.getUsuario().getIdUsuario(), "EMERGENCIA_SOLICITAR", "emergencia", e.getIdEmergencia(), null);
@@ -177,7 +204,7 @@ public class EmergenciaController {
                 (e.getMascota() == null ? "Paciente" : e.getMascota().getNombre()) + ": " + e.getMotivo(),
                 "/emergencias/" + id, "emergencia-" + id + "-asignada");
         if (e.getMascota() != null) {
-            notificaciones.notificar(e.getMascota().getTutor().getIdUsuario(), "EMERGENCIA_ASIGNADA",
+            notificaciones.notificar(idDuenio(e), "EMERGENCIA_ASIGNADA",
                     "Tu emergencia fue asignada", "La clínica asignó a " + v.getNombre() + " " + v.getApellido()
                             + " para atender a " + e.getMascota().getNombre() + ".",
                     "/emergencias/" + id, "emergencia-" + id + "-asignada");
@@ -190,7 +217,8 @@ public class EmergenciaController {
      * - Cerrada (ATENDIDA/CANCELADA): no se toca.
      * - TUTOR: solo cancela sus propias emergencias PENDIENTES.
      * - RECEPCIONISTA (de la clínica): ASIGNADA (con veterinario) o CANCELADA; nunca ATENDIDA.
-     * - VETERINARIO asignado: solo ASIGNADA -> ATENDIDA.
+     * - VETERINARIO: nunca. VET-03: la emergencia pasa a ATENDIDA solo al guardar el registro
+     *   clínico (POST /emergencias/{id}/atender, EmergenciaAtencionService).
      */
     @PostMapping("/{id}/estado")
     public String estado(@PathVariable Integer id, @RequestParam EstadoEmergencia estado,
@@ -202,8 +230,11 @@ public class EmergenciaController {
             throw new IllegalStateException("La emergencia ya está cerrada");
         }
         Rol rol = u.getRol();
+        if (estado == EstadoEmergencia.ATENDIDA) {
+            throw new AccessDeniedException("La emergencia se marca como atendida automáticamente al guardar el registro clínico.");
+        }
         if (rol == Rol.TUTOR) {
-            boolean esSuya = e.getMascota() != null && e.getMascota().getTutor().getIdUsuario().equals(u.getIdUsuario());
+            boolean esSuya = e.esDeSolicitante(u.getIdUsuario());
             if (estado != EstadoEmergencia.CANCELADA || !esSuya || actual != EstadoEmergencia.PENDIENTE) {
                 throw new AccessDeniedException("Cambio de estado no permitido");
             }
@@ -216,11 +247,6 @@ public class EmergenciaController {
             } else if (estado != EstadoEmergencia.CANCELADA) {
                 throw new AccessDeniedException("Cambio de estado no permitido");
             }
-        } else if (rol == Rol.VETERINARIO) {
-            boolean esAsignado = e.getVeterinario() != null && e.getVeterinario().getIdUsuario().equals(u.getIdUsuario());
-            if (!esAsignado || actual != EstadoEmergencia.ASIGNADA || estado != EstadoEmergencia.ATENDIDA) {
-                throw new AccessDeniedException("Cambio de estado no permitido");
-            }
         } else {
             throw new AccessDeniedException("Cambio de estado no permitido");
         }
@@ -228,12 +254,78 @@ public class EmergenciaController {
         repo.save(e);
         auditoria.registrar(u.getIdUsuario(), "EMERGENCIA_ESTADO", "emergencia", id, actual + " -> " + estado);
         if (e.getMascota() != null && rol != Rol.TUTOR) {
-            notificaciones.notificar(e.getMascota().getTutor().getIdUsuario(), "EMERGENCIA_" + estado.name(),
-                    "Actualización de tu emergencia", e.getMascota().getNombre() + ": "
-                            + (estado == EstadoEmergencia.ATENDIDA ? "atendida." : "solicitud cancelada por la clínica."),
+            notificaciones.notificar(idDuenio(e), "EMERGENCIA_" + estado.name(),
+                    "Actualización de tu emergencia", e.getMascota().getNombre() + ": solicitud cancelada por la clínica.",
                     "/emergencias/" + id, "emergencia-" + id + "-" + estado.name().toLowerCase());
         }
         return "redirect:/emergencias?actualizada";
+    }
+
+    // ------------------------------------------------------------------
+    // VET-03: atender = registrar la historia clínica de la emergencia
+    // ------------------------------------------------------------------
+
+    @GetMapping("/{id}/atender")
+    public String atenderForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal p, Model m,
+                              RedirectAttributes ra) {
+        exigirVeterinario(p);
+        var existente = historiales.buscarPorEmergencia(id);
+        if (existente.isPresent()) {
+            ra.addFlashAttribute("mensajeOk", "Esta emergencia ya fue atendida y tiene su registro clínico.");
+            return "redirect:/historial/documento/" + existente.get().getNumeroHistorial();
+        }
+        Emergencia e = atencion.paraAtender(id, p.getUsuario().getIdUsuario());
+        if (!m.containsAttribute("form")) {
+            var f = new com.vetlink.historial.dto.HistorialClinicoForm();
+            f.setIdMascota(e.getMascota().getIdMascota());
+            f.setTipoRegistro("URGENCIA");
+            f.setMotivoConsulta(e.getMotivo());
+            f.setPesoKg(e.getMascota().getPeso());
+            m.addAttribute("form", f);
+        }
+        shell(m, p);
+        m.addAttribute("e", e);
+        return "emergencias/atender";
+    }
+
+    @PostMapping("/{id}/atender")
+    public String atender(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal p,
+                          @Valid @ModelAttribute("form") com.vetlink.historial.dto.HistorialClinicoForm form,
+                          BindingResult r, Model m, RedirectAttributes ra) {
+        exigirVeterinario(p);
+        var existente = historiales.buscarPorEmergencia(id);
+        if (existente.isPresent()) {
+            // Reintento (doble clic, recarga): no se crea un segundo registro.
+            ra.addFlashAttribute("mensajeOk", "Esta emergencia ya fue atendida y tiene su registro clínico.");
+            return "redirect:/historial/documento/" + existente.get().getNumeroHistorial();
+        }
+        Emergencia e = atencion.paraAtender(id, p.getUsuario().getIdUsuario());
+        if (r.hasErrors()) {
+            shell(m, p);
+            m.addAttribute("e", e);
+            return "emergencias/atender";
+        }
+        try {
+            atencion.registrarAtencion(id, form, p.getUsuario().getIdUsuario());
+        } catch (IllegalArgumentException ex) {
+            shell(m, p);
+            m.addAttribute("e", e);
+            m.addAttribute("errorGeneral", ex.getMessage());
+            return "emergencias/atender";
+        }
+        ra.addFlashAttribute("mensajeOk", "Registro clínico guardado. La emergencia quedó como «Atendida».");
+        return "redirect:/emergencias/" + id;
+    }
+
+    private static void exigirVeterinario(VetlinkUserPrincipal p) {
+        if (p.getUsuario().getRol() != Rol.VETERINARIO) {
+            throw new AccessDeniedException("Solo el veterinario asignado registra la atención");
+        }
+    }
+
+    /** Dueño a notificar: quien solicitó (o el dueño actual en registros previos a V9). */
+    private static Integer idDuenio(Emergencia e) {
+        return e.getSolicitante() != null ? e.getSolicitante().getIdUsuario() : e.getMascota().getTutor().getIdUsuario();
     }
 
     /** Errores de negocio (emergencia cerrada, veterinario ocupado): vuelve a la lista con el mensaje. */
@@ -247,7 +339,7 @@ public class EmergenciaController {
         Emergencia e = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Emergencia no encontrada"));
         Usuario u = p.getUsuario();
         boolean ok = switch (u.getRol()) {
-            case TUTOR -> e.getMascota() != null && e.getMascota().getTutor().getIdUsuario().equals(u.getIdUsuario());
+            case TUTOR -> e.esDeSolicitante(u.getIdUsuario());
             case VETERINARIO -> e.getVeterinario() != null && e.getVeterinario().getIdUsuario().equals(u.getIdUsuario());
             case RECEPCIONISTA -> e.getVeterinaria().getIdVeterinaria()
                     .equals(u.getRecepcionista().getVeterinaria().getIdVeterinaria());

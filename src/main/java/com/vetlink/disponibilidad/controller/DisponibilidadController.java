@@ -40,7 +40,15 @@ public class DisponibilidadController {
         m.addAttribute("seccionActiva", "disponibilidad");
         m.addAttribute("navItems", DashboardController.navVeterinario());
         m.addAttribute("veterinaria", vet.getVeterinario().getVeterinaria());
-        m.addAttribute("horario", solicitudes.horarioAprobado(id));
+        var horario = solicitudes.horarioAprobado(id);
+        m.addAttribute("horario", horario);
+        // VET-01: el selector semanal parte del horario aprobado, agrupado por día (1 = lunes … 7 = domingo).
+        java.util.Map<Integer, List<com.vetlink.disponibilidad.model.HorarioVeterinario>> porDia = new java.util.TreeMap<>();
+        for (int d = 1; d <= 7; d++) porDia.put(d, new ArrayList<>());
+        horario.forEach(h -> porDia.get(h.getDiaSemana()).add(h));
+        porDia.values().forEach(l -> l.sort(java.util.Comparator.comparing(com.vetlink.disponibilidad.model.HorarioVeterinario::getHoraInicio)));
+        m.addAttribute("horarioPorDia", porDia);
+        m.addAttribute("nombresDia", List.of("", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"));
         m.addAttribute("servicios", solicitudes.serviciosAprobados(id));
         m.addAttribute("ausencias", solicitudes.ausenciasProximas(id));
         m.addAttribute("solicitudes", solicitudes.deVeterinario(id));

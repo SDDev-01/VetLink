@@ -56,7 +56,7 @@
 
                         <div class="vl-field">
                             <label>Nombre</label>
-                            <input type="text" th:field="*{nombre}" required maxlength="45">
+                            <input type="text" th:field="*{nombre}" required maxlength="45" data-tipo="nombre">
                             <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
                         </div>
                         <div class="vl-field">
@@ -68,7 +68,7 @@
                         </div>
                         <div class="vl-field">
                             <label>Especie</label>
-                            <select th:field="*{idEspecie}" id="rec-especie-sel" data-especie-de="rec-raza-sel" required>
+                            <select th:field="*{idEspecie}" id="rec-especie-sel" data-especie-de="rec-raza-sel" data-otra-raza="rec-otra-raza" required>
                                 <option value="">Selecciona</option>
                                 <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
                             </select>
@@ -81,6 +81,11 @@
                                 <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}" th:attr="data-especie=${r.especie.idEspecie}"></option>
                             </select>
                             <small class="vl-error" th:if="${#fields.hasErrors('idRaza')}" th:errors="*{idRaza}"></small>
+                        </div>
+                        <div class="vl-field" id="rec-otra-raza" hidden>
+                            <label for="rec-raza-otra">Nombre de la raza *</label>
+                            <input type="text" id="rec-raza-otra" th:field="*{razaPersonalizada}" maxlength="45" placeholder="Ej.: Pastor Catalán">
+                            <small class="vl-error" th:if="${#fields.hasErrors('razaPersonalizada')}" th:errors="*{razaPersonalizada}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Fecha de nacimiento</label>

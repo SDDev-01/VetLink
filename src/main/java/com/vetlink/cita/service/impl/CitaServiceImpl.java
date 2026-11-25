@@ -252,7 +252,10 @@ public class CitaServiceImpl implements CitaService {
         LocalDateTime fin = cupo.getFin();
         boolean choqueVet = citaRepository.deVeterinarioEnFechaConEstados(cupo.getVeterinario().getIdUsuario(),
                         cupo.getFecha(), EstadoCita.OCUPAN_HORARIO).stream()
-                .anyMatch(c -> !c.getIdCita().equals(cupo.getIdCita()) && c.seSolapaCon(inicio, fin));
+                // REC-06: al reprogramar, la cita original se libera en esta misma transacción: no cuenta como choque.
+                .anyMatch(c -> !c.getIdCita().equals(cupo.getIdCita())
+                        && (ignorarDeMascota == null || !c.getIdCita().equals(ignorarDeMascota.getIdCita()))
+                        && c.seSolapaCon(inicio, fin));
         if (choqueVet) {
             throw new ReservaConcurrenteException();
         }
@@ -462,8 +465,9 @@ public class CitaServiceImpl implements CitaService {
                 .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
         verificarCitaDeSuVeterinaria(cita, idVeterinariaRecepcionista);
         LocalDate hoy = ahora().toLocalDate();
+        Integer idMascota = cita.getMascota() == null ? null : cita.getMascota().getIdMascota();
         return disponibilidad.cuposReservables(idVeterinariaRecepcionista, cita.getServicio().getIdServicio(), null,
-                        hoy, hoy.plusDays(Math.max(reglas.horizonteAgendaDias(), 30)), null).stream()
+                        hoy, hoy.plusDays(Math.max(reglas.horizonteAgendaDias(), 30)), idMascota, idCita).stream()
                 .filter(c -> !c.getIdCita().equals(idCita))
                 .toList();
     }

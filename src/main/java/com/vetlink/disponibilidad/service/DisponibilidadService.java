@@ -190,6 +190,15 @@ public class DisponibilidadService {
     @Transactional(readOnly = true)
     public List<Cita> cuposReservables(Integer idVeterinaria, Integer idServicio, Integer idVeterinario,
                                       LocalDate desde, LocalDate hasta, Integer idMascota) {
+        return cuposReservables(idVeterinaria, idServicio, idVeterinario, desde, hasta, idMascota, null);
+    }
+
+    /**
+     * Igual que {@link #cuposReservables(Integer, Integer, Integer, LocalDate, LocalDate, Integer)}, pero sin
+     * contar como ocupada la cita {@code ignorarCita} (la que se está reprogramando: se libera al moverla).
+     */
+    public List<Cita> cuposReservables(Integer idVeterinaria, Integer idServicio, Integer idVeterinario,
+                                      LocalDate desde, LocalDate hasta, Integer idMascota, Integer ignorarCita) {
         LocalDateTime limite = ahora().plusMinutes(reglas.anticipacionMinimaReservaMin());
         LocalDate inicio = desde.isBefore(limite.toLocalDate()) ? limite.toLocalDate() : desde;
         if (hasta.isBefore(inicio)) return List.of();
@@ -211,11 +220,11 @@ public class DisponibilidadService {
             }
             List<Cita> ov = ocupadasVet.computeIfAbsent(vet.getIdUsuario() + "|" + c.getFecha(),
                     k -> citas.deVeterinarioEnFechaConEstados(vet.getIdUsuario(), c.getFecha(), EstadoCita.OCUPAN_HORARIO));
-            if (ov.stream().anyMatch(o -> o.seSolapaCon(c.getInicio(), c.getFin()))) continue;
+            if (ov.stream().anyMatch(o -> !o.getIdCita().equals(ignorarCita) && o.seSolapaCon(c.getInicio(), c.getFin()))) continue;
             if (idMascota != null) {
                 List<Cita> om = ocupadasMascota.computeIfAbsent(c.getFecha(),
                         f -> citas.deMascotaEnFechaConEstados(idMascota, f, EstadoCita.OCUPAN_HORARIO));
-                if (om.stream().anyMatch(o -> o.seSolapaCon(c.getInicio(), c.getFin()))) continue;
+                if (om.stream().anyMatch(o -> !o.getIdCita().equals(ignorarCita) && o.seSolapaCon(c.getInicio(), c.getFin()))) continue;
             }
             r.add(c);
         }

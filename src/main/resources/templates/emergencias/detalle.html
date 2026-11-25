@@ -21,6 +21,10 @@
             </div>
             <div class="vl-alert vl-alert-ok" role="status" th:if="${param.creada}"><i class="fas fa-circle-check" aria-hidden="true"></i>
                 Solicitud enviada. La clínica debe asignar un veterinario disponible; te avisaremos.</div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-info" th:if="${usuario.rol.name() == 'VETERINARIO' and e.estado.name() == 'ASIGNADA'}">
+                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                <span>Al guardar el registro clínico de esta atención, la emergencia pasará automáticamente a «Atendida».</span></div>
             <div class="vl-alert vl-alert-warn" th:if="${e.estado.name() == 'PENDIENTE'}"><i class="fas fa-hourglass-half" aria-hidden="true"></i>
                 <span>Pendiente de asignación: todavía no hay un veterinario confirmado.</span></div>
 
@@ -30,6 +34,8 @@
                     <dl class="vl-dl">
                         <div><dt>Estado</dt><dd th:text="${e.estado.name() == 'PENDIENTE'} ? 'Pendiente de asignación' : (${e.estado.name() == 'ASIGNADA'} ? 'Asignada' : (${e.estado.name() == 'ATENDIDA'} ? 'Atendida' : 'Cancelada'))"></dd></div>
                         <div><dt>Fecha y hora</dt><dd th:text="${@fmt.fechaHora(e.creadaEn)}"></dd></div>
+                        <div th:if="${e.atendidaEn != null}"><dt>Atendida</dt><dd th:text="${@fmt.fechaHora(e.atendidaEn)}"></dd></div>
+                        <div th:if="${registroClinico != null}"><dt>Registro clínico</dt><dd th:text="'N.º ' + ${registroClinico.numeroHistorial}"></dd></div>
                         <div class="full"><dt>Motivo</dt><dd th:text="${e.motivo}"></dd></div>
                         <div class="full"><dt>Síntomas reportados</dt><dd style="white-space:pre-line" th:text="${e.detalle} ?: 'Sin detalles'"></dd></div>
                         <div><dt>Veterinario asignado</dt><dd th:text="${e.veterinario != null} ? ${e.veterinario.nombre} + ' ' + ${e.veterinario.apellido} : 'Sin asignar'"></dd></div>
@@ -40,11 +46,13 @@
                             <span th:if="${#lists.isEmpty(telefonosClinica)}">No registrado</span></dd></div>
                     </dl>
                     <div class="vl-row" style="margin-top:16px">
-                        <form th:if="${usuario.rol.name() == 'VETERINARIO' and e.estado.name() == 'ASIGNADA'}" th:action="@{'/emergencias/' + ${e.idEmergencia} + '/estado'}" method="post"
-                              data-confirm="La emergencia quedará marcada como atendida y se notificará al tutor." data-confirm-title="¿Marcar como atendida?" data-confirm-ok="Marcar atendida">
-                            <input type="hidden" name="estado" value="ATENDIDA">
-                            <button type="submit" class="vl-btn vl-btn-success">Marcar atendida</button>
-                        </form>
+                        <!-- VET-03: no hay botón para marcarla atendida; se cierra al guardar el registro clínico -->
+                        <a th:if="${usuario.rol.name() == 'VETERINARIO' and e.estado.name() == 'ASIGNADA' and registroClinico == null}"
+                           th:href="@{'/emergencias/' + ${e.idEmergencia} + '/atender'}" class="vl-btn vl-btn-primary">
+                            <i class="fas fa-notes-medical" aria-hidden="true"></i> Registrar atención en el historial</a>
+                        <a th:if="${registroClinico != null and usuario.rol.name() != 'RECEPCIONISTA'}"
+                           th:href="@{'/historial/documento/' + ${registroClinico.numeroHistorial}}" class="vl-btn vl-btn-ghost">
+                            <i class="fas fa-file-medical" aria-hidden="true"></i> Ver registro clínico</a>
                         <form th:if="${(usuario.rol.name() == 'TUTOR' and e.estado.name() == 'PENDIENTE') or (usuario.rol.name() == 'RECEPCIONISTA' and (e.estado.name() == 'PENDIENTE' or e.estado.name() == 'ASIGNADA'))}"
                               th:action="@{'/emergencias/' + ${e.idEmergencia} + '/estado'}" method="post"
                               data-confirm="La solicitud de emergencia se cancelará." data-confirm-title="¿Cancelar la emergencia?" data-confirm-ok="Cancelar emergencia" data-confirm-tipo="peligro">

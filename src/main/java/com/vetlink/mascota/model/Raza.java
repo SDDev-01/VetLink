@@ -6,7 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "raza")
+@Table(name = "raza", uniqueConstraints = @UniqueConstraint(name = "uk_raza_nombre_especie",
+        columnNames = {"nombreRaza", "idEspecie"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,4 +23,8 @@ public class Raza {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "idEspecie", nullable = false)
     private Especie especie;
+
+    /** Registrada por un dueño con la opción «Otra raza» (V9). */
+    @Column(nullable = false)
+    private Boolean personalizada = false;
 }

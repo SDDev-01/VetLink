@@ -118,22 +118,36 @@ public class RecepcionCitaController {
 
     @PostMapping("/agendar")
     public String agendar(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                           @Valid @ModelAttribute("form") AgendarCitaForm form, BindingResult result, Model model) {
+                           @Valid @ModelAttribute("form") AgendarCitaForm form, BindingResult result, Model model,
+                           RedirectAttributes ra) {
         Veterinaria veterinaria = miVeterinaria(principal);
         form.setIdVeterinaria(veterinaria.getIdVeterinaria());
 
-        if (result.hasErrors()) {
+        // REC-02: el horario se elige en «Horarios disponibles» (cupo, veterinario, fecha y hora llegan del cupo).
+        if (form.getIdCupo() == null && (result.hasFieldErrors("hora") || result.hasFieldErrors("idVeterinario"))) {
+            result.rejectValue("idCupo", "horario.requerido", "Selecciona un horario disponible");
+        }
+        // La clínica la fija el servidor (nunca el navegador): su error de enlace no aplica.
+        boolean hayErrores = result.hasGlobalErrors() || result.getFieldErrors().stream()
+                .anyMatch(e -> !"idVeterinaria".equals(e.getField()));
+        if (hayErrores) {
             recargarAgendar(model, principal, veterinaria, form);
             return "citas/recepcion-agendar";
         }
+        com.vetlink.cita.model.Cita cita;
         try {
-            citaService.agendarComoRecepcionista(form, veterinaria.getIdVeterinaria());
+            // El servicio bloquea el cupo y vuelve a validar disponibilidad, ausencias y cruces.
+            cita = citaService.agendarComoRecepcionista(form, veterinaria.getIdVeterinaria());
         } catch (RuntimeException e) {
             recargarAgendar(model, principal, veterinaria, form);
             model.addAttribute("errorGeneral", e.getMessage());
             return "citas/recepcion-agendar";
         }
-        return "redirect:/reportes/citas?agendada";
+        // REC-05: confirmación y regreso a «Citas de la clínica», en el día de la cita.
+        var fmt = new com.vetlink.comun.web.FormatoVista();
+        ra.addFlashAttribute("mensajeOk", "Cita agendada para " + cita.getMascota().getNombre() + " el "
+                + fmt.fecha(cita.getFecha()) + " a las " + fmt.hora(cita.getHora()) + ". Se notificó al dueño.");
+        return "redirect:/agenda?dia=" + cita.getFecha();
     }
 
     /** Vuelve a pintar el formulario con el dueño de la mascota elegida (si la hay). */

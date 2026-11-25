@@ -111,6 +111,11 @@ public class CitaController {
     @GetMapping("/{id:\\d+}")
     public String detalle(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         Cita cita = citaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+        // REC-06: el personal (recepción/veterinario) gestiona la cita desde la vista profesional,
+        // que aplica sus propios permisos (misma clínica / cita asignada).
+        if (principal.getUsuario().getRol() != Rol.TUTOR) {
+            return "redirect:/agenda/" + id;
+        }
         if (cita.getMascota() == null || !cita.getMascota().getTutor().getIdUsuario()
                 .equals(principal.getUsuario().getIdUsuario())) {
             throw new AccessDeniedException("No tienes permiso sobre esta cita");
@@ -268,6 +273,57 @@ public class CitaController {
                         FormatoVista.horaTexto(c.getHora()), c.getDuracionMin(), c.getVeterinario().getIdUsuario(),
                         c.getVeterinario().getNombre() + " " + c.getVeterinario().getApellido()))
                 .toList();
+    }
+
+    /** Celda de la grilla de horarios del día (REC-04): libre = seleccionable; el resto, deshabilitada con su motivo. */
+    public record CeldaHorario(Integer idCupo, String hora, String etiqueta, Integer duracion, Integer idVeterinario,
+                               String veterinario, boolean libre, String motivo) {}
+
+    /**
+     * REC-02 / REC-04: todos los horarios del día para el servicio (y veterinario, si se eligió).
+     * Solo los que {@code DisponibilidadService.cuposReservables} acepta (horario aprobado, sin
+     * ausencias/bloqueos, sin cruces con citas o reservas pendientes, con anticipación mínima)
+     * salen como libres. Los demás se devuelven deshabilitados con el motivo. El servidor vuelve
+     * a comprobar todo al confirmar (bloqueo de fila del cupo + validación de solapamientos).
+     */
+    @GetMapping("/api/disponibilidad/grilla")
+    @ResponseBody
+    public List<CeldaHorario> grillaDelDia(@RequestParam Integer idVeterinaria, @RequestParam Integer idServicio,
+                                           @RequestParam(required = false) Integer idVeterinario,
+                                           @RequestParam(required = false) Integer idMascota,
+                                           @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+                                           @AuthenticationPrincipal VetlinkUserPrincipal principal) {
+        Integer mascotaFiltro = mascotaParaFiltro(idMascota, principal);
+        var libres = disponibilidad.cuposReservables(idVeterinaria, idServicio, idVeterinario, fecha, fecha, mascotaFiltro)
+                .stream().map(Cita::getIdCita).collect(Collectors.toSet());
+        List<CeldaHorario> celdas = new java.util.ArrayList<>();
+        java.util.Set<String> vistos = new java.util.HashSet<>();
+        LocalDateTime ahora = LocalDateTime.now(reloj);
+        for (Cita c : citaRepository.cuposEntre(idVeterinaria, idServicio, idVeterinario, fecha, fecha)) {
+            boolean libre = libres.contains(c.getIdCita());
+            String motivo = libre ? null : (c.getInicio().isBefore(ahora) ? "Hora pasada" : "No disponible");
+            celdas.add(celda(c, libre, motivo));
+            vistos.add(c.getVeterinario().getIdUsuario() + "|" + c.getHora());
+        }
+        // Horarios ya tomados (reservas pendientes, confirmadas o en atención) de los veterinarios consultados.
+        var vets = idVeterinario != null ? List.of(idVeterinario)
+                : disponibilidad.veterinariosCompatibles(idVeterinaria, idServicio).stream().map(Usuario::getIdUsuario).toList();
+        for (Integer idVet : vets) {
+            for (Cita c : citaRepository.deVeterinarioEnFechaConEstados(idVet, fecha, EstadoCita.OCUPAN_HORARIO)) {
+                if (!c.getVeterinaria().getIdVeterinaria().equals(idVeterinaria)) continue;
+                if (!vistos.add(idVet + "|" + c.getHora())) continue;
+                celdas.add(celda(c, false, c.getEstado() == EstadoCita.PENDIENTE ? "Reserva pendiente" : "Reservado"));
+            }
+        }
+        celdas.sort(Comparator.comparing(CeldaHorario::hora).thenComparing(CeldaHorario::veterinario));
+        return celdas;
+    }
+
+    private static CeldaHorario celda(Cita c, boolean libre, String motivo) {
+        return new CeldaHorario(libre ? c.getIdCita() : null,
+                String.format("%02d:%02d", c.getHora().getHour(), c.getHora().getMinute()),
+                FormatoVista.horaTexto(c.getHora()), c.getDuracionMin(), c.getVeterinario().getIdUsuario(),
+                c.getVeterinario().getNombre() + " " + c.getVeterinario().getApellido(), libre, motivo);
     }
 
     private Integer mascotaParaFiltro(Integer idMascota, VetlinkUserPrincipal principal) {

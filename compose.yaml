@@ -44,6 +44,9 @@ services:
       VETLINK_DOCS_INTERNAL_TOKEN: ${INTERNAL_TOKEN}
       # URL pública (misma del QR): se usa para avisar si no es accesible desde Internet.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+      # DUE-04: con IP definida, los enlaces y QR usan http://IP[:NGINX_HTTP_PORT] (misma red).
+      IP: ${IP:-}
+      NGINX_HTTP_PORT: ${NGINX_HTTP_PORT:-80}
       VETLINK_ZONA_HORARIA: America/Bogota
       # Sin esto el JVM corre en UTC: LocalDate.now() se adelanta 5 h y las reglas
       # de citas (horas pasadas, atender solo hoy, edición 24 h) fallan desde las 19:00.
@@ -73,6 +76,9 @@ services:
       # Dirección que va dentro del QR. Debe ser pública (dominio con HTTPS o túnel) para que
       # el QR abra desde datos móviles u otras redes; ver README, sección «QR accesible desde Internet».
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+      # DUE-04: IP local del equipo; si PUBLIC_BASE_URL es localhost, el QR usa http://IP[:NGINX_HTTP_PORT].
+      IP: ${IP:-}
+      NGINX_HTTP_PORT: ${NGINX_HTTP_PORT:-80}
       VETLINK_ENTORNO: ${VETLINK_ENTORNO:-desarrollo}
       PASAPORTE_DETALLE_CLINICO: ${PASAPORTE_DETALLE_CLINICO:-false}
       # Logos de las veterinarias para el encabezado de los PDF (solo lectura).

@@ -10,6 +10,8 @@
      data-max-mb="5"           tamaño máximo de archivo
      data-igual-a="idCampo"    debe coincidir con otro campo (confirmar contraseña)
      data-tipo="password"      exige 8+ caracteres con letras y números
+     data-tipo="nombre"        nombres de personas o mascotas: letras, tildes, ñ, espacios y - ' . (sin números)
+     data-tipo="telefono"      solo dígitos (7 a 15)
      data-no-pasado            fecha/fecha-hora no anterior a hoy/ahora
    Para excluir un formulario: data-sin-validacion
    ========================================================= */
@@ -99,8 +101,26 @@
         if (v.tooLong) return 'No puede superar ' + el.maxLength + ' caracteres';
         if (v.patternMismatch) return el.dataset.msgPattern || el.title || 'El formato no es válido';
 
+        // Misma regla que com.vetlink.comun.validacion.Textos (el servidor la repite).
+        if (el.dataset.tipo === 'nombre') {
+            var limpio = valor.replace(/\s+/g, ' ');
+            if (/\d/.test(limpio)) return 'El nombre no puede contener números';
+            if (!/^[\p{L}\p{M}]+(?:[ '’.\-]{1,2}[\p{L}\p{M}]+)*\.?$/u.test(limpio)) {
+                return 'Usa solo letras, espacios, guiones o apóstrofos';
+            }
+        }
+        if (el.dataset.tipo === 'telefono' && !/^\d{7,15}$/.test(valor)) {
+            return 'El teléfono solo puede tener números (entre 7 y 15 dígitos)';
+        }
         if (el.dataset.tipo === 'password' && !(valor.length >= 8 && /[A-Za-z]/.test(valor) && /\d/.test(valor))) {
             return 'La contraseña debe tener mínimo 8 caracteres e incluir letras y números';
+        }
+        // data-posterior-a="idCampo": fechas/horas ISO; el valor debe ser posterior al del otro campo.
+        if (el.dataset.posteriorA) {
+            var previo = document.getElementById(el.dataset.posteriorA);
+            if (previo && previo.value && valor <= previo.value) {
+                return el.dataset.msgPosterior || 'Debe ser posterior a la fecha de inicio';
+            }
         }
         if (el.dataset.igualA) {
             var otro = document.getElementById(el.dataset.igualA);
@@ -131,8 +151,9 @@
             var el = e.target;
             if (!el.matches || !el.matches(SELECTOR)) return;
             el._vlTocado = true;
+            if (el.dataset.tipo === 'nombre' && typeof el.value === 'string') el.value = el.value.replace(/\s+/g, ' ').trim();
             validar(el);
-            if (el.id) form.querySelectorAll('[data-igual-a="' + el.id + '"]').forEach(function (o) { if (o._vlTocado) validar(o); });
+            if (el.id) form.querySelectorAll('[data-igual-a="' + el.id + '"], [data-posterior-a="' + el.id + '"]').forEach(function (o) { if (o._vlTocado) validar(o); });
         });
         ['input', 'change'].forEach(function (ev) {
             form.addEventListener(ev, function (e) {

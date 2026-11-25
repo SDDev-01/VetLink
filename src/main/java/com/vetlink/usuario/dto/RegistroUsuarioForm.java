@@ -18,10 +18,12 @@ public class RegistroUsuarioForm {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(max = 50)
+    @Pattern(regexp = com.vetlink.comun.validacion.Textos.REGEX_NOMBRE, message = com.vetlink.comun.validacion.Textos.MENSAJE_NOMBRE)
     private String nombre;
 
     @NotBlank(message = "El apellido es obligatorio")
     @Size(max = 50)
+    @Pattern(regexp = com.vetlink.comun.validacion.Textos.REGEX_NOMBRE, message = com.vetlink.comun.validacion.Textos.MENSAJE_NOMBRE)
     private String apellido;
 
     @NotBlank(message = "El correo es obligatorio")
@@ -46,6 +48,8 @@ public class RegistroUsuarioForm {
     private String direccion;
 
     // --- Solo TUTOR: mascota opcional creada en el mismo wizard (paso 3, "omitir" la deja en null) ---
+    @Size(max = 45, message = "El nombre de la mascota no puede superar 45 caracteres")
+    @Pattern(regexp = "^$|" + com.vetlink.comun.validacion.Textos.REGEX_NOMBRE, message = com.vetlink.comun.validacion.Textos.MENSAJE_NOMBRE)
     private String mascotaNombre;
     private Integer mascotaIdEspecie;
     private Integer mascotaIdRaza;
@@ -71,5 +75,22 @@ public class RegistroUsuarioForm {
 
     public boolean passwordsCoinciden() {
         return password != null && password.equals(confirmarPassword);
+    }
+
+    /** Nombres sin espacios sobrantes (se validan ya normalizados). */
+    public void setNombre(String nombre) {
+        this.nombre = com.vetlink.comun.validacion.Textos.normalizar(nombre);
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = com.vetlink.comun.validacion.Textos.normalizar(apellido);
+    }
+
+    public void setMascotaNombre(String mascotaNombre) {
+        this.mascotaNombre = com.vetlink.comun.validacion.Textos.normalizar(mascotaNombre);
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono == null ? null : telefono.strip();
     }
 }

@@ -70,6 +70,37 @@ public class HistorialClinicoServiceImpl implements HistorialClinicoService {
     }
 
     @Override
+    @Transactional
+    public HistorialClinico crearParaEmergencia(HistorialClinicoForm form, com.vetlink.emergencia.model.Emergencia emergencia,
+                                                Integer idVeterinario) {
+        if (emergencia.getMascota() == null || form.getIdMascota() == null
+                || !emergencia.getMascota().getIdMascota().equals(form.getIdMascota())) {
+            throw new IllegalArgumentException("La mascota no coincide con la emergencia");
+        }
+        if (historialRepository.findByEmergencia_IdEmergencia(emergencia.getIdEmergencia()).isPresent()) {
+            throw new IllegalStateException("Esta emergencia ya tiene un registro clínico.");
+        }
+        Usuario veterinario = usuarioRepository.findById(idVeterinario)
+                .orElseThrow(() -> new IllegalArgumentException("Veterinario no encontrado"));
+        LocalDateTime ahora = LocalDateTime.now(reloj);
+        HistorialClinico h = new HistorialClinico();
+        h.setMascota(emergencia.getMascota());
+        h.setVeterinario(veterinario);
+        h.setEmergencia(emergencia);
+        h.setVeterinaria(emergencia.getVeterinaria());
+        h.setFechaConsulta(ahora.getYear());
+        h.setFechaRegistro(ahora);
+        h.setTipoRegistro(TipoRegistroClinico.URGENCIA.name());
+        aplicar(h, form);
+        return historialRepository.saveAndFlush(h);
+    }
+
+    @Override
+    public Optional<HistorialClinico> buscarPorEmergencia(Integer idEmergencia) {
+        return historialRepository.findByEmergencia_IdEmergencia(idEmergencia);
+    }
+
+    @Override
     public Optional<HistorialClinico> buscarPorCita(Integer idCita) {
         return historialRepository.findByCita_IdCita(idCita);
     }

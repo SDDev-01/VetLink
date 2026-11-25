@@ -39,6 +39,16 @@
     <script th:src="@{/js/vl-validate.js}"></script>
     <script th:src="@{/js/vl-confirm.js}"></script>
     <script>
+        /* Formularios con data-un-envio: tras un envío válido se deshabilita el botón (evita duplicados por doble clic). */
+        document.addEventListener('submit', function (e) {
+            var f = e.target;
+            if (!f.matches || !f.matches('form[data-un-envio]') || e.defaultPrevented) return;
+            if (f._vlEnviando) { e.preventDefault(); return; }
+            f._vlEnviando = true;
+            f.querySelectorAll('button[type=submit], button:not([type])').forEach(function (b) {
+                b.disabled = true; b.setAttribute('aria-busy', 'true');
+            });
+        });
         (function () {
             var bell = document.getElementById('vl-notif-bell');
             if (!bell) return;

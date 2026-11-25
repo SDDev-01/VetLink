@@ -24,6 +24,9 @@ import java.util.List;
  * @param zonaHoraria                    zona horaria de negocio (la del servidor debe coincidir).
  * @param publicBaseUrl                  URL pública con la que se construyen los enlaces y QR.
  * @param tareasHabilitadas              activa las tareas programadas (generación, expiración, recordatorios).
+ * @param ip                             DUE-04: IP local del equipo que ejecuta VetLink (variable IP); si se define y la
+ *                                       URL pública está vacía o es localhost, los enlaces y QR usan http://IP[:puerto].
+ * @param puertoHttp                     puerto publicado por Nginx (NGINX_HTTP_PORT).
  */
 @ConfigurationProperties(prefix = "vetlink.reglas")
 public record ReglasNegocio(
@@ -40,7 +43,9 @@ public record ReglasNegocio(
         List<String> formatosAdjuntos,
         String zonaHoraria,
         String publicBaseUrl,
-        Boolean tareasHabilitadas) {
+        Boolean tareasHabilitadas,
+        String ip,
+        String puertoHttp) {
 
     public ReglasNegocio {
         duracionServicioPorDefectoMin = positivo(duracionServicioPorDefectoMin, 30);
@@ -56,8 +61,7 @@ public record ReglasNegocio(
         formatosAdjuntos = formatosAdjuntos == null || formatosAdjuntos.isEmpty()
                 ? List.of("pdf", "jpg", "jpeg", "png") : List.copyOf(formatosAdjuntos);
         zonaHoraria = zonaHoraria == null || zonaHoraria.isBlank() ? "America/Bogota" : zonaHoraria;
-        publicBaseUrl = publicBaseUrl == null || publicBaseUrl.isBlank()
-                ? "http://localhost" : publicBaseUrl.replaceAll("/+$", "");
+        publicBaseUrl = com.vetlink.comun.web.UrlPublica.resolver(publicBaseUrl, ip, puertoHttp);
         tareasHabilitadas = tareasHabilitadas == null || tareasHabilitadas;
     }
 

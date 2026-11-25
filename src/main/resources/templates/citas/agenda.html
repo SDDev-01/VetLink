@@ -34,16 +34,18 @@
             <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
             <div class="vl-alert vl-alert-warn" th:if="${usuario.rol.name() == 'RECEPCIONISTA' and pendientes > 0}">
                 <i class="fas fa-hourglass-half" aria-hidden="true"></i>
-                <span th:text="'Hay ' + ${pendientes} + ' reservas pendientes de confirmación. Aparecen en amarillo en el calendario.'"></span>
+                <span th:text="'Hay ' + ${pendientes} + (${pendientes == 1} ? ' reserva pendiente' : ' reservas pendientes') + ' de confirmación. Se marcan con un punto morado en el calendario.'"></span>
             </div>
 
             <div class="vl-grid-2" style="grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)">
                 <div class="vl-panel">
                     <div id="agenda-calendar"></div>
-                    <div class="vl-row vl-small vl-muted" style="margin-top:10px">
-                        <span><span class="vl-dot" style="background:#2563eb"></span>Cita</span>
-                        <span><span class="vl-dot" style="background:#f59e0b"></span>Pendiente / cupo libre</span>
-                        <span><span class="vl-dot" style="background:#dc2626"></span>Cancelada</span>
+                    <!-- REC-01: cada estado tiene una forma distinta (no solo un color) -->
+                    <div class="vl-legend" aria-label="Leyenda del calendario">
+                        <span><span class="vl-mk-cita" aria-hidden="true"></span>Cita confirmada o en curso</span>
+                        <span><span class="vl-mk-pendiente" aria-hidden="true"></span>Reserva pendiente de confirmar</span>
+                        <span th:if="${usuario.rol.name() == 'RECEPCIONISTA'}"><span class="vl-mk-cupo" aria-hidden="true"></span>Cupos disponibles</span>
+                        <span><span class="vl-mk-cancelada" aria-hidden="true"></span>Cancelada o rechazada</span>
                     </div>
                 </div>
                 <div class="vl-panel">
@@ -72,10 +74,18 @@ document.addEventListener('DOMContentLoaded', function () {
     var verCupos = document.getElementById('ver-cupos');
     var diaActual = VL_DIA_INICIAL;
     var marcas = {};
+    var ahora = new Date();
     VL_CITAS_AGENDA.forEach(function (c) {
-        if (c.estado === 'DISPONIBLE' && !VL_ES_RECEPCION) return;
-        (marcas[c.fecha] = marcas[c.fecha] || []).push({ cls: c.estado === 'DISPONIBLE' || c.estado === 'PENDIENTE' ? 'warn'
-            : (c.estado === 'CANCELADA' || c.estado === 'RECHAZADA' ? 'danger' : '') });
+        var tipo;
+        if (c.estado === 'DISPONIBLE') {
+            // Solo cuenta como cupo disponible si todavía se puede reservar (no ya pasado).
+            if (!VL_ES_RECEPCION || new Date(c.fecha + 'T' + c.hora) <= ahora) return;
+            tipo = 'cupo';
+        } else if (c.estado === 'PENDIENTE') tipo = 'pendiente';
+        else if (c.estado === 'CANCELADA' || c.estado === 'RECHAZADA') tipo = 'cancelada';
+        else if (c.estado === 'REPROGRAMADA') return;
+        else tipo = 'cita';
+        (marcas[c.fecha] = marcas[c.fecha] || []).push({ tipo: tipo });
     });
 
     function tarjeta(i) {

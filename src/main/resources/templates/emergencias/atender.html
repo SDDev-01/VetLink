@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atender emergencia | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del veterinario', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Emergencias')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1 th:text="'Atención de emergencia · ' + ${e.mascota.nombre}">Atender emergencia</h1>
+                    <p th:text="'Emergencia #' + ${e.idEmergencia} + ' · ' + ${e.motivo}"></p></div>
+                <a th:href="@{'/emergencias/' + ${e.idEmergencia}}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver</a>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-info"><i class="fas fa-circle-info" aria-hidden="true"></i>
+                <span>Al guardar este registro clínico la emergencia pasará a «Atendida» y se notificará al dueño. Si el registro no se guarda, la emergencia sigue asignada.</span></div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)">
+                <form class="vl-panel" th:action="@{'/emergencias/' + ${e.idEmergencia} + '/atender'}" th:object="${form}" method="post" data-un-envio>
+                    <h3><i class="fas fa-notes-medical" aria-hidden="true"></i> Registro clínico de urgencia</h3>
+                    <input type="hidden" th:field="*{idMascota}">
+                    <input type="hidden" th:field="*{tipoRegistro}">
+                    <div class="vl-form-grid">
+                        <div class="vl-field vl-full"><label for="motivoConsulta">Motivo de consulta *</label>
+                            <textarea id="motivoConsulta" th:field="*{motivoConsulta}" required maxlength="4000" rows="2"></textarea>
+                            <span class="vl-field-error" th:if="${#fields.hasErrors('motivoConsulta')}" th:errors="*{motivoConsulta}"></span></div>
+                        <div class="vl-field vl-full"><label for="antecedentes">Antecedentes</label>
+                            <textarea id="antecedentes" th:field="*{antecedentes}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field"><label for="temperatura">Temperatura (°C)</label>
+                            <input type="number" step="0.1" min="30" max="45" id="temperatura" th:field="*{temperatura}">
+                            <span class="vl-field-error" th:if="${#fields.hasErrors('temperatura')}" th:errors="*{temperatura}"></span></div>
+                        <div class="vl-field"><label for="pesoKg">Peso (kg)</label>
+                            <input type="number" step="0.01" min="0.01" max="1500" id="pesoKg" th:field="*{pesoKg}">
+                            <span class="vl-field-error" th:if="${#fields.hasErrors('pesoKg')}" th:errors="*{pesoKg}"></span></div>
+                        <div class="vl-field"><label for="frecuenciaCardiaca">Frecuencia cardiaca (lpm)</label>
+                            <input type="number" min="1" max="400" id="frecuenciaCardiaca" th:field="*{frecuenciaCardiaca}"></div>
+                        <div class="vl-field"><label for="frecuenciaRespiratoria">Frecuencia respiratoria (rpm)</label>
+                            <input type="number" min="1" max="200" id="frecuenciaRespiratoria" th:field="*{frecuenciaRespiratoria}"></div>
+                        <div class="vl-field vl-full"><label for="evaluacionClinica">Evaluación clínica</label>
+                            <textarea id="evaluacionClinica" th:field="*{evaluacionClinica}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field vl-full"><label for="hallazgos">Hallazgos</label>
+                            <textarea id="hallazgos" th:field="*{hallazgos}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field vl-full"><label for="diagnostico">Diagnóstico *</label>
+                            <textarea id="diagnostico" th:field="*{diagnostico}" required maxlength="4000" rows="2"></textarea>
+                            <span class="vl-field-error" th:if="${#fields.hasErrors('diagnostico')}" th:errors="*{diagnostico}"></span></div>
+                        <div class="vl-field vl-full"><label for="tratamiento">Tratamiento</label>
+                            <textarea id="tratamiento" th:field="*{tratamiento}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field vl-full"><label for="medicamentosIndicados">Medicamentos</label>
+                            <textarea id="medicamentosIndicados" th:field="*{medicamentosIndicados}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field vl-full"><label for="recomendaciones">Recomendaciones</label>
+                            <textarea id="recomendaciones" th:field="*{recomendaciones}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field vl-full"><label for="observaciones">Observaciones</label>
+                            <textarea id="observaciones" th:field="*{observaciones}" maxlength="4000" rows="2"></textarea></div>
+                        <div class="vl-field"><label for="proximaCita">Próximo control (opcional)</label>
+                            <input type="date" id="proximaCita" th:field="*{proximaCita}" data-no-pasado>
+                            <span class="vl-field-error" th:if="${#fields.hasErrors('proximaCita')}" th:errors="*{proximaCita}"></span></div>
+                    </div>
+                    <div class="vl-row" style="justify-content:flex-end;margin-top:16px">
+                        <a th:href="@{'/emergencias/' + ${e.idEmergencia}}" class="vl-btn vl-btn-ghost">Cancelar</a>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-check" aria-hidden="true"></i> Guardar y cerrar emergencia</button>
+                    </div>
+                </form>
+
+                <div class="vl-panel">
+                    <h3><i class="fas fa-paw" aria-hidden="true"></i> Paciente</h3>
+                    <dl class="vl-dl">
+                        <div><dt>Mascota</dt><dd th:text="${e.mascota.nombre}"></dd></div>
+                        <div><dt>Especie / raza</dt><dd th:text="${e.mascota.especie.nombreEspecie} + ' · ' + ${e.mascota.raza.nombreRaza}"></dd></div>
+                        <div><dt>Edad</dt><dd th:text="${e.mascota.edadTexto}"></dd></div>
+                        <div><dt>Peso registrado</dt><dd th:text="${e.mascota.peso} + ' kg'"></dd></div>
+                        <div class="full"><dt>Síntomas reportados</dt><dd style="white-space:pre-line" th:text="${e.detalle} ?: 'Sin detalles'"></dd></div>
+                        <div class="full"><dt>Solicitada</dt><dd th:text="${@fmt.fechaHora(e.creadaEn)}"></dd></div>
+                    </dl>
+                    <a th:href="@{'/historial/paciente/' + ${e.mascota.idMascota}}" class="vl-btn vl-btn-ghost vl-btn-sm" style="margin-top:12px">
+                        <i class="fas fa-folder-open" aria-hidden="true"></i> Historial del paciente</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

@@ -33,12 +33,15 @@ public class RecepcionMascotaController {
     private final TutorRepository tutorRepository;
     private final CitaRepository citaRepository;
     private final com.vetlink.mascota.service.GestionMascotaService gestion;
+    private final com.vetlink.mascota.service.RazaCatalogoService catalogoRazas;
 
     public RecepcionMascotaController(MascotaService mascotaService, MascotaRepository mascotaRepository,
                                        EspecieRepository especieRepository, RazaRepository razaRepository,
                                        TutorRepository tutorRepository, CitaRepository citaRepository,
-                                       com.vetlink.mascota.service.GestionMascotaService gestion) {
+                                       com.vetlink.mascota.service.GestionMascotaService gestion,
+                                       com.vetlink.mascota.service.RazaCatalogoService catalogoRazas) {
         this.gestion = gestion;
+        this.catalogoRazas = catalogoRazas;
         this.mascotaService = mascotaService;
         this.mascotaRepository = mascotaRepository;
         this.especieRepository = especieRepository;
@@ -83,6 +86,9 @@ public class RecepcionMascotaController {
     public String crear(@AuthenticationPrincipal VetlinkUserPrincipal principal,
                          @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
                          @RequestParam Integer idTutor, Model model) {
+        if (form.getIdRaza() == null && !form.usaRazaPersonalizada()) {
+            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza o elige «Otra raza» y escríbela");
+        }
         if (result.hasErrors()) {
             recargarNueva(model, principal, idTutor);
             return "recepcion/mascotas/formulario";
@@ -158,9 +164,8 @@ public class RecepcionMascotaController {
     }
 
     private void cargarCatalogos(Model model) {
-        model.addAttribute("especies", especieRepository.findAll());
-        model.addAttribute("razas", razaRepository.findAll());
-        model.addAttribute("especieDeRaza", razaRepository.findAll().stream()
-                .collect(java.util.stream.Collectors.toMap(r -> r.getIdRaza(), r -> r.getEspecie().getIdEspecie())));
+        model.addAttribute("especies", especieRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(com.vetlink.mascota.model.Especie::getNombreEspecie)).toList());
+        model.addAttribute("razas", catalogoRazas.todasOrdenadas());
     }
 }

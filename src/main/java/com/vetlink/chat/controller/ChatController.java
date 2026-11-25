@@ -119,7 +119,7 @@ public class ChatController {
         Conversacion c = autorizada(id, yo);
         String texto = contenido == null ? "" : contenido.trim();
         if (texto.isEmpty()) {
-            ra.addFlashAttribute("errorGeneral", "Este campo es obligatorio");
+            ra.addFlashAttribute("errorGeneral", "Escribe un mensaje antes de enviarlo.");
             return "redirect:/chat/" + id;
         }
         if (texto.length() > 2000) texto = texto.substring(0, 2000);

@@ -15,6 +15,32 @@ public final class UrlPublica {
     private UrlPublica() {
     }
 
+    /**
+     * DUE-04: URL base de enlaces y QR. Misma regla que FastAPI (app/config.py, resolver_url_publica):
+     * con IP definida y una URL pública vacía o de localhost se usa http://IP[:puerto]; una URL
+     * pública real (dominio o túnel) tiene prioridad; sin nada, http://localhost.
+     */
+    public static String resolver(String publicBaseUrl, String ip, String puerto) {
+        String base = publicBaseUrl == null ? "" : publicBaseUrl.strip().replaceAll("/+$", "");
+        String laIp = ip == null ? "" : ip.strip();
+        URI uri = null;
+        try {
+            if (!base.isEmpty()) uri = URI.create(base);
+        } catch (IllegalArgumentException ignorada) {
+            uri = null;
+        }
+        String hostBase = uri == null || uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        boolean baseLocal = base.isEmpty() || List.of("localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1").contains(hostBase);
+        if (!laIp.isEmpty() && laIp.matches("^[A-Za-z0-9.:-]+$") && baseLocal) {
+            String esquema = uri != null && "https".equalsIgnoreCase(uri.getScheme()) ? "https" : "http";
+            String p = uri != null && uri.getPort() > 0 ? String.valueOf(uri.getPort()) : (puerto == null ? "" : puerto.strip());
+            String defecto = "https".equals(esquema) ? "443" : "80";
+            String host = laIp.contains(":") ? "[" + laIp + "]" : laIp;
+            return esquema + "://" + host + (p.isEmpty() || p.equals(defecto) ? "" : ":" + p);
+        }
+        return base.isEmpty() ? "http://localhost" : base;
+    }
+
     public static List<String> problemas(String url) {
         List<String> r = new ArrayList<>();
         URI uri;
