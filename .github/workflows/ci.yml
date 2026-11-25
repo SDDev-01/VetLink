@@ -21,6 +21,11 @@ jobs:
     name: Spring Boot (./mvnw test)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Misma zona que los contenedores (compose.yaml). El runner está en UTC y las pruebas
+    # calculan "hora pasada"/márgenes con LocalTime.now(), mientras la app usa un Clock en
+    # America/Bogota: con UTC fallan VL15, VL18 y VL31 desde las 19:00 hora de Colombia.
+    env:
+      TZ: America/Bogota
     steps:
       - uses: actions/checkout@v4
 
