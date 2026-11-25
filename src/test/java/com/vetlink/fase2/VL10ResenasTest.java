@@ -71,7 +71,7 @@ class VL10ResenasTest extends PruebaWebBase {
     void soloConCitaAgendadaFuturaDaError() throws Exception {
         var clinica = crearClinica();
         var duenio = crearDuenio();
-        citaCon(duenio, clinica, EstadoCita.AGENDADA, LocalDate.now().plusDays(5));
+        citaCon(duenio, clinica, EstadoCita.CONFIRMADA, LocalDate.now().plusDays(5));
         long antes = resenaRepository.count();
 
         resenar(duenio, clinica, 4)

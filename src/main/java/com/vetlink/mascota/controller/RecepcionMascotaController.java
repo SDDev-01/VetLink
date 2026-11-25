@@ -32,10 +32,13 @@ public class RecepcionMascotaController {
     private final RazaRepository razaRepository;
     private final TutorRepository tutorRepository;
     private final CitaRepository citaRepository;
+    private final com.vetlink.mascota.service.GestionMascotaService gestion;
 
     public RecepcionMascotaController(MascotaService mascotaService, MascotaRepository mascotaRepository,
                                        EspecieRepository especieRepository, RazaRepository razaRepository,
-                                       TutorRepository tutorRepository, CitaRepository citaRepository) {
+                                       TutorRepository tutorRepository, CitaRepository citaRepository,
+                                       com.vetlink.mascota.service.GestionMascotaService gestion) {
+        this.gestion = gestion;
         this.mascotaService = mascotaService;
         this.mascotaRepository = mascotaRepository;
         this.especieRepository = especieRepository;
@@ -104,38 +107,40 @@ public class RecepcionMascotaController {
         tutorRepository.findById(idTutor).ifPresent(t -> model.addAttribute("duenioEncontrado", t.getUsuario()));
     }
 
-    @GetMapping("/{id}/editar")
-    public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    /** Ficha de consulta: la recepción ve los datos y solo puede actualizar el peso. */
+    @GetMapping({"/{id}", "/{id}/editar"})
+    public String ver(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         verificarPacienteDeMiClinica(id, principal);
         cargarShell(model, principal);
-        cargarCatalogos(model);
         Mascota mascota = mascotaService.buscarPorId(id);
-        MascotaForm form = new MascotaForm();
-        form.setIdMascota(mascota.getIdMascota());
-        form.setNombre(mascota.getNombre());
-        form.setIdEspecie(mascota.getEspecie().getIdEspecie());
-        form.setIdRaza(mascota.getRaza().getIdRaza());
-        form.setGenero(mascota.getGenero());
-        form.setFechaNacimiento(mascota.getFechaNacimiento());
-        form.setPeso(mascota.getPeso());
-        form.setFoto(mascota.getFoto());
-        model.addAttribute("form", form);
-        model.addAttribute("dueno", mascota.getTutor());
-        return "recepcion/mascotas/formulario";
+        model.addAttribute("mascota", mascota);
+        model.addAttribute("eventos", gestion.eventos(id).stream()
+                .filter(e -> "PESO_ACTUALIZADO".equals(e.getTipo())).toList());
+        return "recepcion/mascotas/ficha";
     }
 
-    @PostMapping("/{id}/editar")
-    public String editar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
-                          @Valid @ModelAttribute("form") MascotaForm form, BindingResult result, Model model) {
+    /** Único dato que modifica la recepción: el peso (valor positivo; queda quién y cuándo). */
+    @PostMapping("/{id}/peso")
+    public String actualizarPeso(@PathVariable Integer id, @RequestParam(required = false) String peso,
+                                 @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                 org.springframework.web.servlet.mvc.support.RedirectAttributes ra) {
         verificarPacienteDeMiClinica(id, principal);
-        form.setIdMascota(id);
-        if (result.hasErrors()) {
-            cargarShell(model, principal);
-            cargarCatalogos(model);
-            return "recepcion/mascotas/formulario";
+        try {
+            Double valor = peso == null || peso.isBlank() ? null : Double.valueOf(peso.replace(',', '.'));
+            gestion.actualizarPeso(id, valor, principal.getUsuario());
+            ra.addFlashAttribute("mensajeOk", "Peso actualizado.");
+        } catch (NumberFormatException e) {
+            ra.addFlashAttribute("errorGeneral", "Ingresa un peso mayor que cero");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("errorGeneral", e.getMessage());
         }
-        mascotaService.actualizarSinVerificarTutor(form);
-        return "redirect:/recepcion/mascotas?actualizada";
+        return "redirect:/recepcion/mascotas/" + id;
+    }
+
+    /** Cualquier otro cambio de datos queda bloqueado para recepción. */
+    @PostMapping("/{id}/editar")
+    public String editar(@PathVariable Integer id) {
+        throw new AccessDeniedException("Recepción solo puede actualizar el peso de la mascota.");
     }
 
     /** VL-02: la recepcionista solo trabaja con mascotas que tienen o tuvieron cita en su clínica. */
@@ -155,5 +160,7 @@ public class RecepcionMascotaController {
     private void cargarCatalogos(Model model) {
         model.addAttribute("especies", especieRepository.findAll());
         model.addAttribute("razas", razaRepository.findAll());
+        model.addAttribute("especieDeRaza", razaRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(r -> r.getIdRaza(), r -> r.getEspecie().getIdEspecie())));
     }
 }

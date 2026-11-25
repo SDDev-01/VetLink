@@ -83,6 +83,7 @@ class VL05CitasMascotaTest extends PruebaWebBase {
                 .andExpect(redirectedUrl("/citas/mascota/" + mascota.getIdMascota() + "?agendada"));
 
         sincronizar();
-        assertThat(citaRepository.findById(cupo.getIdCita()).orElseThrow().getEstado()).isEqualTo(EstadoCita.AGENDADA);
+        // La reserva del dueño bloquea el cupo y queda pendiente de confirmación por recepción.
+        assertThat(citaRepository.findById(cupo.getIdCita()).orElseThrow().getEstado()).isEqualTo(EstadoCita.PENDIENTE);
     }
 }

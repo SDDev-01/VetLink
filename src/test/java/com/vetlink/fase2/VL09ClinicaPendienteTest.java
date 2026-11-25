@@ -20,7 +20,8 @@ class VL09ClinicaPendienteTest extends PruebaWebBase {
         var clinica = recepcion.getRecepcionista().getVeterinaria();
 
         assertThat(clinica.getEstado()).isEqualTo((byte) 0);
-        mockMvc.perform(get("/directorio"))
+        // El directorio muestra resultados después del formulario de búsqueda (buscar=1).
+        mockMvc.perform(get("/directorio").param("buscar", "1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(activa.getNombre())))
                 .andExpect(content().string(not(containsString("Clinica Pendiente Zeta"))));

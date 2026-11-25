@@ -42,6 +42,9 @@ services:
       VETLINK_UPLOADS_DIR: /app/uploads
       VETLINK_DOCS_BASE_URL: http://fastapi:8000
       VETLINK_DOCS_INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      # URL pública (misma del QR): se usa para avisar si no es accesible desde Internet.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+      VETLINK_ZONA_HORARIA: America/Bogota
       # Sin esto el JVM corre en UTC: LocalDate.now() se adelanta 5 h y las reglas
       # de citas (horas pasadas, atender solo hoy, edición 24 h) fallan desde las 19:00.
       TZ: America/Bogota
@@ -67,8 +70,16 @@ services:
       DB_USER: vetlink_fast
       DB_PASSWORD: ${MYSQL_FAST_PASSWORD}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN}
-      # Dirección que va dentro del QR. Para la demo con celular: la IP del portátil.
+      # Dirección que va dentro del QR. Debe ser pública (dominio con HTTPS o túnel) para que
+      # el QR abra desde datos móviles u otras redes; ver README, sección «QR accesible desde Internet».
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
+      VETLINK_ENTORNO: ${VETLINK_ENTORNO:-desarrollo}
+      PASAPORTE_DETALLE_CLINICO: ${PASAPORTE_DETALLE_CLINICO:-false}
+      # Logos de las veterinarias para el encabezado de los PDF (solo lectura).
+      UPLOADS_DIR: /uploads
+      TZ: America/Bogota
+    volumes:
+      - vetlink_uploads:/uploads:ro
     networks:
       - vetlink_net
     healthcheck:
@@ -95,6 +106,8 @@ services:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
       # La plantilla se renderiza como /etc/nginx/nginx.conf completo.
       NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      # Nginx lo inyecta hacia FastAPI en /api/reportes/ (nunca viene del navegador).
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
 
     # Único puerto publicado al exterior. Podman rootless no puede usar
     # puertos < 1024 sin ajustar net.ipv4.ip_unprivileged_port_start:
@@ -115,6 +128,19 @@ services:
         condition: service_started
       fastapi:
         condition: service_started
+
+  # Túnel público opcional (HTTPS) para probar el QR desde datos móviles u otras redes sin
+  # abrir puertos: docker compose --profile tunel up -d tunel ; luego docker compose logs tunel
+  # muestra una URL https://....trycloudflare.com -> ponla en PUBLIC_BASE_URL y reinicia fastapi.
+  tunel:
+    image: cloudflare/cloudflared:2024.12.2
+    profiles: ["tunel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    networks:
+      - vetlink_net
+    depends_on:
+      - nginx
 
 networks:
   vetlink_net:

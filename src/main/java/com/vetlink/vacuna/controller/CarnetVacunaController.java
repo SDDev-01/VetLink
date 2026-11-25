@@ -26,10 +26,16 @@ public class CarnetVacunaController {
     private final VacunaRepository vacunaRepository;
     private final LoteVacunaRepository loteVacunaRepository;
     private final AccesoPacienteService accesoPacienteService;
+    private final com.vetlink.cita.repository.CitaRepository citaRepository;
+    private final com.vetlink.cita.service.AtencionService atencionService;
 
     public CarnetVacunaController(CarnetVacunaService carnetVacunaService, MascotaService mascotaService,
                                    VacunaRepository vacunaRepository, LoteVacunaRepository loteVacunaRepository,
-                                   AccesoPacienteService accesoPacienteService) {
+                                   AccesoPacienteService accesoPacienteService,
+                                   com.vetlink.cita.repository.CitaRepository citaRepository,
+                                   com.vetlink.cita.service.AtencionService atencionService) {
+        this.citaRepository = citaRepository;
+        this.atencionService = atencionService;
         this.carnetVacunaService = carnetVacunaService;
         this.mascotaService = mascotaService;
         this.vacunaRepository = vacunaRepository;
@@ -41,15 +47,15 @@ public class CarnetVacunaController {
     public String ver(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         model.addAttribute("usuario", principal.getUsuario());
         model.addAttribute("seccionActiva", "mascotas");
-        model.addAttribute("navItems", switch (principal.getUsuario().getRol()) {
-            case TUTOR -> DashboardController.navTutor();
-            case VETERINARIO -> DashboardController.navVeterinario();
-            case RECEPCIONISTA -> DashboardController.navRecepcionista();
-        });
+        model.addAttribute("navItems", DashboardController.navPara(principal.getUsuario()));
         var mascota = mascotaService.buscarPorId(idMascota);
         accesoPacienteService.verificar(mascota, principal);
         model.addAttribute("mascota", mascota);
-        model.addAttribute("carnet", carnetVacunaService.listarPorMascota(idMascota));
+        var usuario = principal.getUsuario();
+        model.addAttribute("carnet", carnetVacunaService.listarPorMascota(idMascota).stream()
+                .filter(c -> usuario.getRol() != Rol.RECEPCIONISTA || (c.getVeterinaria() != null
+                        && c.getVeterinaria().getIdVeterinaria().equals(usuario.getRecepcionista().getVeterinaria().getIdVeterinaria())))
+                .toList());
         return "mascotas/carnet";
     }
 
@@ -57,7 +63,7 @@ public class CarnetVacunaController {
     @PostMapping("/{idMascota}/nueva")
     public String registrar(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                              @RequestParam Integer idVacuna, @RequestParam Integer idLote, @RequestParam String dosis,
-                             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate fechaAplicacion,
+                             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate fechaAplicacion,
                              @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate proximaDosis,
                              @RequestParam(required = false) String observaciones,
                              RedirectAttributes redirectAttributes) {
@@ -65,9 +71,19 @@ public class CarnetVacunaController {
             throw new AccessDeniedException("Solo un veterinario puede registrar vacunas");
         }
         accesoPacienteService.verificar(mascotaService.buscarPorId(idMascota), principal);
+        // Las vacunas solo se registran durante una cita de vacunación EN ATENCIÓN del propio veterinario.
+        var cita = citaRepository.findByVeterinario_IdUsuarioAndEstado(principal.getUsuario().getIdUsuario(),
+                        com.vetlink.cita.model.EstadoCita.EN_ATENCION).stream()
+                .filter(c -> c.getMascota() != null && c.getMascota().getIdMascota().equals(idMascota))
+                .findFirst();
+        if (cita.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorVacuna",
+                    "Las vacunas se registran durante una cita de vacunación en atención.");
+            return "redirect:/historial/paciente/" + idMascota;
+        }
         try {
-            carnetVacunaService.registrar(idMascota, idVacuna, idLote, dosis, fechaAplicacion, proximaDosis,
-                    observaciones, principal.getUsuario().getIdUsuario());
+            atencionService.registrarVacuna(cita.get().getIdCita(), idVacuna, idLote, dosis, proximaDosis, observaciones,
+                    principal.getUsuario().getIdUsuario());
         } catch (RuntimeException e) {
             String mensaje = (e instanceof IllegalArgumentException || e instanceof IllegalStateException)
                     ? e.getMessage()

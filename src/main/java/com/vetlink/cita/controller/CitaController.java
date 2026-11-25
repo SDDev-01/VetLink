@@ -1,20 +1,30 @@
 package com.vetlink.cita.controller;
 
 import com.vetlink.cita.dto.AgendarCitaForm;
+import com.vetlink.cita.dto.CitaCalendarDTO;
 import com.vetlink.cita.model.Cita;
 import com.vetlink.cita.model.EstadoCita;
+import com.vetlink.cita.model.TransicionCita;
 import com.vetlink.cita.repository.CitaRepository;
+import com.vetlink.cita.service.CitaEstadoService;
+import com.vetlink.cita.service.CitaService;
+import com.vetlink.comun.web.FormatoVista;
+import com.vetlink.disponibilidad.service.DisponibilidadService;
+import com.vetlink.mascota.model.Mascota;
+import com.vetlink.mascota.service.MascotaService;
+import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.usuario.controller.DashboardController;
+import com.vetlink.usuario.model.Rol;
+import com.vetlink.usuario.model.Usuario;
+import com.vetlink.usuario.repository.VeterinarioRepository;
 import com.vetlink.veterinaria.model.HorarioVeterinaria;
 import com.vetlink.veterinaria.repository.HorarioVeterinariaRepository;
-import com.vetlink.veterinaria.repository.ServicioRepository;
-import com.vetlink.usuario.repository.UsuarioRepository;
+import com.vetlink.veterinaria.repository.ServicioVeterinariaRepository;
 import com.vetlink.veterinaria.repository.VeterinariaRepository;
-import com.vetlink.security.VetlinkUserPrincipal;
-import com.vetlink.cita.service.CitaService;
-import com.vetlink.mascota.service.MascotaService;
+import com.vetlink.veterinaria.service.VeterinariaInfoService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,11 +32,15 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/** Agendamiento de citas para el TUTOR. Los reportes filtrados estan en ReporteController. */
+/** Agendamiento y consulta de citas para el TUTOR, más la API de disponibilidad del asistente. */
 @Controller
 @RequestMapping("/citas")
 public class CitaController {
@@ -34,40 +48,58 @@ public class CitaController {
     private final CitaService citaService;
     private final MascotaService mascotaService;
     private final VeterinariaRepository veterinariaRepository;
-    private final ServicioRepository servicioRepository;
-    private final UsuarioRepository usuarioRepository;
     private final HorarioVeterinariaRepository horarioVeterinariaRepository;
     private final CitaRepository citaRepository;
-    private final com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository;
+    private final VeterinarioRepository veterinarioRepository;
+    private final ServicioVeterinariaRepository servicioVeterinariaRepository;
+    private final DisponibilidadService disponibilidad;
+    private final CitaEstadoService estados;
+    private final VeterinariaInfoService infoVeterinaria;
+    private final Clock reloj;
 
     public CitaController(CitaService citaService, MascotaService mascotaService, VeterinariaRepository veterinariaRepository,
-                           ServicioRepository servicioRepository, UsuarioRepository usuarioRepository,
-                           HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository,
-                           com.vetlink.usuario.repository.VeterinarioRepository veterinarioRepository) {
+                          HorarioVeterinariaRepository horarioVeterinariaRepository, CitaRepository citaRepository,
+                          VeterinarioRepository veterinarioRepository,
+                          ServicioVeterinariaRepository servicioVeterinariaRepository, DisponibilidadService disponibilidad,
+                          CitaEstadoService estados, VeterinariaInfoService infoVeterinaria, Clock reloj) {
         this.citaService = citaService;
         this.mascotaService = mascotaService;
         this.veterinariaRepository = veterinariaRepository;
-        this.servicioRepository = servicioRepository;
-        this.usuarioRepository = usuarioRepository;
         this.horarioVeterinariaRepository = horarioVeterinariaRepository;
         this.citaRepository = citaRepository;
         this.veterinarioRepository = veterinarioRepository;
+        this.servicioVeterinariaRepository = servicioVeterinariaRepository;
+        this.disponibilidad = disponibilidad;
+        this.estados = estados;
+        this.infoVeterinaria = infoVeterinaria;
+        this.reloj = reloj;
     }
+
+    // ------------------------------------------------------------------
+    // Listados
+    // ------------------------------------------------------------------
 
     @GetMapping("/mias")
     public String misCitas(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         cargarShell(model, principal);
         List<Cita> citas = citaService.listarPorTutor(principal.getUsuario().getIdUsuario());
+        LocalDateTime ahora = LocalDateTime.now(reloj);
         model.addAttribute("citas", citas);
-        model.addAttribute("citasJson", citas.stream()
-                .map(c -> new com.vetlink.cita.dto.CitaCalendarDTO(c.getIdCita(), c.getFecha().toString(), c.getHora().toString(),
-                        c.getEstado().name(), c.getMascota().getNombre(), c.getServicio().getNombreServicio()))
+        model.addAttribute("proximas", citas.stream()
+                .filter(c -> EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()) || c.getEstado() == EstadoCita.EN_ATENCION)
+                .filter(c -> !c.getFin().isBefore(ahora))
+                .sorted(Comparator.comparing(Cita::getInicio)).toList());
+        model.addAttribute("pasadas", citas.stream()
+                .filter(c -> !(EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()) || c.getEstado() == EstadoCita.EN_ATENCION)
+                        || c.getFin().isBefore(ahora))
                 .toList());
+        model.addAttribute("citasJson", citas.stream().map(CitaCalendarDTO::de).toList());
         return "citas/mias";
     }
 
     @GetMapping("/mascota/{idMascota}")
-    public String listarPorMascota(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String listarPorMascota(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                   Model model) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
         verificarAccesoTutor(mascota, principal);
@@ -76,155 +108,250 @@ public class CitaController {
         return "citas/lista";
     }
 
-    @GetMapping("/agendar/{idMascota}")
-    public String agendarForm(@PathVariable Integer idMascota, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
-                              RedirectAttributes redirectAttributes) {
-        cargarShell(model, principal);
-        var mascota = mascotaService.buscarPorId(idMascota);
-        verificarAccesoTutor(mascota, principal);
-        // VL-16: una mascota eliminada no puede recibir citas.
-        if (mascota.getEstado() == null || mascota.getEstado() != 1) {
-            redirectAttributes.addFlashAttribute("errorMascota", "La mascota no está activa; no se le pueden agendar citas.");
-            return "redirect:/mascotas";
-        }
-        model.addAttribute("mascota", mascota);
-        model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
-        model.addAttribute("servicios", servicioRepository.findAll());
-        AgendarCitaForm form = new AgendarCitaForm();
-        form.setIdMascota(idMascota);
-        model.addAttribute("form", form);
-        return "citas/formulario";
-    }
-
-    /** Punto de entrada directo desde el dashboard o el directorio. */
-    @GetMapping("/agendar")
-    public String agendarDirecto(@RequestParam(required = false) Integer idVeterinaria,
-                                 @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
-        cargarShell(model, principal);
-        var mascotas = mascotaService.listarActivasPorTutor(principal.getUsuario().getIdUsuario());
-        model.addAttribute("mascotas", mascotas);
-        model.addAttribute("mascota", mascotas.isEmpty() ? null : mascotas.get(0));
-        model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
-        model.addAttribute("servicios", servicioRepository.findAll());
-        AgendarCitaForm form = new AgendarCitaForm();
-        if (idVeterinaria != null && veterinariaRepository.existsById(idVeterinaria)) form.setIdVeterinaria(idVeterinaria);
-        model.addAttribute("form", form);
-        return "citas/formulario";
-    }
-
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public String detalle(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         Cita cita = citaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
         if (cita.getMascota() == null || !cita.getMascota().getTutor().getIdUsuario()
                 .equals(principal.getUsuario().getIdUsuario())) {
-            throw new org.springframework.security.access.AccessDeniedException("No tienes permiso sobre esta cita");
+            throw new AccessDeniedException("No tienes permiso sobre esta cita");
         }
         cargarShell(model, principal);
+        boolean futura = cita.getInicio().isAfter(LocalDateTime.now(reloj));
         model.addAttribute("cita", cita);
+        model.addAttribute("direccion", infoVeterinaria.direccion(cita.getVeterinaria().getIdVeterinaria()));
+        model.addAttribute("telefonos", infoVeterinaria.telefonos(cita.getVeterinaria().getIdVeterinaria()));
+        model.addAttribute("historialEstados", estados.historialDe(id));
+        model.addAttribute("puedeCancelar", futura
+                && TransicionCita.permitida(cita.getEstado(), EstadoCita.CANCELADA, TransicionCita.Actor.TUTOR));
+        model.addAttribute("puedeReprogramar", futura && EstadoCita.RESERVAS_VIGENTES.contains(cita.getEstado()));
+        model.addAttribute("reprogramadaA", citaRepository.findByCitaOrigen_IdCita(id));
         return "citas/detalle";
+    }
+
+    // ------------------------------------------------------------------
+    // Asistente de agendamiento
+    // ------------------------------------------------------------------
+
+    @GetMapping("/agendar/{idMascota}")
+    public String agendarForm(@PathVariable Integer idMascota, @RequestParam(required = false) Integer idVeterinaria,
+                              @RequestParam(required = false) Integer idServicio,
+                              @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
+                              RedirectAttributes redirectAttributes) {
+        var mascota = mascotaService.buscarPorId(idMascota);
+        verificarAccesoTutor(mascota, principal);
+        if (!mascota.isAgendable()) {
+            redirectAttributes.addFlashAttribute("errorMascota", "La mascota no está activa; no se le pueden agendar citas.");
+            return "redirect:/mascotas";
+        }
+        AgendarCitaForm form = new AgendarCitaForm();
+        form.setIdMascota(idMascota);
+        prepararAsistente(model, principal, form, mascota, idVeterinaria, idServicio);
+        return "citas/formulario";
+    }
+
+    /** Punto de entrada desde el dashboard o el directorio (la mascota se elige en el paso 1). */
+    @GetMapping("/agendar")
+    public String agendarDirecto(@RequestParam(required = false) Integer idVeterinaria,
+                                 @RequestParam(required = false) Integer idServicio,
+                                 @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+        prepararAsistente(model, principal, new AgendarCitaForm(), null, idVeterinaria, idServicio);
+        return "citas/formulario";
     }
 
     @PostMapping("/agendar")
     public String agendar(@AuthenticationPrincipal VetlinkUserPrincipal principal,
-                           @Valid @ModelAttribute("form") AgendarCitaForm form, BindingResult result, Model model) {
+                          @Valid @ModelAttribute("form") AgendarCitaForm form, BindingResult result, Model model,
+                          RedirectAttributes redirect) {
+        Mascota mascota = form.getIdMascota() == null ? null : mascotaService.buscarPorId(form.getIdMascota());
+        if (mascota != null) verificarAccesoTutor(mascota, principal);
         if (result.hasErrors()) {
-            cargarShell(model, principal);
-            model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
-            model.addAttribute("servicios", servicioRepository.findAll());
-            model.addAttribute("mascota", mascotaService.buscarPorId(form.getIdMascota()));
+            prepararAsistente(model, principal, form, mascota, form.getIdVeterinaria(), form.getIdServicio());
             return "citas/formulario";
         }
         try {
-            citaService.agendar(form, principal.getUsuario().getIdUsuario());
+            Cita cita = citaService.agendar(form, principal.getUsuario().getIdUsuario());
+            redirect.addFlashAttribute("citaReservada", cita.getIdCita());
         } catch (RuntimeException e) {
             model.addAttribute("errorGeneral", e.getMessage());
-            cargarShell(model, principal);
-            model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1));
-            model.addAttribute("servicios", servicioRepository.findAll());
-            model.addAttribute("mascota", mascotaService.buscarPorId(form.getIdMascota()));
+            prepararAsistente(model, principal, form, mascota, form.getIdVeterinaria(), form.getIdServicio());
             return "citas/formulario";
         }
         return "redirect:/citas/mascota/" + form.getIdMascota() + "?agendada";
     }
 
-    @PostMapping("/{id}/cancelar")
-    public String cancelar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
-                            @RequestParam Integer idMascota,
-                            @RequestParam(required = false, defaultValue = "mascota") String origen, Model model) {
-        try {
-            citaService.cancelar(id, principal.getUsuario().getIdUsuario());
-        } catch (RuntimeException e) {
-            if ("mias".equals(origen)) {
-                cargarShell(model, principal);
-                model.addAttribute("citas", citaService.listarPorTutor(principal.getUsuario().getIdUsuario()));
-                model.addAttribute("errorGeneral", e.getMessage());
-                return "citas/mias";
-            }
-            cargarShell(model, principal);
-            var mascota = mascotaService.buscarPorId(idMascota);
-            verificarAccesoTutor(mascota, principal);
-            model.addAttribute("mascota", mascota);
-            model.addAttribute("citas", citaService.listarPorMascota(idMascota));
-            model.addAttribute("errorGeneral", e.getMessage());
-            return "citas/lista";
+    private void prepararAsistente(Model model, VetlinkUserPrincipal principal, AgendarCitaForm form, Mascota mascota,
+                                   Integer idVeterinaria, Integer idServicio) {
+        cargarShell(model, principal);
+        var mascotas = mascotaService.listarActivasPorTutor(principal.getUsuario().getIdUsuario()).stream()
+                .filter(Mascota::isAgendable).toList();
+        model.addAttribute("mascotas", mascotas);
+        model.addAttribute("mascota", mascota);
+        model.addAttribute("titulo", mascota == null ? "Agendar cita" : "Agendar cita para " + mascota.getNombre());
+        model.addAttribute("veterinarias", veterinariaRepository.findByEstado((byte) 1).stream()
+                .map(v -> Map.of("id", v.getIdVeterinaria(), "nombre", v.getNombre(),
+                        "direccion", infoVeterinaria.direccion(v.getIdVeterinaria()),
+                        "logo", VeterinariaInfoService.logoUrl(v)))
+                .toList());
+        if (form.getIdVeterinaria() == null && idVeterinaria != null && veterinariaRepository.existsById(idVeterinaria)) {
+            form.setIdVeterinaria(idVeterinaria);
         }
-        return "mias".equals(origen) ? "redirect:/citas/mias?cancelada" : "redirect:/citas/mascota/" + idMascota + "?cancelada";
+        if (form.getIdServicio() == null && idServicio != null) form.setIdServicio(idServicio);
+        model.addAttribute("form", form);
     }
 
-    /** RF0028/RF0029 (adaptado): horario general del día + horas ya ocupadas, para pintar
-     *  botones de horario disponible en el asistente de agendamiento, sin recargar la página. */
+    // ------------------------------------------------------------------
+    // API JSON del asistente (solo devuelve disponibilidad real)
+    // ------------------------------------------------------------------
+
+    public record ServicioOption(Integer id, String nombre, Integer duracion, Double precio, String descripcion) {}
+
+    public record VeterinarioOption(Integer id, String nombre, String especialidad) {
+        public VeterinarioOption(Integer id, String nombre) {
+            this(id, nombre, null);
+        }
+    }
+
+    public record DiaDisponible(String fecha, int cupos) {}
+
+    public record HoraDisponible(Integer idCupo, String hora, String etiqueta, Integer duracion, Integer idVeterinario,
+                                 String veterinario) {}
+
+    @GetMapping("/api/servicios")
+    @ResponseBody
+    public List<ServicioOption> serviciosDe(@RequestParam Integer idVeterinaria) {
+        return servicioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
+                .filter(sv -> !sv.getServicio().isEmergencia())
+                .map(sv -> new ServicioOption(sv.getServicio().getIdServicio(), sv.getServicio().getNombreServicio(),
+                        sv.getDuracionAprox(), sv.getPrecio(), sv.getServicio().getDescripcion()))
+                .sorted(Comparator.comparing(ServicioOption::nombre, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    @GetMapping("/api/veterinarios")
+    @ResponseBody
+    public List<VeterinarioOption> veterinariosCompatibles(@RequestParam Integer idVeterinaria,
+                                                           @RequestParam Integer idServicio) {
+        return disponibilidad.veterinariosCompatibles(idVeterinaria, idServicio).stream()
+                .map(u -> new VeterinarioOption(u.getIdUsuario(), u.getNombre() + " " + u.getApellido(),
+                        u.getVeterinario().getEspecialidad() == null ? null
+                                : u.getVeterinario().getEspecialidad().getNombreEspecialidad()))
+                .toList();
+    }
+
+    /** Días del mes con al menos un cupo reservable (para pintar el mini calendario). */
+    @GetMapping("/api/disponibilidad/dias")
+    @ResponseBody
+    public List<DiaDisponible> diasDisponibles(@RequestParam Integer idVeterinaria, @RequestParam Integer idServicio,
+                                               @RequestParam(required = false) Integer idVeterinario,
+                                               @RequestParam(required = false) Integer idMascota,
+                                               @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth mes,
+                                               @AuthenticationPrincipal VetlinkUserPrincipal principal) {
+        Integer mascotaFiltro = mascotaParaFiltro(idMascota, principal);
+        Map<LocalDate, Long> porDia = disponibilidad.cuposReservables(idVeterinaria, idServicio, idVeterinario,
+                        mes.atDay(1), mes.atEndOfMonth(), mascotaFiltro).stream()
+                .collect(Collectors.groupingBy(Cita::getFecha, TreeMap::new, Collectors.counting()));
+        return porDia.entrySet().stream().map(e -> new DiaDisponible(e.getKey().toString(), e.getValue().intValue())).toList();
+    }
+
+    /** Horas que realmente se pueden reservar en un día. */
+    @GetMapping("/api/disponibilidad/horas")
+    @ResponseBody
+    public List<HoraDisponible> horasDisponibles(@RequestParam Integer idVeterinaria, @RequestParam Integer idServicio,
+                                                 @RequestParam(required = false) Integer idVeterinario,
+                                                 @RequestParam(required = false) Integer idMascota,
+                                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+                                                 @AuthenticationPrincipal VetlinkUserPrincipal principal) {
+        Integer mascotaFiltro = mascotaParaFiltro(idMascota, principal);
+        return disponibilidad.cuposReservables(idVeterinaria, idServicio, idVeterinario, fecha, fecha, mascotaFiltro).stream()
+                .map(c -> new HoraDisponible(c.getIdCita(),
+                        String.format("%02d:%02d", c.getHora().getHour(), c.getHora().getMinute()),
+                        FormatoVista.horaTexto(c.getHora()), c.getDuracionMin(), c.getVeterinario().getIdUsuario(),
+                        c.getVeterinario().getNombre() + " " + c.getVeterinario().getApellido()))
+                .toList();
+    }
+
+    private Integer mascotaParaFiltro(Integer idMascota, VetlinkUserPrincipal principal) {
+        if (idMascota == null) return null;
+        Mascota m = mascotaService.buscarPorId(idMascota);
+        Usuario u = principal.getUsuario();
+        if (u.getRol() == Rol.TUTOR && !m.getTutor().getIdUsuario().equals(u.getIdUsuario())) {
+            throw new AccessDeniedException("No tienes permiso sobre esta mascota");
+        }
+        return idMascota;
+    }
+
+    // ------------------------------------------------------------------
+    // Cancelar y solicitar reprogramación
+    // ------------------------------------------------------------------
+
+    @PostMapping("/{id}/cancelar")
+    public String cancelar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                           @RequestParam(required = false) Integer idMascota,
+                           @RequestParam(required = false, defaultValue = "mascota") String origen,
+                           RedirectAttributes redirect) {
+        try {
+            citaService.cancelar(id, principal.getUsuario().getIdUsuario());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("errorGeneral", e.getMessage());
+            return destino(origen, id, idMascota, "");
+        }
+        return destino(origen, id, idMascota, "?cancelada");
+    }
+
+    @PostMapping("/{id}/reprogramacion")
+    public String solicitarReprogramacion(@PathVariable Integer id, @RequestParam(required = false) String motivo,
+                                          @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                          RedirectAttributes redirect) {
+        try {
+            citaService.solicitarReprogramacion(id, principal.getUsuario().getIdUsuario(), motivo);
+            redirect.addFlashAttribute("mensajeOk", "Enviamos tu solicitud de reprogramación a la clínica.");
+        } catch (IllegalStateException e) {
+            redirect.addFlashAttribute("errorGeneral", e.getMessage());
+        }
+        return "redirect:/citas/" + id;
+    }
+
+    private static String destino(String origen, Integer idCita, Integer idMascota, String sufijo) {
+        if ("mias".equals(origen)) return "redirect:/citas/mias" + sufijo;
+        if ("detalle".equals(origen) || idMascota == null) return "redirect:/citas/" + idCita + sufijo;
+        return "redirect:/citas/mascota/" + idMascota + sufijo;
+    }
+
+    // ------------------------------------------------------------------
+    // Compatibilidad: horario general de la clínica (usado por recepción)
+    // ------------------------------------------------------------------
+
     @GetMapping("/horarios-disponibles")
     @ResponseBody
     public HorariosDisponiblesResponse horariosDisponibles(@RequestParam Integer idVeterinaria,
-                                                            @RequestParam(required = false) Integer idVeterinario,
-                                                            @RequestParam(required = false) Integer idServicio,
-                                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+                                                           @RequestParam(required = false) Integer idVeterinario,
+                                                           @RequestParam(required = false) Integer idServicio,
+                                                           @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         if (idVeterinario != null && idServicio != null) {
-            List<String> cupos = citaRepository.findByVeterinaria_IdVeterinariaAndEstadoAndFechaGreaterThanEqualOrderByFechaAscHoraAsc(
-                            idVeterinaria, EstadoCita.DISPONIBLE, fecha).stream()
-                    .filter(c -> c.getFecha().equals(fecha))
-                    .filter(c -> c.getVeterinario().getIdUsuario().equals(idVeterinario))
-                    .filter(c -> c.getServicio().getIdServicio().equals(idServicio))
-                    // VL-15: hoy no se ofrecen cupos cuya hora ya pasó.
-                    .filter(c -> !java.time.LocalDateTime.of(c.getFecha(), c.getHora()).isBefore(java.time.LocalDateTime.now()))
-                    .map(c -> c.getHora().toString().substring(0, 5)).toList();
+            List<String> cupos = disponibilidad.cuposReservables(idVeterinaria, idServicio, idVeterinario, fecha, fecha, null)
+                    .stream().map(c -> hhmm(c.getHora())).toList();
             return new HorariosDisponiblesResponse(null, null, cupos, cupos.isEmpty(), List.of());
         }
         String nombreDia = nombreDiaEs(fecha.getDayOfWeek());
-
-        // VL-14: una clínica puede tener varios rangos el mismo día (p. ej. 08-12 y 14-18).
         List<HorarioVeterinaria> horariosDia = horarioVeterinariaRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
                 .filter(h -> h.getEstado() == 1 && h.getDiaSemana().getDiaSemana().equalsIgnoreCase(nombreDia))
                 .filter(h -> h.getHoraApertura().isBefore(h.getHoraCierre()))
-                .sorted(java.util.Comparator.comparing(HorarioVeterinaria::getHoraApertura))
+                .sorted(Comparator.comparing(HorarioVeterinaria::getHoraApertura))
                 .toList();
-
         if (horariosDia.isEmpty()) {
             return new HorariosDisponiblesResponse(null, null, List.of(), true, List.of());
         }
         List<RangoHorario> rangos = horariosDia.stream()
-                .map(h -> new RangoHorario(hhmm(h.getHoraApertura()), hhmm(h.getHoraCierre())))
-                .toList();
-
-        List<Cita> citasDelDia = idVeterinario != null
-                ? citaRepository.findByVeterinario_IdUsuarioAndFecha(idVeterinario, fecha)
-                : List.of();
-
-        List<String> ocupadas = citasDelDia.stream()
-                .filter(c -> c.getEstado() == EstadoCita.AGENDADA || c.getEstado() == EstadoCita.PENDIENTE)
-                .map(c -> c.getHora().toString().substring(0, 5))
-                .toList();
-
-        // apertura/cierre se conservan (primer y último horario del día) para no romper clientes antiguos.
-        return new HorariosDisponiblesResponse(
-                rangos.get(0).apertura(),
-                rangos.stream().map(RangoHorario::cierre).max(String::compareTo).orElseThrow(),
-                ocupadas, false, rangos
-        );
+                .map(h -> new RangoHorario(hhmm(h.getHoraApertura()), hhmm(h.getHoraCierre()))).toList();
+        List<String> ocupadas = idVeterinario == null ? List.of()
+                : citaRepository.deVeterinarioEnFechaConEstados(idVeterinario, fecha, EstadoCita.OCUPAN_HORARIO).stream()
+                .map(c -> hhmm(c.getHora())).toList();
+        return new HorariosDisponiblesResponse(rangos.get(0).apertura(),
+                rangos.stream().map(RangoHorario::cierre).max(String::compareTo).orElseThrow(), ocupadas, false, rangos);
     }
 
     private static String hhmm(java.time.LocalTime hora) {
-        return hora.toString().substring(0, 5);
+        return String.format("%02d:%02d", hora.getHour(), hora.getMinute());
     }
 
     private String nombreDiaEs(DayOfWeek dia) {
@@ -242,16 +369,15 @@ public class CitaController {
     public record HorariosDisponiblesResponse(String apertura, String cierre, List<String> ocupadas, boolean cerrado,
                                               List<RangoHorario> rangos) {}
 
-    /** VL-14: un rango de atención {apertura, cierre} en formato HH:mm. */
     public record RangoHorario(String apertura, String cierre) {}
 
-    /** Veterinarios que trabajan en una veterinaria dada, usado por AJAX desde el formulario. */
+    /** Veterinarios de una veterinaria (compatibilidad con formularios anteriores). */
     @GetMapping("/veterinarios/{idVeterinaria}")
     @ResponseBody
     public List<VeterinarioOption> veterinariosDe(@PathVariable Integer idVeterinaria) {
-        // VL-25: consulta directa en vez de cargar todos los usuarios.
         return veterinarioRepository.findByVeterinaria_IdVeterinaria(idVeterinaria).stream()
                 .map(v -> v.getUsuario())
+                .filter(Usuario::isActivo)
                 .map(u -> new VeterinarioOption(u.getIdUsuario(), u.getNombre() + " " + u.getApellido()))
                 .toList();
     }
@@ -259,21 +385,12 @@ public class CitaController {
     private void cargarShell(Model model, VetlinkUserPrincipal principal) {
         model.addAttribute("usuario", principal.getUsuario());
         model.addAttribute("seccionActiva", "citas");
-        model.addAttribute("navItems", switch (principal.getUsuario().getRol()) {
-            case TUTOR -> DashboardController.navTutor();
-            case VETERINARIO -> DashboardController.navVeterinario();
-            case RECEPCIONISTA -> DashboardController.navRecepcionista();
-        });
+        model.addAttribute("navItems", DashboardController.navPara(principal.getUsuario()));
     }
 
-    private void verificarAccesoTutor(com.vetlink.mascota.model.Mascota mascota,
-                                      VetlinkUserPrincipal principal) {
-        // VL-05: sin importar el rol, solo el dueño de la mascota pasa.
+    private void verificarAccesoTutor(Mascota mascota, VetlinkUserPrincipal principal) {
         if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "No tienes permiso para consultar esta mascota");
+            throw new AccessDeniedException("No tienes permiso para consultar esta mascota");
         }
     }
-
-    public record VeterinarioOption(Integer id, String nombre) {}
 }

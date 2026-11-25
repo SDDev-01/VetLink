@@ -3,44 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historial Clínico - VetLink</title>
+    <title>Historial clínico | VetLink</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" th:href="@{/css/dashboard.css}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="dashboard-body">
-
-<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel del dueño', ${navItems}, ${seccionActiva})}"></aside>
-
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
 <main class="main-content">
-    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
-
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar expediente...')}"></header>
     <section class="container">
         <div class="vl-section vl-section-active">
             <div class="vl-section-head">
-                <div><h1>Historial Clínico</h1><p>Consulta la ficha médica de todas tus mascotas.</p></div>
-            </div>
-
-            <div class="vl-table-wrap" th:if="${not #lists.isEmpty(historial)}" style="padding:0;">
-                <div style="padding:20px; border-bottom:1px solid #eef2f7;" th:each="h : ${historial}">
-                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                        <strong th:text="${h.mascota.nombre}">Mascota</strong>
-                        <span style="color:#94a3b8; font-size:0.85rem;" th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
-                    </div>
-                    <p style="margin:8px 0 2px;"><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
-                    <p style="margin:2px 0;"><strong>Diagnóstico:</strong> <span th:text="${h.diagnostico}"></span></p>
+                <div>
+                    <h1>Historial clínico</h1>
+                    <p th:if="${usuario.rol.name() == 'RECEPCIONISTA'}">Consulta (solo lectura) de los expedientes de pacientes con citas autorizadas en tu veterinaria.</p>
+                    <p th:if="${usuario.rol.name() == 'TUTOR'}">Un expediente por mascota con sus consultas, vacunas y documentos.</p>
+                </div>
+                <div class="vl-field" style="margin:0;min-width:240px" th:if="${#lists.size(carpetas) > 3}">
+                    <label for="filtro-carpetas" class="vl-sr-only">Buscar mascota</label>
+                    <input type="search" id="filtro-carpetas" placeholder="Buscar mascota…">
                 </div>
             </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
 
-            <div class="vl-empty" th:if="${#lists.isEmpty(historial)}">
-                <i class="fas fa-file-medical"></i>
-                <h4>Sin historial clínico</h4>
-                <p>Ninguna de tus mascotas tiene consultas registradas todavía.</p>
+            <div class="vl-folders" id="carpetas">
+                <details class="vl-folder" th:each="c, it : ${carpetas}" th:attr="data-nombre=${#strings.toLowerCase(c.mascota.nombre)}"
+                         th:open="${abierta != null or it.first}">
+                    <summary>
+                        <span class="tab"><i class="fas fa-paw" aria-hidden="true"></i></span>
+                        <span>
+                            <span class="name" th:text="${c.mascota.nombre}">Max</span>
+                            <span class="vl-small vl-muted" style="display:block"
+                                  th:text="${c.mascota.especie.nombreEspecie} + ' · ' + ${c.mascota.raza.nombreRaza} + ' · ' + ${c.registros} + ' registros · ' + ${c.vacunas} + ' vacunas · ' + ${c.archivos} + ' adjuntos'"></span>
+                        </span>
+                        <span th:if="${c.mascota.situacionSegura.name() != 'ACTIVA'}" class="vl-badge" th:classappend="${c.mascota.situacionSegura.clase}" th:text="${c.mascota.situacionSegura.etiqueta}"></span>
+                        <i class="fas fa-chevron-right chev" aria-hidden="true"></i>
+                    </summary>
+                    <div class="vl-row" style="padding:12px 18px 0">
+                        <a class="vl-btn vl-btn-primary vl-btn-sm" th:href="@{'/api/reportes/mascotas/' + ${c.mascota.idMascota} + '/historial'}">
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Descargar historial clínico</a>
+                        <a class="vl-btn vl-btn-ghost vl-btn-sm" th:href="@{'/api/reportes/mascotas/' + ${c.mascota.idMascota} + '/vacunas'}">
+                            <i class="fas fa-shield-virus" aria-hidden="true"></i> Historial de vacunación</a>
+                        <form class="vl-row" method="get" th:action="@{'/api/reportes/mascotas/' + ${c.mascota.idMascota} + '/historial'}" aria-label="Descargar por rango de fechas">
+                            <label class="vl-small vl-muted" th:for="'ini-' + ${c.mascota.idMascota}">Desde</label>
+                            <input type="date" name="fecha_inicio" th:id="'ini-' + ${c.mascota.idMascota}" required style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:10px">
+                            <label class="vl-small vl-muted" th:for="'fin-' + ${c.mascota.idMascota}">Hasta</label>
+                            <input type="date" name="fecha_fin" th:id="'fin-' + ${c.mascota.idMascota}" required style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:10px">
+                            <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-calendar-range" aria-hidden="true"></i> PDF por fechas</button>
+                        </form>
+                    </div>
+                    <ul class="vl-docs">
+                        <li class="vl-doc" th:each="d : ${c.documentos}">
+                            <span class="ico"><i th:class="'fas ' + ${d.icono}" aria-hidden="true"></i></span>
+                            <div>
+                                <a class="titulo" th:href="@{${d.url}}" th:text="${d.tipo}"
+                                   th:attr="target=${#strings.startsWith(d.url, '/historial/archivos')} ? '_blank' : null,rel=${#strings.startsWith(d.url, '/historial/archivos')} ? 'noopener' : null"></a>
+                                <div class="meta">
+                                    <span><i class="far fa-calendar" aria-hidden="true"></i> <span th:text="${d.fechaTexto}"></span></span>
+                                    <span th:if="${!#strings.isEmpty(d.veterinaria)}"><i class="fas fa-hospital" aria-hidden="true"></i> <span th:text="${d.veterinaria}"></span></span>
+                                    <span th:if="${!#strings.isEmpty(d.profesional)}"><i class="fas fa-user-doctor" aria-hidden="true"></i> <span th:text="${d.profesional}"></span></span>
+                                    <span th:if="${d.adjuntos > 0}"><i class="fas fa-paperclip" aria-hidden="true"></i> <span th:text="${d.adjuntos}"></span></span>
+                                </div>
+                                <div class="vl-small vl-muted" th:if="${!#strings.isEmpty(d.descripcion)}" th:text="${d.descripcion}"></div>
+                            </div>
+                            <div class="acciones vl-row">
+                                <a th:if="${d.urlPdf != null}" th:href="@{${d.urlPdf}}" class="vl-btn vl-btn-ghost vl-btn-sm"
+                                   th:attr="aria-label='Descargar PDF de ' + ${d.tipo}"><i class="fas fa-download" aria-hidden="true"></i></a>
+                            </div>
+                        </li>
+                        <li th:if="${#lists.isEmpty(c.documentos)}" class="vl-empty-state"><i class="fas fa-folder-open" aria-hidden="true"></i>Carpeta vacía: aún no hay registros clínicos.</li>
+                    </ul>
+                </details>
+            </div>
+            <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(carpetas)}">
+                <i class="fas fa-folder" aria-hidden="true"></i>No hay expedientes para mostrar.
             </div>
         </div>
     </section>
 </main>
+<script>
+    (function () {
+        var f = document.getElementById('filtro-carpetas');
+        if (!f) return;
+        f.addEventListener('input', function () {
+            var q = f.value.trim().toLowerCase();
+            document.querySelectorAll('#carpetas .vl-folder').forEach(function (d) {
+                d.hidden = q && d.dataset.nombre.indexOf(q) === -1;
+            });
+        });
+    })();
+</script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

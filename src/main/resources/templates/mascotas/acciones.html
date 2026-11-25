@@ -1,0 +1,31 @@
+<!--/* Menú de gestión de una mascota: transferir, perdida, encontrada, fallecimiento.
+   Todas las acciones piden confirmación con modal propio (vl-confirm.js). */-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="menu(m, transferenciaPendiente)" class="vl-menu-pop">
+    <a th:href="@{'/mascotas/' + ${m.idMascota} + '/editar'}"><i class="fas fa-pen" aria-hidden="true"></i> Editar datos</a>
+    <form th:unless="${transferenciaPendiente}" th:action="@{'/mascotas/' + ${m.idMascota} + '/transferir'}" method="post"
+          th:attr="data-confirm=${'La propiedad de ' + m.nombre + ' cambiará solo cuando el nuevo tutor acepte. Su historial clínico, vacunas y registros se conservan, pero perderás el acceso a ellos y se desactivarán los enlaces compartidos del pasaporte.'},data-confirm-title=${'¿Transferir a ' + m.nombre + '?'}"
+          data-confirm-ok="Enviar solicitud" data-confirm-input="destino" data-confirm-input-required
+          data-confirm-input-label="Documento o correo del nuevo tutor (debe estar registrado en VetLink)">
+        <button type="submit"><i class="fas fa-right-left" aria-hidden="true"></i> Transferir mascota</button>
+    </form>
+    <form th:if="${m.situacionSegura.name() == 'ACTIVA'}" th:action="@{'/mascotas/' + ${m.idMascota} + '/perdida'}" method="post"
+          th:attr="data-confirm=${m.nombre + ' quedará marcada como perdida. Podrás marcarla como encontrada cuando aparezca.'}"
+          data-confirm-title="¿Reportar mascota perdida?" data-confirm-ok="Reportar"
+          data-confirm-input="detalle" data-confirm-input-label="¿Dónde y cuándo se perdió? (opcional)">
+        <button type="submit"><i class="fas fa-magnifying-glass-location" aria-hidden="true"></i> Reportar perdida</button>
+    </form>
+    <form th:if="${m.situacionSegura.name() == 'PERDIDA'}" th:action="@{'/mascotas/' + ${m.idMascota} + '/encontrada'}" method="post"
+          data-confirm="La mascota volverá a estar activa." data-confirm-title="¿Reportar mascota encontrada?" data-confirm-ok="Sí, apareció">
+        <button type="submit"><i class="fas fa-house-circle-check" aria-hidden="true"></i> Reportar encontrada</button>
+    </form>
+    <form th:action="@{'/mascotas/' + ${m.idMascota} + '/fallecida'}" method="post"
+          th:attr="data-confirm=${'Se registrará el fallecimiento de ' + m.nombre + '. Sus citas futuras se cancelarán y ya no se le podrán agendar citas. Su historial se conserva. Esta acción no se puede deshacer.'}"
+          data-confirm-title="¿Reportar fallecimiento?" data-confirm-ok="Registrar fallecimiento" data-confirm-tipo="peligro"
+          data-confirm-input="detalle" data-confirm-input-label="Nota (opcional)">
+        <button type="submit" class="peligro"><i class="fas fa-dove" aria-hidden="true"></i> Reportar fallecimiento</button>
+    </form>
+</div>
+</body>
+</html>

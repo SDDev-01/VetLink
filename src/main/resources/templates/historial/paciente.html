@@ -10,175 +10,85 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="dashboard-body">
-
 <aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
-
 <main class="main-content">
     <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
-
     <section class="container">
         <div class="vl-section vl-section-active">
-
-            <div class="vl-profile-head" style="margin-bottom:20px; background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark,#1d4ed8) 100%); border-radius:22px; padding:26px 28px; color:#fff;">
-                <div class="vl-profile-avatar-lg"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
-                <div>
-                    <h2 th:text="${mascota.nombre}">Nombre</h2>
-                    <div class="sub" th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · Dueño: ' + ${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}">Detalle</div>
-                </div>
-            </div>
-
-            <p class="form-message" style="color:#16a34a" th:if="${param.creado}">Historial registrado.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.actualizado}">Historial actualizado.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.vacunaRegistrada}">Vacuna registrada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${errorVacuna}" th:text="${errorVacuna}"></p>
-
-            <div class="vl-drawer-tabs" style="border-radius:16px 16px 0 0; border:1px solid #f1f5f9; border-bottom:none;">
-                <button type="button" class="vl-drawer-tab active" data-tab="resumen"><i class="fas fa-circle-info"></i> Resumen</button>
-                <button type="button" class="vl-drawer-tab" data-tab="carnet"><i class="fas fa-syringe"></i> Carnet de vacunación</button>
-                <button type="button" class="vl-drawer-tab" data-tab="historial"><i class="fas fa-file-medical"></i> Historial clínico</button>
-                <button type="button" class="vl-drawer-tab" data-tab="citas"><i class="fas fa-calendar-alt"></i> Citas</button>
-            </div>
-
-            <div style="background:#fff; border:1px solid #f1f5f9; border-top:none; border-radius:0 0 16px 16px; padding:24px;">
-
-                <!-- RESUMEN -->
-                <div class="vl-drawer-pane active" data-pane="resumen">
-                    <div class="vl-medrecord-grid">
-                        <div class="vl-medcard"><strong>Peso</strong><span th:text="${mascota.peso} + ' kg'"></span></div>
-                        <div class="vl-medcard"><strong>Fecha de nacimiento</strong><span th:text="${mascota.fechaNacimiento}"></span></div>
-                        <div class="vl-medcard"><strong>Género</strong><span th:text="${mascota.genero == 'M' ? 'Macho' : 'Hembra'}"></span></div>
-                        <div class="vl-medcard"><strong>Dueño</strong><span th:text="${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}"></span></div>
+            <div class="vl-hero">
+                <div class="vl-row">
+                    <div class="vl-profile-avatar-lg"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw" aria-hidden="true"></i></div>
+                    <div>
+                        <h1 th:text="${mascota.nombre}">Nombre</h1>
+                        <p th:text="${mascota.especie.nombreEspecie} + ' · ' + ${mascota.raza.nombreRaza} + ' · ' + ${mascota.edadTexto} + ' · ' + ${mascota.peso} + ' kg · Tutor: ' + ${mascota.tutor.nombre} + ' ' + ${mascota.tutor.apellido}"></p>
                     </div>
-                    <div class="vl-form-section-title" style="margin-top:20px;"><i class="fas fa-notes-medical"></i> Última consulta</div>
-                    <p th:if="${not #lists.isEmpty(historial)}" style="color:#475569; font-size:0.9rem;" th:text="${historial[0].diagnostico}"></p>
-                    <p th:if="${#lists.isEmpty(historial)}" style="color:#94a3b8; font-size:0.85rem;">Sin historial clínico registrado todavía.</p>
                 </div>
+                <div class="vl-row">
+                    <a class="vl-btn" th:href="@{'/api/reportes/mascotas/' + ${mascota.idMascota} + '/historial'}"><i class="fas fa-file-pdf" aria-hidden="true"></i> Descargar historial clínico</a>
+                    <a class="vl-btn" th:href="@{/historial/pacientes}"><i class="fas fa-arrow-left" aria-hidden="true"></i> Pacientes</a>
+                </div>
+            </div>
 
-                <!-- CARNET -->
-                <div class="vl-drawer-pane" data-pane="carnet">
-                    <div class="vl-carnet">
-                        <div class="vl-carnet-top">
-                            <div class="vl-carnet-photo"><img th:if="${mascota.fotoUrl != null}" th:src="@{${mascota.fotoUrl}}" alt=""><i th:if="${mascota.fotoUrl == null}" class="fas fa-paw"></i></div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-ok" th:if="${param.actualizado}"><i class="fas fa-circle-check" aria-hidden="true"></i>Registro actualizado.</div>
+            <div class="vl-alert vl-alert-err" th:if="${errorVacuna}" th:text="${errorVacuna}"></div>
+            <div class="vl-alert vl-alert-info"><i class="fas fa-circle-info" aria-hidden="true"></i>
+                <span>Los registros clínicos y las vacunas se crean desde una cita en atención (Mi agenda → detalle de la cita → Atender cita).</span></div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+                <div class="vl-panel">
+                    <h3><i class="fas fa-folder-open" aria-hidden="true"></i> Expediente clínico</h3>
+                    <ul class="vl-docs" style="padding:0">
+                        <li class="vl-doc" th:each="h : ${historial}">
+                            <span class="ico"><i th:class="'fas ' + ${h.tipo.icono}" aria-hidden="true"></i></span>
                             <div>
-                                <div class="vl-carnet-label">Carnet de vacunación</div>
-                                <div class="vl-carnet-name" th:text="${mascota.nombre}"></div>
-                                <div class="vl-carnet-meta" th:text="${mascota.especie.nombreEspecie} + ' · Nac. ' + ${mascota.fechaNacimiento}"></div>
-                            </div>
-                        </div>
-                        <div class="vl-carnet-rows">
-                            <div class="vl-carnet-row" th:each="c : ${carnet}">
-                                <div>
-                                    <div class="name"><i class="fas fa-syringe"></i> <span th:text="${c.vacuna.nombreVacuna}"></span></div>
-                                    <div class="dates" th:text="'Aplicada: ' + ${c.fechaAplicacion} + ' · Dosis ' + ${c.dosis} + ' · Próxima: ' + ${c.proximaDosis}"></div>
-                                </div>
-                                <span class="vl-badge" th:classappend="${c.estadoBadgeClase}" th:text="${c.estadoBadgeTexto}"></span>
-                            </div>
-                            <div th:if="${#lists.isEmpty(carnet)}" class="vl-carnet-row"><span>Aún no hay vacunas registradas.</span></div>
-                        </div>
-                    </div>
-
-                    <div class="vl-divider"></div>
-                    <div class="vl-form-section-title"><i class="fas fa-syringe"></i> Registrar vacuna aplicada</div>
-                    <form th:action="@{'/carnet/' + ${mascota.idMascota} + '/nueva'}" method="post">
-                        <div class="vl-form-grid">
-                            <div class="vl-field">
-                                <label>Vacuna</label>
-                                <select name="idVacuna" required>
-                                    <option value="">Selecciona</option>
-                                    <option th:each="v : ${vacunasEspecie}" th:value="${v.idVacuna}" th:text="${v.nombreVacuna}"></option>
-                                </select>
-                            </div>
-                            <div class="vl-field">
-                                <label>Lote</label>
-                                <select name="idLote" required>
-                                    <option value="">Selecciona</option>
-                                    <option th:each="l : ${lotes}" th:value="${l.idLote}" th:text="${l.numeroLote} + ' (vence ' + ${l.fechaVencimiento} + ')'"></option>
-                                </select>
-                            </div>
-                            <div class="vl-field">
-                                <label>Dosis</label>
-                                <input type="text" name="dosis" placeholder="Ej: 1ra dosis" required>
-                            </div>
-                            <div class="vl-field">
-                                <label>Fecha de aplicación</label>
-                                <input type="date" name="fechaAplicacion" required>
-                            </div>
-                            <div class="vl-field">
-                                <label>Próxima dosis</label>
-                                <input type="date" name="proximaDosis" required>
-                            </div>
-                            <div class="vl-field vl-full">
-                                <label>Observaciones</label>
-                                <textarea name="observaciones"></textarea>
-                            </div>
-                        </div>
-                        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                            <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-syringe"></i> Registrar vacuna</button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- HISTORIAL -->
-                <div class="vl-drawer-pane" data-pane="historial">
-                    <div class="vl-section-actions" style="margin-bottom:16px;">
-                        <a th:href="@{'/historial/nuevo/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary"><i class="fas fa-plus"></i> Registrar nueva consulta</a>
-                    </div>
-                    <div class="vl-timeline">
-                        <div class="vl-timeline-item" th:each="h : ${historial}">
-                            <div class="vl-timeline-dot"></div>
-                            <div class="vl-timeline-content">
-                                <span class="vl-timeline-date" th:text="(${h.fechaRegistro} != null ? ${#temporals.format(h.fechaRegistro, 'dd/MM/yyyy HH:mm')} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)') + ' · Dr(a). ' + ${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
-                                <h5 th:text="${h.diagnostico}">Diagnóstico</h5>
-                                <p><strong>Motivo:</strong> <span th:text="${h.motivoConsulta}"></span></p>
-                                <p th:if="${h.observaciones}"><strong>Observaciones:</strong> <span th:text="${h.observaciones}"></span></p>
-                                <div class="vl-tag-row" th:if="${not #lists.isEmpty(archivosPorHistorial.get(h.numeroHistorial))}">
-                                    <a class="vl-tag" th:each="a:${archivosPorHistorial.get(h.numeroHistorial)}" th:href="@{'/historial/archivos/'+${a.idArchivo}}" th:text="${a.nombreArchivo}"></a>
-                                </div>
-                                <div class="vl-entity-actions" style="border:none; padding-top:10px;"
-                                     th:if="${h.veterinario.idUsuario == idUsuarioActual}">
-                                    <!-- VL-19: las historias no se eliminan; el autor puede editarlas durante 24 horas -->
-                                    <a th:if="${editables.contains(h.numeroHistorial)}" th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-pen"></i> Editar</a>
-                                    <form th:action="@{'/historial/'+${h.numeroHistorial}+'/archivos'}" method="post" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;">
-                                        <input type="file" name="archivo" required>
-                                        <button class="vl-btn vl-btn-ghost vl-btn-sm" type="submit"><i class="fas fa-paperclip"></i> Adjuntar</button>
-                                    </form>
+                                <a class="titulo" th:href="@{'/historial/documento/' + ${h.numeroHistorial}}" th:text="${h.tipo.etiqueta} + ' — ' + ${h.diagnostico}"></a>
+                                <div class="meta">
+                                    <span th:text="${h.fechaRegistro != null} ? ${@fmt.fechaHora(h.fechaRegistro)} : 'Año ' + ${h.fechaConsulta} + ' (fecha aproximada)'"></span>
+                                    <span th:text="${h.veterinaria != null} ? ${h.veterinaria.nombre} : ''"></span>
+                                    <span th:text="${h.veterinario.nombre} + ' ' + ${h.veterinario.apellido}"></span>
+                                    <span th:if="${!#lists.isEmpty(archivosPorHistorial[h.numeroHistorial])}"><i class="fas fa-paperclip" aria-hidden="true"></i> <span th:text="${#lists.size(archivosPorHistorial[h.numeroHistorial])}"></span></span>
                                 </div>
                             </div>
+                            <div class="acciones vl-row">
+                                <a th:if="${editables.contains(h.numeroHistorial)}" th:href="@{'/historial/' + ${h.numeroHistorial} + '/editar'}" class="vl-btn vl-btn-ghost vl-btn-sm">Editar</a>
+                                <a th:href="@{'/api/reportes/historial/' + ${h.numeroHistorial} + '/pdf'}" class="vl-btn vl-btn-ghost vl-btn-sm" aria-label="Descargar PDF"><i class="fas fa-file-pdf" aria-hidden="true"></i></a>
+                            </div>
+                        </li>
+                    </ul>
+                    <p class="vl-muted" th:if="${#lists.isEmpty(historial)}">Sin registros clínicos.</p>
+                </div>
+                <div class="vl-stack">
+                    <div class="vl-panel">
+                        <div class="vl-panel-head"><h3><i class="fas fa-syringe" aria-hidden="true"></i> Carnet de vacunación</h3>
+                            <a th:href="@{'/api/reportes/mascotas/' + ${mascota.idMascota} + '/vacunas'}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</a></div>
+                        <ul class="vl-docs" style="padding:0">
+                            <li class="vl-doc" th:each="v : ${carnet}">
+                                <span class="ico"><i class="fas fa-shield-virus" aria-hidden="true"></i></span>
+                                <div><strong th:text="${v.vacuna.nombreVacuna}"></strong>
+                                    <div class="meta"><span th:text="'Aplicada ' + ${@fmt.fecha(v.fechaAplicacion)}"></span><span th:text="'Próxima ' + ${@fmt.fecha(v.proximaDosis)}"></span></div></div>
+                                <span class="vl-badge" th:classappend="${v.estadoBadgeClase}" th:text="${v.estadoBadgeTexto}"></span>
+                            </li>
+                        </ul>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(carnet)}">Sin vacunas registradas.</p>
+                    </div>
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-calendar-alt" aria-hidden="true"></i> Citas contigo</h3>
+                        <div class="vl-cita-list">
+                            <a th:each="c : ${citas}" th:href="@{'/agenda/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                                <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fecha(c.fecha)}"></small></div>
+                                <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.servicio.nombreServicio}"></div>
+                                    <div class="vl-cita-meta" th:text="${c.motivo} ?: ''"></div></div>
+                                <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span></div>
+                            </a>
                         </div>
-                    </div>
-                    <div class="vl-empty" th:if="${#lists.isEmpty(historial)}">
-                        <i class="fas fa-file-medical"></i>
-                        <h4>Sin historial clínico</h4>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(citas)}">Sin citas.</p>
                     </div>
                 </div>
-
-                <!-- CITAS -->
-                <div class="vl-drawer-pane" data-pane="citas">
-                    <div class="vl-table-wrap" th:if="${not #lists.isEmpty(citas)}">
-                        <table class="vl-table">
-                            <thead><tr><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Veterinaria</th><th>Estado</th></tr></thead>
-                            <tbody>
-                            <tr th:each="c : ${citas}">
-                                <td th:text="${c.fecha}"></td>
-                                <td th:text="${c.hora}"></td>
-                                <td th:text="${c.servicio.nombreServicio}"></td>
-                                <td th:text="${c.veterinaria.nombre}"></td>
-                                <td><span class="vl-badge vl-badge-info" th:text="${c.estado}"></span></td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="vl-empty" th:if="${#lists.isEmpty(citas)}">
-                        <i class="fas fa-calendar-alt"></i>
-                        <h4>Sin citas registradas</h4>
-                    </div>
-                </div>
-
             </div>
         </div>
     </section>
 </main>
-<script th:src="@{/js/mascota-ficha.js}"></script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

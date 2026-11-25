@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** VL-03: carnet de vacunas protegido y validaciones al registrar una vacuna. */
+/** VL-03: carnet de vacunas protegido; las vacunas se registran solo durante una cita de vacunación en atención. */
 class VL03CarnetVacunaTest extends PruebaWebBase {
 
     @Autowired VacunaRepository vacunaRepository;
@@ -53,6 +53,10 @@ class VL03CarnetVacunaTest extends PruebaWebBase {
         l.setNumeroLote("L-" + siguiente());
         l.setFechaVencimiento(vence);
         return loteRepository.save(l);
+    }
+
+    private com.vetlink.veterinaria.model.Servicio vacunacion() {
+        return crearServicio("Vacunación " + siguiente(), com.vetlink.veterinaria.model.Servicio.TipoRegistro.VACUNACION);
     }
 
     private MockHttpServletRequestBuilder postVacuna(Mascota m, Vacuna v, LoteVacuna l) {
@@ -104,7 +108,7 @@ class VL03CarnetVacunaTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
-        crearCita(mascota, vet, clinica);
+        var cita = citaEnAtencion(mascota, vet, clinica, vacunacion());
         var vacuna = crearVacuna(mascota.getEspecie());
         long antes = carnetRepository.count();
 
@@ -113,6 +117,40 @@ class VL03CarnetVacunaTest extends PruebaWebBase {
                 .andExpect(redirectedUrl("/historial/paciente/" + mascota.getIdMascota() + "?vacunaRegistrada"));
 
         assertThat(carnetRepository.count()).isEqualTo(antes + 1);
+        // Se asocia automáticamente a la cita, a la clínica y al veterinario responsable.
+        var registrada = carnetRepository.findByCita_IdCita(cita.getIdCita());
+        assertThat(registrada).hasSize(1);
+        assertThat(registrada.get(0).getVeterinaria().getIdVeterinaria()).isEqualTo(clinica.getIdVeterinaria());
+        assertThat(registrada.get(0).getUsuario().getIdUsuario()).isEqualTo(vet.getIdUsuario());
+        assertThat(registrada.get(0).getFechaAplicacion()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void sinCitaDeVacunacionEnAtencionNoSeRegistraVacuna() throws Exception {
+        var clinica = crearClinica();
+        var vet = crearVeterinario(clinica);
+        var mascota = crearMascota(crearDuenio());
+        crearCita(mascota, vet, clinica); // confirmada pero sin iniciar
+        long antes = carnetRepository.count();
+
+        mockMvc.perform(postVacuna(mascota, crearVacuna(mascota.getEspecie()), crearLote(LocalDate.now().plusYears(1)))
+                        .with(como(vet)))
+                .andExpect(flash().attribute("errorVacuna", "Las vacunas se registran durante una cita de vacunación en atención."));
+        assertThat(carnetRepository.count()).isEqualTo(antes);
+    }
+
+    @Test
+    void consultaGeneralEnAtencionNoPermiteRegistrarVacuna() throws Exception {
+        var clinica = crearClinica();
+        var vet = crearVeterinario(clinica);
+        var mascota = crearMascota(crearDuenio());
+        citaEnAtencion(mascota, vet, clinica, servicioPorDefecto());
+        long antes = carnetRepository.count();
+
+        mockMvc.perform(postVacuna(mascota, crearVacuna(mascota.getEspecie()), crearLote(LocalDate.now().plusYears(1)))
+                        .with(como(vet)))
+                .andExpect(flash().attribute("errorVacuna", "Las vacunas se registran durante una cita de vacunación."));
+        assertThat(carnetRepository.count()).isEqualTo(antes);
     }
 
     @Test
@@ -120,7 +158,7 @@ class VL03CarnetVacunaTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
-        crearCita(mascota, vet, clinica);
+        citaEnAtencion(mascota, vet, clinica, vacunacion());
         var vacunaGato = crearVacuna(crearEspecie("Gato"));
         long antes = carnetRepository.count();
 
@@ -137,7 +175,7 @@ class VL03CarnetVacunaTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
-        crearCita(mascota, vet, clinica);
+        citaEnAtencion(mascota, vet, clinica, vacunacion());
 
         mockMvc.perform(postVacuna(mascota, crearVacuna(mascota.getEspecie()), crearLote(LocalDate.now().minusDays(1)))
                         .with(como(vet)))

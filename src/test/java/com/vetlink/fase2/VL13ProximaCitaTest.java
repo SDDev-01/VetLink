@@ -45,8 +45,8 @@ class VL13ProximaCitaTest extends PruebaWebBase {
         var vet = crearVeterinario(clinica);
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
-        var pasada = crearCita(mascota, vet, clinica, LocalDate.now().minusMonths(7), LocalTime.of(9, 0), EstadoCita.AGENDADA);
-        var futura = crearCita(mascota, vet, clinica, LocalDate.now().plusDays(2), LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        var pasada = crearCita(mascota, vet, clinica, LocalDate.now().minusMonths(7), LocalTime.of(9, 0), EstadoCita.CONFIRMADA);
+        var futura = crearCita(mascota, vet, clinica, LocalDate.now().plusDays(2), LocalTime.of(9, 0), EstadoCita.CONFIRMADA);
         sincronizar();
 
         var model = dashboard(duenio).getModelAndView().getModel();
@@ -65,7 +65,7 @@ class VL13ProximaCitaTest extends PruebaWebBase {
         var duenio = crearDuenio();
         var inactiva = crearMascota(duenio);
         inactiva.setEstado((byte) 0);
-        crearCita(inactiva, vet, clinica, LocalDate.now().plusDays(1), LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        crearCita(inactiva, vet, clinica, LocalDate.now().plusDays(1), LocalTime.of(9, 0), EstadoCita.CONFIRMADA);
         sincronizar();
 
         var model = dashboard(duenio).getModelAndView().getModel();

@@ -33,6 +33,7 @@ public class RecepcionCitaController {
     private final ServicioVeterinariaRepository servicioVeterinariaRepository;
     private final TutorRepository tutorRepository;
     private final com.vetlink.cita.repository.CitaRepository citaRepository;
+    private final com.vetlink.disponibilidad.service.DisponibilidadService disponibilidad;
 
     static final String MENSAJE_DUENIO_NO_ENCONTRADO = "No hay un dueño registrado con ese documento o correo";
 
@@ -40,7 +41,8 @@ public class RecepcionCitaController {
                                     ServicioRepository servicioRepository, VeterinarioRepository veterinarioRepository,
                                     ServicioVeterinariaRepository servicioVeterinariaRepository,
                                     TutorRepository tutorRepository,
-                                    com.vetlink.cita.repository.CitaRepository citaRepository) {
+                                    com.vetlink.cita.repository.CitaRepository citaRepository,
+                                    com.vetlink.disponibilidad.service.DisponibilidadService disponibilidad) {
         this.citaService = citaService;
         this.mascotaRepository = mascotaRepository;
         this.servicioRepository = servicioRepository;
@@ -48,6 +50,19 @@ public class RecepcionCitaController {
         this.servicioVeterinariaRepository = servicioVeterinariaRepository;
         this.tutorRepository = tutorRepository;
         this.citaRepository = citaRepository;
+        this.disponibilidad = disponibilidad;
+    }
+
+    /** Generación automática e idempotente de la agenda de la clínica (horizonte configurable). */
+    @PostMapping("/generar")
+    public String generarAgenda(@AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes ra) {
+        Veterinaria veterinaria = miVeterinaria(principal);
+        var r = disponibilidad.generarAgendaClinica(veterinaria.getIdVeterinaria());
+        ra.addFlashAttribute("mensajeOk", r.cuposCreados() == 0
+                ? "La agenda ya estaba al día: no hacía falta crear cupos nuevos."
+                : "Se generaron " + r.cuposCreados() + " cupos nuevos para " + r.veterinarios()
+                  + " veterinario(s) hasta el " + new com.vetlink.comun.web.FormatoVista().fecha(r.hasta()) + ".");
+        return "redirect:/agenda";
     }
 
     @GetMapping("/ofertar")
@@ -86,7 +101,8 @@ public class RecepcionCitaController {
         Veterinaria veterinaria = miVeterinaria(principal);
         cargarShell(model, principal);
         model.addAttribute("veterinaria", veterinaria);
-        model.addAttribute("servicios", servicioRepository.findAll());
+        model.addAttribute("servicios", servicioVeterinariaRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria())
+                .stream().map(sv -> sv.getServicio()).filter(sv -> !sv.isEmergencia()).toList());
         // VL-06: ya no se listan todas las mascotas; se busca primero al dueño.
         if (buscarDuenio != null && !buscarDuenio.isBlank()) {
             model.addAttribute("buscarDuenio", buscarDuenio.trim());
@@ -124,7 +140,8 @@ public class RecepcionCitaController {
     private void recargarAgendar(Model model, VetlinkUserPrincipal principal, Veterinaria veterinaria, AgendarCitaForm form) {
         cargarShell(model, principal);
         model.addAttribute("veterinaria", veterinaria);
-        model.addAttribute("servicios", servicioRepository.findAll());
+        model.addAttribute("servicios", servicioVeterinariaRepository.findByVeterinaria_IdVeterinaria(veterinaria.getIdVeterinaria())
+                .stream().map(sv -> sv.getServicio()).filter(sv -> !sv.isEmergencia()).toList());
         if (form.getIdMascota() != null) {
             mascotaRepository.findById(form.getIdMascota())
                     .ifPresent(m -> cargarDuenio(model, m.getTutor()));
@@ -138,9 +155,19 @@ public class RecepcionCitaController {
     }
 
     @PostMapping("/{id}/cancelar")
-    public String cancelar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal) {
+    public String cancelar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                           @RequestParam(required = false) String origen, RedirectAttributes ra) {
         Veterinaria veterinaria = miVeterinaria(principal);
-        citaService.cancelarComoRecepcionista(id, veterinaria.getIdVeterinaria());
+        try {
+            citaService.cancelarComoRecepcionista(id, veterinaria.getIdVeterinaria());
+        } catch (IllegalStateException e) {
+            ra.addFlashAttribute("errorGeneral", e.getMessage());
+            return "redirect:/agenda/" + id;
+        }
+        if ("detalle".equals(origen)) {
+            ra.addFlashAttribute("mensajeOk", "Cita cancelada. Se notificó al dueño.");
+            return "redirect:/agenda/" + id;
+        }
         return "redirect:/reportes/citas?cancelada";
     }
 
@@ -149,7 +176,11 @@ public class RecepcionCitaController {
     public String reagendarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
         Veterinaria veterinaria = miVeterinaria(principal);
         cargarShell(model, principal);
-        model.addAttribute("cita", citaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada")));
+        var cita = citaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+        if (!cita.getVeterinaria().getIdVeterinaria().equals(veterinaria.getIdVeterinaria())) {
+            throw new org.springframework.security.access.AccessDeniedException("Esta cita no pertenece a tu veterinaria");
+        }
+        model.addAttribute("cita", cita);
         model.addAttribute("cupos", citaService.cuposParaReagendar(id, veterinaria.getIdVeterinaria()));
         return "citas/reagendar";
     }
@@ -164,6 +195,7 @@ public class RecepcionCitaController {
             redirectAttributes.addFlashAttribute("errorGeneral", e.getMessage());
             return "redirect:/citas/recepcion/" + id + "/reagendar";
         }
+        redirectAttributes.addFlashAttribute("mensajeOk", "Cita reprogramada. La cita original quedó como «Reprogramada».");
         return "redirect:/reportes/citas?reagendada";
     }
 

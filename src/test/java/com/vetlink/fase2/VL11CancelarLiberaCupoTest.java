@@ -73,7 +73,7 @@ class VL11CancelarLiberaCupoTest extends PruebaWebBase {
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
         LocalDate fecha = LocalDate.now().plusDays(4);
-        var agendada = crearCita(mascota, vet, clinica, fecha, LocalTime.of(15, 0), EstadoCita.AGENDADA);
+        var agendada = crearCita(mascota, vet, clinica, fecha, LocalTime.of(15, 0), EstadoCita.CONFIRMADA);
         crearCita(null, vet, clinica, fecha, LocalTime.of(15, 0), EstadoCita.DISPONIBLE);
         sincronizar();
 

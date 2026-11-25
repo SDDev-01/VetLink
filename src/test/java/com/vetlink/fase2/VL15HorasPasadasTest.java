@@ -93,6 +93,7 @@ class VL15HorasPasadasTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         ofrecerServicio(clinica, servicioPorDefecto());
+        autorizarServicio(vet, servicioPorDefecto());
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
         LocalDate manana = LocalDate.now().plusDays(1);
@@ -102,6 +103,6 @@ class VL15HorasPasadasTest extends PruebaWebBase {
                 duenio.getIdUsuario());
 
         assertThat(cita.getIdCita()).isEqualTo(cupo.getIdCita());
-        assertThat(cita.getEstado()).isEqualTo(EstadoCita.AGENDADA);
+        assertThat(cita.getEstado()).isEqualTo(EstadoCita.PENDIENTE);
     }
 }

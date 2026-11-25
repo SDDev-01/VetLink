@@ -88,3 +88,6 @@ uploads/
 
 ### Secretos ###
 .env
+
+# Respaldos locales de la base (database/aplicar_V8.sh)
+respaldos/

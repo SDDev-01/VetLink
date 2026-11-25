@@ -28,7 +28,7 @@ def datos_ejemplo(nombre="Lula"):
 
 
 def test_muestra_datos_de_la_mascota():
-    html = renderizar_pasaporte(datos_ejemplo(), datetime(2026, 11, 20, 10, 15))
+    html = renderizar_pasaporte(datos_ejemplo(), datetime(2026, 11, 20, 10, 15), detalle_clinico=True)
     for texto in ["Lula", "Perro", "Criolla", "Hembra", "03/03/2024", "2.5 kg", "Rabia",
                   "Control", "Vermífugo (1 tableta)", "Ana Ruiz", "2024", "20/11/2026 a las 10:15"]:
         assert texto in html
@@ -47,3 +47,11 @@ def test_sin_vacunas_ni_atenciones():
     html = renderizar_pasaporte(datos, None)
     assert "No hay vacunas registradas." in html
     assert "No hay atenciones registradas." in html
+
+
+def test_por_defecto_no_expone_diagnosticos_ni_medicamentos():
+    html = renderizar_pasaporte(datos_ejemplo(), None, detalle_clinico=False)
+    assert "Lula" in html and "Rabia" in html
+    for privado in ["Diagnóstico: Sano", "Vermífugo", "Sin novedad"]:
+        assert privado not in html
+    assert "Por privacidad" in html

@@ -56,6 +56,9 @@ class VL25ConsultasDirectasTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var vetOtra = crearVeterinario(crearClinica());
+        var vetSinTurno = crearVeterinario(clinica);
+        horarioAprobado(vet, LocalTime.MIN, LocalTime.of(23, 59));
+        horarioAprobado(vetOtra, LocalTime.MIN, LocalTime.of(23, 59));
         var recepcion = crearRecepcionista(clinica, false);
         sincronizar();
 
@@ -64,7 +67,8 @@ class VL25ConsultasDirectasTest extends PruebaWebBase {
         @SuppressWarnings("unchecked")
         var ids = ((Collection<com.vetlink.usuario.model.Usuario>) model.get("veterinarios")).stream()
                 .map(com.vetlink.usuario.model.Usuario::getIdUsuario).toList();
-        assertThat(ids).containsExactly(vet.getIdUsuario()).doesNotContain(vetOtra.getIdUsuario());
+        // Solo veterinarios de su clínica y con disponibilidad real ahora (el que no tiene turno no aparece).
+        assertThat(ids).containsExactly(vet.getIdUsuario()).doesNotContain(vetOtra.getIdUsuario(), vetSinTurno.getIdUsuario());
     }
 
     @Test
@@ -90,6 +94,11 @@ class VL25ConsultasDirectasTest extends PruebaWebBase {
     private Collection<Integer> pacientes(com.vetlink.usuario.model.Usuario u) throws Exception {
         var model = mockMvc.perform(get("/historial/pacientes").with(como(u)))
                 .andExpect(status().isOk()).andReturn().getModelAndView().getModel();
+        if (model.get("carpetas") != null) {
+            @SuppressWarnings("unchecked")
+            var carpetas = (Collection<com.vetlink.historial.service.ExpedienteService.Carpeta>) model.get("carpetas");
+            return carpetas.stream().map(c -> c.mascota().getIdMascota()).toList();
+        }
         @SuppressWarnings("unchecked")
         var lista = (Collection<Mascota>) model.get("pacientes");
         return lista.stream().map(Mascota::getIdMascota).toList();

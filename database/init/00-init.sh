@@ -32,19 +32,33 @@ echo "======================================"
 echo " Inicializando base de datos VetLink"
 echo "======================================"
 
-echo "[1/5] Importando estructura y datos iniciales..."
+echo "[1/6] Importando estructura y datos iniciales..."
 
 mysql_exec < "${DATABASE_DIR}/mydb.sql"
 
-echo "[2/5] Aplicando correcciones V5..."
+echo "[2/6] Aplicando correcciones V5..."
 
 mysql_exec < "${DATABASE_DIR}/migrations/V5_correcciones.sql"
 
-echo "[3/5] Creando tablas del pasaporte (V7)..."
+echo "[3/6] Creando tablas del pasaporte (V7)..."
 
 mysql_exec < "${DATABASE_DIR}/migrations/V7_pasaporte.sql"
 
-echo "[4/5] Creando usuarios y asignando permisos..."
+echo "[4/6] Comprobando datos de demostración..."
+
+if [[ "${RUN_DEMO_SEED:-false}" == "true" ]]; then
+    echo "Aplicando V6 y pasaportes DEMO..."
+    mysql_exec < "${DATABASE_DIR}/migrations/V6_datos_demo.sql"
+    mysql_exec < "${DATABASE_DIR}/migrations/V7_pasaporte_demo.sql"
+else
+    echo "Datos de demostración omitidos."
+fi
+
+echo "[5/6] Reglas de negocio, disponibilidad, notificaciones y reportes (V8)..."
+
+mysql_exec < "${DATABASE_DIR}/migrations/V8_reglas_negocio.sql"
+
+echo "[6/6] Creando usuarios y asignando permisos..."
 
 mysql_exec --execute="
     CREATE USER IF NOT EXISTS 'vetlink_spring'@'%'
@@ -72,7 +86,7 @@ done < <(
         FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = '${MYSQL_DATABASE}'
           AND TABLE_TYPE = 'BASE TABLE'
-          AND TABLE_NAME NOT IN ('pasaporte', 'pasaporte_acceso')
+          AND TABLE_NAME NOT IN ('pasaporte', 'pasaporte_acceso', 'reporte_generado')
         ORDER BY TABLE_NAME;
     "
 )
@@ -98,17 +112,12 @@ mysql_exec --execute="
 
     -- Solo el nombre del veterinario; idUsuario hace falta para unirlo con historial_clinico.
     GRANT SELECT (idUsuario, nombre, apellido) ON \`${MYSQL_DATABASE}\`.\`usuario\` TO 'vetlink_fast'@'%';
-"
+"""
 
-echo "[5/5] Comprobando datos de demostración..."
+# Reportes PDF (V8): lectura de lo que imprime el reporte y de lo necesario para verificar
+# el acceso; escritura solo en su bitácora. Mismo bloque que database/aplicar_V8.sh.
+mysql_exec < "${DATABASE_DIR}/migrations/V8_permisos_fastapi.sql"
 
-if [[ "${RUN_DEMO_SEED:-false}" == "true" ]]; then
-    echo "Aplicando V6 y pasaportes DEMO..."
-    mysql_exec < "${DATABASE_DIR}/migrations/V6_datos_demo.sql"
-    mysql_exec < "${DATABASE_DIR}/migrations/V7_pasaporte_demo.sql"
-else
-    echo "Datos de demostración omitidos."
-fi
 
 unset MYSQL_PWD
 

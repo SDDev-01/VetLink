@@ -56,19 +56,19 @@
 
                         <div class="vl-field">
                             <label>Nombre</label>
-                            <input type="text" th:field="*{nombre}">
+                            <input type="text" th:field="*{nombre}" required maxlength="45">
                             <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Género</label>
-                            <select th:field="*{genero}">
+                            <select th:field="*{genero}" required>
                                 <option value="M">Macho</option>
                                 <option value="H">Hembra</option>
                             </select>
                         </div>
                         <div class="vl-field">
                             <label>Especie</label>
-                            <select th:field="*{idEspecie}">
+                            <select th:field="*{idEspecie}" id="rec-especie-sel" data-especie-de="rec-raza-sel" required>
                                 <option value="">Selecciona</option>
                                 <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
                             </select>
@@ -76,20 +76,20 @@
                         </div>
                         <div class="vl-field">
                             <label>Raza</label>
-                            <select th:field="*{idRaza}">
+                            <select th:field="*{idRaza}" id="rec-raza-sel" required>
                                 <option value="">Selecciona</option>
-                                <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}"></option>
+                                <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}" th:attr="data-especie=${r.especie.idEspecie}"></option>
                             </select>
                             <small class="vl-error" th:if="${#fields.hasErrors('idRaza')}" th:errors="*{idRaza}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Fecha de nacimiento</label>
-                            <input type="date" th:field="*{fechaNacimiento}">
+                            <input type="date" th:field="*{fechaNacimiento}" required th:max="${T(java.time.LocalDate).now()}" data-msg="La fecha de nacimiento no puede ser futura">
                             <small class="vl-error" th:if="${#fields.hasErrors('fechaNacimiento')}" th:errors="*{fechaNacimiento}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Peso (kg)</label>
-                            <input type="number" step="0.1" th:field="*{peso}">
+                            <input type="number" step="0.01" min="0.01" max="1500" th:field="*{peso}" required>
                             <small class="vl-error" th:if="${#fields.hasErrors('peso')}" th:errors="*{peso}"></small>
                         </div>
                     </div>
@@ -104,6 +104,7 @@
         </div>
     </section>
 </main>
+<script th:src="@{/js/vl-razas.js}"></script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

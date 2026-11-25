@@ -30,12 +30,12 @@
                     <div class="vl-form-grid">
                         <div class="vl-field">
                             <label>Nombre</label>
-                            <input type="text" th:field="*{nombre}">
+                            <input type="text" th:field="*{nombre}" required maxlength="45">
                             <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Especie</label>
-                            <select th:field="*{idEspecie}" id="pet-especie-sel" onchange="cargarRazasEdicion()">
+                            <select th:field="*{idEspecie}" id="pet-especie-sel" data-especie-de="pet-raza-sel" required>
                                 <option value="">Selecciona</option>
                                 <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
                             </select>
@@ -43,7 +43,8 @@
                         </div>
                         <div class="vl-field">
                             <label>Raza</label>
-                            <select th:field="*{idRaza}" id="pet-raza-sel">
+                            <select th:field="*{idRaza}" id="pet-raza-sel" required>
+                                <option value="">Seleccione una raza</option>
                                 <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}"
                                         th:attr="data-especie=${r.especie.idEspecie}"></option>
                             </select>
@@ -51,7 +52,7 @@
                         </div>
                         <div class="vl-field">
                             <label>Género</label>
-                            <select th:field="*{genero}">
+                            <select th:field="*{genero}" required>
                                 <option value="">Selecciona</option>
                                 <option value="M">Macho</option>
                                 <option value="H">Hembra</option>
@@ -60,12 +61,12 @@
                         </div>
                         <div class="vl-field">
                             <label>Fecha de nacimiento</label>
-                            <input type="date" th:field="*{fechaNacimiento}">
+                            <input type="date" th:field="*{fechaNacimiento}" required th:max="${T(java.time.LocalDate).now()}" data-msg="La fecha de nacimiento no puede ser futura">
                             <small class="vl-error" th:if="${#fields.hasErrors('fechaNacimiento')}" th:errors="*{fechaNacimiento}"></small>
                         </div>
                         <div class="vl-field">
                             <label>Peso (kg)</label>
-                            <input type="number" step="0.1" th:field="*{peso}">
+                            <input type="number" step="0.01" min="0.01" max="1500" th:field="*{peso}" required>
                             <small class="vl-error" th:if="${#fields.hasErrors('peso')}" th:errors="*{peso}"></small>
                         </div>
                         <!-- VL-22: foto subida como archivo (JPG o PNG, máximo 5 MB) -->
@@ -74,7 +75,7 @@
                             <div th:if="${form.foto != null and !#strings.isEmpty(form.foto)}" class="vl-entity-avatar" style="margin-bottom:8px;">
                                 <img th:src="@{${form.foto}}" alt="Foto actual">
                             </div>
-                            <input type="file" name="archivoFoto" accept="image/jpeg,image/png">
+                            <input type="file" name="archivoFoto" accept="image/jpeg,image/png,.jpg,.jpeg,.png" data-max-mb="5">
                             <small class="vl-error" th:if="${#fields.hasErrors('foto')}" th:errors="*{foto}"></small>
                         </div>
                     </div>
@@ -88,16 +89,7 @@
     </section>
 </main>
 
-<script>
-    function cargarRazasEdicion() {
-        const idEspecie = document.getElementById('pet-especie-sel').value;
-        document.querySelectorAll('#pet-raza-sel option').forEach(opt => {
-            if (!opt.dataset.especie) return;
-            opt.hidden = opt.dataset.especie !== idEspecie;
-        });
-    }
-    document.addEventListener('DOMContentLoaded', cargarRazasEdicion);
-</script>
+<script th:src="@{/js/vl-razas.js}"></script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>
 </body>
 </html>

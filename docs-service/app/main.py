@@ -5,6 +5,8 @@ Rutas públicas (/p/...): la página del pasaporte y su QR, sin sesión.
 """
 
 import io
+import logging
+from contextlib import asynccontextmanager
 import secrets
 from datetime import datetime
 from pathlib import Path
@@ -16,11 +18,20 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from . import pasaportes, repositorio
-from .config import cargar
+from . import pasaportes, reportes, repositorio
+from .config import cargar, problemas_url_publica
 from .db import obtener_conexion
 
-app = FastAPI(title="VetLink docs-service", version="0.1.0")
+@asynccontextmanager
+async def ciclo_de_vida(_app: FastAPI):
+    """Al arrancar avisa si la URL del QR no será accesible desde Internet."""
+    cfg = cargar()
+    for problema in problemas_url_publica(cfg.public_base_url, cfg.entorno):
+        logging.getLogger("vetlink.qr").warning("PUBLIC_BASE_URL=%s: %s", cfg.public_base_url, problema)
+    yield
+
+
+app = FastAPI(title="VetLink docs-service", version="0.2.0", lifespan=ciclo_de_vida)
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
@@ -34,13 +45,22 @@ ENCABEZADOS_PUBLICOS = {
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict:
+    cfg = cargar()
+    problemas = problemas_url_publica(cfg.public_base_url, cfg.entorno)
+    return {"status": "ok", "urlPublica": cfg.public_base_url, "urlPublicaValida": not problemas, "avisos": problemas}
 
 
-def renderizar_pasaporte(datos: dict, expira_en) -> str:
-    """HTML de la página pública. `datos` sale de repositorio.datos_pasaporte."""
-    return templates.get_template("pasaporte.html").render(expira_en=expira_en, **datos)
+
+def renderizar_pasaporte(datos: dict, expira_en, detalle_clinico: bool | None = None) -> str:
+    """HTML de la página pública. `datos` sale de repositorio.datos_pasaporte.
+
+    Sin detalle clínico (por defecto) no se muestran motivos, diagnósticos ni medicamentos:
+    el enlace/QR es público y no debe exponer información clínica privada.
+    """
+    if detalle_clinico is None:
+        detalle_clinico = cargar().pasaporte_detalle_clinico
+    return templates.get_template("pasaporte.html").render(expira_en=expira_en, detalle_clinico=detalle_clinico, **datos)
 
 
 def url_publica(token: str) -> str:
@@ -117,6 +137,7 @@ def revocar_pasaporte(token: str, conn=Depends(obtener_conexion)) -> Response:
 
 
 app.include_router(interno)
+app.include_router(reportes.router)
 
 
 # ---------------------------------------------------------------------------

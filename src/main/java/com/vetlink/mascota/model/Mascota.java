@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.Period;
@@ -38,8 +40,15 @@ public class Mascota {
     @Column(nullable = false)
     private LocalDate fechaNacimiento;
 
+    /** 1 = registro activo, 0 = dado de baja (registros antiguos). */
     @Column(nullable = false)
     private Byte estado = 1;
+
+    /** Situación de vida: ACTIVA, PERDIDA o FALLECIDA (ver {@link SituacionMascota}). */
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
+    private SituacionMascota situacion = SituacionMascota.ACTIVA;
 
     @Column(length = 500)
     private String foto;
@@ -66,5 +75,25 @@ public class Mascota {
     public int getEdad() {
         if (fechaNacimiento == null) return 0;
         return Period.between(fechaNacimiento, LocalDate.now()).getYears();
+    }
+
+    @Transient
+    public String getEdadTexto() {
+        if (fechaNacimiento == null) return "";
+        Period p = Period.between(fechaNacimiento, LocalDate.now());
+        if (p.getYears() > 0) return p.getYears() + (p.getYears() == 1 ? " año" : " años");
+        if (p.getMonths() > 0) return p.getMonths() + (p.getMonths() == 1 ? " mes" : " meses");
+        return Math.max(p.getDays(), 0) + " días";
+    }
+
+    /** ¿Se le pueden agendar citas? Registro activo y no fallecida. */
+    @Transient
+    public boolean isAgendable() {
+        return estado != null && estado == 1 && situacion != SituacionMascota.FALLECIDA;
+    }
+
+    @Transient
+    public SituacionMascota getSituacionSegura() {
+        return situacion == null ? SituacionMascota.ACTIVA : situacion;
     }
 }

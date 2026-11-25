@@ -1,14 +1,12 @@
-<!--/* Shell reutilizable del dashboard: sidebar + topbar, portados de dashboard-cliente.html /
-   dashboard-veterinario.html / dashboard-recepcionista.html. Los datos del usuario y el
-   resaltado del item activo ahora los resuelve el servidor (antes los ponia dashboard-shell.js
-   leyendo VL.getUsuarioActual()). Cada pagina que use este shell debe definir en su modelo:
-   usuario (Usuario), seccionActiva (String, ej "home"/"mascotas"/"citas"...). */-->
+<!--/* Shell reutilizable del dashboard: sidebar + topbar + scripts comunes.
+   Cada página define en su modelo: usuario, seccionActiva y navItems.
+   La campana usa vlNotificaciones / vlNoLeidas (NotificacionesModelAdvice). */-->
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<aside th:fragment="sidebar(rolTag, items, seccionActiva)" class="sidebar reveal active">
+<aside th:fragment="sidebar(rolTag, items, seccionActiva)" class="sidebar reveal active" aria-label="Menú principal">
     <div class="sidebar-brand">
-        <div class="logo-icon"><i class="fas fa-paw"></i></div>
+        <div class="logo-icon"><i class="fas fa-paw" aria-hidden="true"></i></div>
         <span>VetLink</span>
     </div>
 
@@ -20,7 +18,10 @@
                 th:classappend="${item.key == seccionActiva} ? 'active' : ''"
                 class="nav-item"
                 th:attr="data-url=${item.url}">
-                <i th:class="${item.icono}"></i> <span th:text="${item.label}">Item</span>
+                <a th:href="@{${item.url}}" style="color:inherit;text-decoration:none;display:flex;gap:12px;align-items:center;width:100%"
+                   th:attr="aria-current=${item.key == seccionActiva} ? 'page' : null">
+                    <i th:class="${item.icono}" aria-hidden="true"></i> <span th:text="${item.label}">Item</span>
+                </a>
             </li>
         </ul>
     </nav>
@@ -28,45 +29,79 @@
     <div class="sidebar-footer">
         <form th:action="@{/logout}" method="post">
             <button type="submit" class="nav-item logout" style="border:none; width:100%; text-align:left; background:none; cursor:pointer;">
-                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Cerrar Sesión
             </button>
         </form>
     </div>
 </aside>
 
-<script th:fragment="scripts">
-    document.querySelectorAll('.nav-item[data-url]').forEach(function (item) {
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', function () {
-            window.location.href = item.getAttribute('data-url');
-        });
-    });
+<th:block th:fragment="scripts">
+    <script th:src="@{/js/vl-validate.js}"></script>
+    <script th:src="@{/js/vl-confirm.js}"></script>
+    <script>
+        (function () {
+            var bell = document.getElementById('vl-notif-bell');
+            if (!bell) return;
+            var panel = document.getElementById('vl-notif-panel');
+            var boton = bell.querySelector('button.action-circle');
+            function cerrar() { panel.classList.remove('open'); if (boton) boton.setAttribute('aria-expanded', 'false'); }
+            boton.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var abierto = panel.classList.toggle('open');
+                boton.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+            });
+            document.addEventListener('click', function (e) { if (!bell.contains(e.target)) cerrar(); });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrar(); });
+        })();
+    </script>
+</th:block>
 
-    // Campana de notificaciones (si esta pagina usa la variante de 3 parametros del topbar)
-    var bell = document.getElementById('vl-notif-bell');
-    if (bell) {
-        var panel = document.getElementById('vl-notif-panel');
-        bell.addEventListener('click', function (e) {
-            e.stopPropagation();
-            panel.classList.toggle('open');
-        });
-        document.addEventListener('click', function (e) {
-            if (!bell.contains(e.target)) panel.classList.remove('open');
-        });
-    }
-</script>
+<!--/* Campana: notificaciones persistentes del usuario + (opcional) avisos calculados por la página. */-->
+<div th:fragment="campana(extras)" class="vl-bell" id="vl-notif-bell">
+    <button type="button" class="action-circle" aria-haspopup="true" aria-expanded="false"
+            th:attr="aria-label=${'Notificaciones' + ((vlNoLeidas ?: 0) > 0 ? ', ' + vlNoLeidas + ' sin leer' : '')}">
+        <i class="far fa-bell" aria-hidden="true"></i>
+        <span class="badge" th:text="${(vlNoLeidas ?: 0) + (extras == null ? 0 : #lists.size(extras))}">0</span>
+    </button>
+    <div class="vl-notif-panel" id="vl-notif-panel" role="region" aria-label="Notificaciones">
+        <div class="vl-notif-head vl-row-between">
+            <span>Notificaciones</span>
+            <form th:if="${(vlNoLeidas ?: 0) > 0}" th:action="@{/notificaciones/leidas}" method="post">
+                <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Marcar todo leído</button>
+            </form>
+        </div>
+        <div th:each="n : ${vlNotificaciones}" class="vl-notif-item" th:classappend="${!n.leida} ? 'no-leida'">
+            <i th:class="'fas ' + ${n.icono}" style="background:#dbeafe;color:#1d4ed8" aria-hidden="true"></i>
+            <form th:action="@{'/notificaciones/' + ${n.idNotificacion} + '/abrir'}" method="post" style="flex:1">
+                <button type="submit" class="vl-notif-link">
+                    <span class="t" th:text="${n.titulo}">Título</span>
+                    <span class="m" style="display:block" th:text="${n.mensaje}">Mensaje</span>
+                    <span class="vl-small vl-muted" th:text="${@fmt.fechaHora(n.creadaEn)}"></span>
+                </button>
+            </form>
+        </div>
+        <th:block th:if="${extras != null}">
+            <div th:each="n : ${extras}" class="vl-notif-item">
+                <i th:class="'fas ' + ${n.icono}"
+                   th:styleappend="${n.claseColor == 'vl-badge-danger' ? 'background:#fee2e2;color:#dc2626' : (n.claseColor == 'vl-badge-warn' ? 'background:#fef3c7;color:#b45309' : 'background:#dbeafe;color:#1d4ed8')}"
+                   aria-hidden="true"></i>
+                <span th:text="${n.texto}">Aviso</span>
+            </div>
+        </th:block>
+        <div class="vl-notif-empty" th:if="${#lists.isEmpty(vlNotificaciones) and (extras == null or #lists.isEmpty(extras))}">
+            No tienes notificaciones nuevas.
+        </div>
+    </div>
+</div>
 
 <header th:fragment="topbar(usuario, placeholder)" class="top-bar">
     <div class="top-bar-container">
-        <div class="search-global">
+        <div class="search-global" aria-hidden="true">
             <i class="fas fa-search"></i>
-            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled>
+            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled tabindex="-1">
         </div>
         <div class="header-actions">
-            <div class="action-circle">
-                <i class="far fa-bell"></i>
-                <span class="badge">0</span>
-            </div>
+            <div th:replace="~{layout/dashboard-shell :: campana(null)}"></div>
             <div class="user-pill-wrapper">
                 <div class="user-pill">
                     <div class="user-text">
@@ -82,28 +117,15 @@
     </div>
 </header>
 
-<!--/* Variante con campana de notificaciones funcional. Las notificaciones ya vienen
-   calculadas por el controlador (lista de Notificacion{icono, claseColor, texto}) */-->
+<!--/* Variante que además muestra avisos calculados por la página (citas próximas, vacunas). */-->
 <header th:fragment="topbarNotificaciones(usuario, placeholder, notificaciones)" class="top-bar">
     <div class="top-bar-container">
-        <div class="search-global">
+        <div class="search-global" aria-hidden="true">
             <i class="fas fa-search"></i>
-            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled>
+            <input type="text" th:placeholder="${placeholder} ?: 'Buscar...'" disabled tabindex="-1">
         </div>
         <div class="header-actions">
-            <div class="action-circle" id="vl-notif-bell">
-                <i class="far fa-bell"></i>
-                <span class="badge" th:text="${#lists.size(notificaciones)}">0</span>
-                <div class="vl-notif-panel" id="vl-notif-panel">
-                    <div class="vl-notif-head">Notificaciones</div>
-                    <div th:each="n : ${notificaciones}" class="vl-notif-item">
-                        <i th:class="'fas ' + ${n.icono}"
-                           th:styleappend="${n.claseColor == 'vl-badge-danger' ? 'background:#fee2e2;color:#dc2626' : (n.claseColor == 'vl-badge-warn' ? 'background:#fef3c7;color:#b45309' : (n.claseColor == 'vl-badge-ok' ? 'background:#dcfce7;color:#15803d' : 'background:#dbeafe;color:#1d4ed8'))}"></i>
-                        <span th:text="${n.texto}">Notificación</span>
-                    </div>
-                    <div class="vl-notif-empty" th:if="${#lists.isEmpty(notificaciones)}">No tienes notificaciones nuevas.</div>
-                </div>
-            </div>
+            <div th:replace="~{layout/dashboard-shell :: campana(${notificaciones})}"></div>
             <div class="user-pill-wrapper">
                 <div class="user-pill">
                     <div class="user-text">
@@ -118,6 +140,17 @@
         </div>
     </div>
 </header>
+
+<!--/* Mensajes flash comunes. */-->
+<th:block th:fragment="mensajes">
+    <div class="vl-alert vl-alert-ok" role="status" th:if="${mensajeOk}"><i class="fas fa-circle-check" aria-hidden="true"></i><span th:text="${mensajeOk}"></span></div>
+    <div class="vl-alert vl-alert-err" role="alert" th:if="${errorGeneral}"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span th:text="${errorGeneral}"></span></div>
+</th:block>
+
+<!--/* Chip de estado de cita: texto + icono + color. */-->
+<span th:fragment="estado(e)" class="vl-st" th:classappend="${e.clase}">
+    <i th:class="'fas ' + ${e.icono}" aria-hidden="true"></i><span th:text="${e.etiqueta}">Estado</span>
+</span>
 
 </body>
 </html>

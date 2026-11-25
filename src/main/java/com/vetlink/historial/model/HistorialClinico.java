@@ -55,6 +55,48 @@ public class HistorialClinico {
     @JoinColumn(name = "idMascota", nullable = false)
     private Mascota mascota;
 
+    /** Cita durante la que se registró (única: una cita produce como máximo un registro clínico). */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idCita", unique = true)
+    private com.vetlink.cita.model.Cita cita;
+
+    /** Establecimiento responsable del registro. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idVeterinaria")
+    private com.vetlink.veterinaria.model.Veterinaria veterinaria;
+
+    /** CONSULTA, CONTROL, PROCEDIMIENTO, LABORATORIO, VACUNACION, URGENCIA (ver TipoRegistroClinico). */
+    @Column(length = 30)
+    private String tipoRegistro;
+
+    @Column(columnDefinition = "TEXT")
+    private String antecedentes;
+
+    private Double temperatura;
+    private Integer frecuenciaCardiaca;
+    private Integer frecuenciaRespiratoria;
+    private Double pesoKg;
+
+    @Column(columnDefinition = "TEXT")
+    private String evaluacionClinica;
+
+    @Column(columnDefinition = "TEXT")
+    private String hallazgos;
+
+    @Column(columnDefinition = "TEXT")
+    private String tratamiento;
+
+    @Column(columnDefinition = "TEXT")
+    private String medicamentosIndicados;
+
+    @Column(columnDefinition = "TEXT")
+    private String recomendaciones;
+
+    @Transient
+    public TipoRegistroClinico getTipo() {
+        return TipoRegistroClinico.desde(tipoRegistro);
+    }
+
     @OneToMany(mappedBy = "historial", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HistorialMedicamento> medicamentos = new ArrayList<>();
 

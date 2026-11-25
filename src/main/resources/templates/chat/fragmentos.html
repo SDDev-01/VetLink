@@ -1,0 +1,25 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* Bandeja reutilizable (lista y detalle). */-->
+<div th:fragment="bandeja" class="vl-panel">
+    <h3><i class="fas fa-inbox" aria-hidden="true"></i> Conversaciones</h3>
+    <div class="vl-cita-list">
+        <a th:each="b : ${bandeja}" th:href="@{'/chat/' + ${b.conversacion().idConversacion}}" class="vl-cita-card"
+           style="grid-template-columns:44px minmax(0,1fr) auto"
+           th:classappend="${conversacion != null and conversacion.idConversacion == b.conversacion().idConversacion} ? 'st-CONFIRMADA' : ''">
+            <span class="vl-kpi-icon" style="background:#dbeafe;color:#1d4ed8;width:44px;height:44px"><i class="fas fa-comments" aria-hidden="true"></i></span>
+            <div class="vl-cita-main">
+                <div class="vl-cita-titulo" th:text="${b.titulo()}"></div>
+                <div class="vl-small vl-muted" th:text="${b.subtitulo()}"></div>
+                <div class="vl-cita-meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block" th:text="${b.ultimo()}"></div>
+            </div>
+            <div class="vl-cita-side">
+                <span class="vl-small vl-muted" th:text="${@fmt.fechaHora(b.fecha())}"></span>
+                <span th:if="${b.noLeidos() > 0}" class="vl-badge vl-badge-info" th:text="${b.noLeidos()} + ' sin leer'"></span>
+            </div>
+        </a>
+    </div>
+    <p class="vl-muted" th:if="${#lists.isEmpty(bandeja)}">Todavía no tienes conversaciones.</p>
+</div>
+</body>
+</html>

@@ -25,19 +25,23 @@ class VL17ProximaCitaOpcionalTest extends PruebaWebBase {
         var vet = crearVeterinario(clinica);
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
-        crearCita(mascota, vet, clinica);
+        var cita = citaEnAtencion(mascota, vet, clinica, servicioPorDefecto());
         long antes = historialRepository.count();
 
-        mockMvc.perform(post("/historial/nuevo").with(csrf()).with(como(vet))
+        mockMvc.perform(post("/agenda/" + cita.getIdCita() + "/historial").with(csrf()).with(como(vet))
                         .param("idMascota", mascota.getIdMascota().toString())
                         .param("motivoConsulta", "Vómito")
                         .param("diagnostico", "Gastritis leve"))
-                .andExpect(redirectedUrl("/historial/paciente/" + mascota.getIdMascota() + "?creado"));
+                .andExpect(redirectedUrl("/agenda/" + cita.getIdCita() + "/atencion"));
 
         assertThat(historialRepository.count()).isEqualTo(antes + 1);
         sincronizar();
-        mockMvc.perform(get("/historial/mascota/" + mascota.getIdMascota()).with(como(duenio)))
-                .andExpect(content().string(containsString("Sin control programado")));
+        var registro = historialRepository.findByCita_IdCita(cita.getIdCita()).orElseThrow();
+        assertThat(registro.getProximaCita()).isNull();
+        // El documento no inventa un próximo control que no se registró.
+        mockMvc.perform(get("/historial/documento/" + registro.getNumeroHistorial()).with(como(duenio)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Próximo control"))));
     }
 
     @Test
@@ -45,10 +49,10 @@ class VL17ProximaCitaOpcionalTest extends PruebaWebBase {
         var clinica = crearClinica();
         var vet = crearVeterinario(clinica);
         var mascota = crearMascota(crearDuenio());
-        crearCita(mascota, vet, clinica);
+        var cita = citaEnAtencion(mascota, vet, clinica, servicioPorDefecto());
         long antes = historialRepository.count();
 
-        mockMvc.perform(post("/historial/nuevo").with(csrf()).with(como(vet))
+        mockMvc.perform(post("/agenda/" + cita.getIdCita() + "/historial").with(csrf()).with(como(vet))
                         .param("idMascota", mascota.getIdMascota().toString())
                         .param("motivoConsulta", "Control")
                         .param("diagnostico", "Sano")

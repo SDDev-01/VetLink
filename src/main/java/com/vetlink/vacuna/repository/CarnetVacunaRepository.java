@@ -11,6 +11,8 @@ public interface CarnetVacunaRepository extends JpaRepository<CarnetVacuna, Inte
 
     List<CarnetVacuna> findByMascota_IdMascotaOrderByFechaAplicacionDesc(Integer idMascota);
 
+    List<CarnetVacuna> findByCita_IdCita(Integer idCita);
+
     @Query("""
            select cv from CarnetVacuna cv
            where cv.proximaDosis between current_date and :limite

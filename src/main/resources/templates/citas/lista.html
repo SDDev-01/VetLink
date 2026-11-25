@@ -10,51 +10,41 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="dashboard-body">
-
 <aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
-
 <main class="main-content">
     <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
-
     <section class="container">
         <div class="vl-section vl-section-active">
             <div class="vl-section-head">
                 <div><h1 th:text="'Citas de ' + ${mascota.nombre}">Citas</h1></div>
-                <div class="vl-section-actions" sec:authorize="hasRole('TUTOR')" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-                    <a th:href="@{'/citas/agendar/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-plus"></i> Agendar cita</a>
+                <div class="vl-section-actions">
+                    <a th:href="@{'/mascotas/' + ${mascota.idMascota}}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Ficha</a>
+                    <a th:if="${mascota.agendable}" th:href="@{'/citas/agendar/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar cita</a>
                 </div>
             </div>
 
-            <p class="form-message" style="color:#16a34a" th:if="${param.agendada}">Cita agendada correctamente.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.cancelada}">Cita cancelada.</p>
-            <p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.agendada}"><i class="fas fa-circle-check" aria-hidden="true"></i>
+                Solicitud enviada. El horario quedó reservado y la clínica debe confirmarlo.</div>
+            <div class="vl-alert vl-alert-ok" role="status" th:if="${param.cancelada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Cita cancelada.</div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
 
-            <div class="vl-table-wrap">
-                <table class="vl-table">
-                    <thead><tr><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Veterinaria</th><th>Veterinario</th><th>Estado</th><th></th></tr></thead>
-                    <tbody>
-                    <tr th:each="c : ${citas}">
-                        <td th:text="${c.fecha}"></td>
-                        <td th:text="${c.hora}"></td>
-                        <td th:text="${c.servicio.nombreServicio}"></td>
-                        <td th:text="${c.veterinaria.nombre}"></td>
-                        <td th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></td>
-                        <td><span class="vl-badge" th:classappend="${c.estado.name() == 'AGENDADA' ? 'vl-badge-ok' : (c.estado.name() == 'CANCELADA' ? 'vl-badge-danger' : 'vl-badge-warn')}" th:text="${c.estado}"></span></td>
-                        <td>
-                            <form th:if="${c.estado.name() == 'AGENDADA'}" th:action="@{'/citas/' + ${c.idCita} + '/cancelar'}" method="post"
-                                  onsubmit="return confirm('¿Cancelar esta cita?');">
-                                <input type="hidden" name="idMascota" th:value="${mascota.idMascota}">
-                                <button type="submit" class="vl-btn vl-btn-danger vl-btn-sm">Cancelar</button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-                <div class="vl-empty" th:if="${#lists.isEmpty(citas)}">
-                    <i class="fas fa-calendar-alt"></i>
-                    <h4>Sin citas</h4>
-                    <p>Esta mascota no tiene citas registradas.</p>
-                </div>
+            <div class="vl-cita-list" th:unless="${#lists.isEmpty(citas)}">
+                <a th:each="c : ${citas}" th:href="@{'/citas/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                    <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fecha(c.fecha)}"></small></div>
+                    <div class="vl-cita-main">
+                        <div class="vl-cita-titulo" th:text="${c.servicio.nombreServicio}"></div>
+                        <div class="vl-cita-meta">
+                            <span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${c.veterinaria.nombre}"></span></span>
+                            <span><i class="fas fa-user-doctor" aria-hidden="true"></i><span th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></span></span>
+                            <span><i class="fas fa-hourglass" aria-hidden="true"></i><span th:text="${@fmt.duracion(c.duracionMin)}"></span></span>
+                        </div>
+                    </div>
+                    <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span>
+                        <span class="vl-small vl-muted">Detalle <i class="fas fa-chevron-right" aria-hidden="true"></i></span></div>
+                </a>
+            </div>
+            <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(citas)}">
+                <i class="fas fa-calendar-alt" aria-hidden="true"></i>Esta mascota no tiene citas registradas.
             </div>
         </div>
     </section>

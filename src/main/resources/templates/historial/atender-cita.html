@@ -1,1 +1,201 @@
-<!DOCTYPE html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atender cita | VetLink</title><link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}"></head><body class="dashboard-body"><aside th:replace="~{layout/dashboard-shell :: sidebar('Atención clínica', ${navItems}, ${seccionActiva})}"></aside><main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Atención clínica')}"></header><section class="container"><div class="vl-section vl-section-active"><div class="vl-section-head"><div><h1 th:text="'Atender a '+${cita.mascota.nombre}"></h1><p th:text="${cita.servicio.nombreServicio+' · '+cita.fecha+' '+cita.hora}"></p></div></div><div class="vl-table-wrap" style="padding:28px"><p class="form-message" style="color:#dc2626" th:if="${errorGeneral}" th:text="${errorGeneral}"></p><form th:action="@{'/agenda/'+${cita.idCita}+'/atender'}" th:object="${form}" method="post"><input type="hidden" th:field="*{idMascota}"><div class="vl-form-grid"><div class="vl-form-section-title">Registro clínico</div><div class="vl-field vl-full"><label>Motivo de consulta</label><textarea th:field="*{motivoConsulta}" required></textarea></div><div class="vl-field vl-full"><label>Diagnóstico</label><textarea th:field="*{diagnostico}" required></textarea></div><div class="vl-field vl-full"><label>Observaciones y recomendaciones</label><textarea th:field="*{observaciones}"></textarea></div><div class="vl-field"><label>Próxima cita sugerida (opcional)</label><input type="date" th:field="*{proximaCita}" th:attr="min=${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"><small class="vl-error" th:if="${#fields.hasErrors('proximaCita')}" th:errors="*{proximaCita}"></small></div></div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><a class="vl-btn vl-btn-ghost" th:href="@{'/agenda/'+${cita.idCita}}">Cancelar</a><button class="vl-btn vl-btn-primary">Guardar atención</button></div></form></div></div></section></main><div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atención en curso | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Agenda', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Atención')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-hero">
+                <div>
+                    <h1 th:text="'Atendiendo a ' + ${cita.mascota.nombre}">Atención</h1>
+                    <p th:text="${cita.servicio.nombreServicio} + ' · ' + ${cita.mascota.especie.nombreEspecie} + ' ' + ${cita.mascota.raza.nombreRaza} + ' · ' + ${cita.mascota.edadTexto} + ' · Tutor: ' + ${cita.mascota.tutor.nombre} + ' ' + ${cita.mascota.tutor.apellido}"></p>
+                    <p class="vl-small" th:if="${cita.inicioAtencion}" th:text="'Iniciada a las ' + ${@fmt.hora(cita.inicioAtencion)}"></p>
+                </div>
+                <span class="vl-st vl-st-atencion"><i class="fas fa-stethoscope" aria-hidden="true"></i>En atención</span>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)">
+                <div class="vl-stack">
+                    <!-- Registro clínico -->
+                    <div class="vl-panel" th:if="${tipoRegistro != 'NINGUNO'}">
+                        <div class="vl-panel-head">
+                            <h3><i class="fas fa-file-medical" aria-hidden="true"></i> Registro clínico
+                                <span class="vl-small vl-muted" th:text="${esVacunacion} ? '(opcional en vacunación)' : '(obligatorio para finalizar)'"></span></h3>
+                            <a th:if="${registro != null}" th:href="@{'/historial/documento/' + ${registro.numeroHistorial}}" class="vl-btn vl-btn-ghost vl-btn-sm">Ver documento</a>
+                        </div>
+                        <div th:if="${registro != null}" class="vl-alert vl-alert-ok"><i class="fas fa-circle-check" aria-hidden="true"></i>
+                            <span>Registro guardado. Puedes editarlo durante 24 horas desde el documento.</span></div>
+
+                        <form th:if="${registro == null}" th:action="@{'/agenda/' + ${cita.idCita} + '/historial'}" th:object="${form}" method="post">
+                            <input type="hidden" th:field="*{idMascota}">
+                            <div class="vl-form-grid">
+                                <div class="vl-field">
+                                    <label for="tipoRegistro">Tipo de registro</label>
+                                    <select id="tipoRegistro" th:field="*{tipoRegistro}">
+                                        <option value="">Según el servicio</option>
+                                        <option value="CONSULTA">Consulta general</option>
+                                        <option value="CONTROL">Control veterinario</option>
+                                        <option value="PROCEDIMIENTO">Procedimiento clínico</option>
+                                        <option value="LABORATORIO">Resultados de laboratorio</option>
+                                        <option value="URGENCIA">Atención de urgencia</option>
+                                    </select>
+                                </div>
+                                <div class="vl-field">
+                                    <label for="proximaCita">Próximo control (opcional)</label>
+                                    <input type="date" id="proximaCita" th:field="*{proximaCita}" data-no-pasado>
+                                    <span class="vl-field-error" th:if="${#fields.hasErrors('proximaCita')}" th:errors="*{proximaCita}"></span>
+                                </div>
+                                <div class="vl-field" style="grid-column:1/-1">
+                                    <label for="motivoConsulta">Motivo de consulta *</label>
+                                    <textarea id="motivoConsulta" th:field="*{motivoConsulta}" required maxlength="4000" rows="2"></textarea>
+                                    <span class="vl-field-error" th:if="${#fields.hasErrors('motivoConsulta')}" th:errors="*{motivoConsulta}"></span>
+                                </div>
+                                <div class="vl-field" style="grid-column:1/-1">
+                                    <label for="antecedentes">Antecedentes</label>
+                                    <textarea id="antecedentes" th:field="*{antecedentes}" maxlength="4000" rows="2"></textarea>
+                                </div>
+                                <div class="vl-form-section-title">Signos vitales</div>
+                                <div class="vl-field"><label for="temperatura">Temperatura (°C)</label>
+                                    <input type="number" step="0.1" min="30" max="45" id="temperatura" th:field="*{temperatura}">
+                                    <span class="vl-field-error" th:if="${#fields.hasErrors('temperatura')}" th:errors="*{temperatura}"></span></div>
+                                <div class="vl-field"><label for="pesoKg">Peso (kg)</label>
+                                    <input type="number" step="0.01" min="0.01" max="1500" id="pesoKg" th:field="*{pesoKg}">
+                                    <span class="vl-field-error" th:if="${#fields.hasErrors('pesoKg')}" th:errors="*{pesoKg}"></span></div>
+                                <div class="vl-field"><label for="frecuenciaCardiaca">Frecuencia cardiaca (lpm)</label>
+                                    <input type="number" min="1" max="400" id="frecuenciaCardiaca" th:field="*{frecuenciaCardiaca}"></div>
+                                <div class="vl-field"><label for="frecuenciaRespiratoria">Frecuencia respiratoria (rpm)</label>
+                                    <input type="number" min="1" max="200" id="frecuenciaRespiratoria" th:field="*{frecuenciaRespiratoria}"></div>
+                                <div class="vl-form-section-title">Evaluación</div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="evaluacionClinica">Evaluación clínica / examen físico</label>
+                                    <textarea id="evaluacionClinica" th:field="*{evaluacionClinica}" maxlength="4000" rows="2"></textarea></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="hallazgos">Hallazgos</label>
+                                    <textarea id="hallazgos" th:field="*{hallazgos}" maxlength="4000" rows="2"></textarea></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="diagnostico">Diagnóstico *</label>
+                                    <textarea id="diagnostico" th:field="*{diagnostico}" required maxlength="4000" rows="2"></textarea>
+                                    <span class="vl-field-error" th:if="${#fields.hasErrors('diagnostico')}" th:errors="*{diagnostico}"></span></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="tratamiento">Tratamiento</label>
+                                    <textarea id="tratamiento" th:field="*{tratamiento}" maxlength="4000" rows="2"></textarea></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="medicamentosIndicados">Medicamentos (nombre, dosis, frecuencia, duración)</label>
+                                    <textarea id="medicamentosIndicados" th:field="*{medicamentosIndicados}" maxlength="4000" rows="2"></textarea></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="recomendaciones">Recomendaciones para el tutor</label>
+                                    <textarea id="recomendaciones" th:field="*{recomendaciones}" maxlength="4000" rows="2"></textarea></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="observaciones">Observaciones</label>
+                                    <textarea id="observaciones" th:field="*{observaciones}" maxlength="4000" rows="2"></textarea></div>
+                            </div>
+                            <button type="submit" class="vl-btn vl-btn-primary" style="margin-top:12px"><i class="fas fa-floppy-disk" aria-hidden="true"></i> Guardar registro clínico</button>
+                        </form>
+                    </div>
+
+                    <!-- Vacunación -->
+                    <div class="vl-panel" th:if="${esVacunacion}">
+                        <h3><i class="fas fa-shield-virus" aria-hidden="true"></i> Registro de vacunación <span class="vl-small vl-muted">(obligatorio para finalizar)</span></h3>
+                        <div class="vl-alert vl-alert-err" th:if="${errorVacuna}" th:text="${errorVacuna}" role="alert"></div>
+                        <ul class="vl-docs" style="padding:0" th:unless="${#lists.isEmpty(vacunasCita)}">
+                            <li class="vl-doc" th:each="v : ${vacunasCita}"><span class="ico"><i class="fas fa-syringe" aria-hidden="true"></i></span>
+                                <div><strong th:text="${v.vacuna.nombreVacuna}"></strong><div class="meta" th:text="'Dosis ' + ${v.dosis} + ' · próxima: ' + ${@fmt.fecha(v.proximaDosis)}"></div></div></li>
+                        </ul>
+                        <form th:action="@{'/agenda/' + ${cita.idCita} + '/vacuna'}" method="post">
+                            <div class="vl-form-grid">
+                                <div class="vl-field"><label for="idVacuna">Vacuna *</label>
+                                    <select id="idVacuna" name="idVacuna" required><option value="">Selecciona</option>
+                                        <option th:each="v : ${vacunasEspecie}" th:value="${v.idVacuna}" th:text="${v.nombreVacuna}"></option></select></div>
+                                <div class="vl-field"><label for="idLote">Lote vigente *</label>
+                                    <select id="idLote" name="idLote" required><option value="">Selecciona</option>
+                                        <option th:each="l : ${lotes}" th:value="${l.idLote}" th:text="${l.numeroLote != null ? l.numeroLote : ('Lote ' + l.idLote)} + ' · vence ' + ${@fmt.fecha(l.fechaVencimiento)}"></option></select></div>
+                                <div class="vl-field"><label for="dosis">Dosis *</label>
+                                    <input id="dosis" name="dosis" required maxlength="45" placeholder="Ej.: 1 ml · primera dosis"></div>
+                                <div class="vl-field"><label for="proximaDosis">Próxima dosis *</label>
+                                    <input type="date" id="proximaDosis" name="proximaDosis" required data-no-pasado></div>
+                                <div class="vl-field" style="grid-column:1/-1"><label for="obsVac">Observaciones</label>
+                                    <textarea id="obsVac" name="observaciones" maxlength="1000" rows="2"></textarea></div>
+                            </div>
+                            <p class="vl-small vl-muted">Fecha de aplicación: hoy. Responsable: tú. Se asocia automáticamente a esta cita.</p>
+                            <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-syringe" aria-hidden="true"></i> Registrar vacuna</button>
+                        </form>
+                    </div>
+
+                    <!-- Adjuntos -->
+                    <div class="vl-panel" th:if="${tipoRegistro != 'NINGUNO'}">
+                        <h3><i class="fas fa-paperclip" aria-hidden="true"></i> Archivos adjuntos</h3>
+                        <div class="vl-alert vl-alert-err" th:if="${errorArchivo}" th:text="${errorArchivo}" role="alert"></div>
+                        <ul class="vl-docs" style="padding:0" th:unless="${#lists.isEmpty(archivos)}">
+                            <li class="vl-doc" th:each="a : ${archivos}"><span class="ico"><i th:class="'fas ' + ${a.icono}" aria-hidden="true"></i></span>
+                                <div><a class="titulo" th:href="@{'/historial/archivos/' + ${a.idArchivo}}" target="_blank" rel="noopener" th:text="${a.nombreArchivo}"></a></div></li>
+                        </ul>
+                        <p class="vl-muted" th:if="${registro == null}">Guarda primero el registro clínico para adjuntar resultados, fotografías o fórmulas.</p>
+                        <form th:if="${registro != null}" th:action="@{'/agenda/' + ${cita.idCita} + '/archivos'}" method="post" enctype="multipart/form-data">
+                            <div class="vl-field"><label for="archivo" th:text="'Archivo (' + ${formatos} + ', máx. ' + ${tamanoMaximoMb} + ' MB)'">Archivo</label>
+                                <input type="file" id="archivo" name="archivo" required accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                       th:attr="data-max-mb=${tamanoMaximoMb}"></div>
+                            <img id="previa" alt="Vista previa" hidden style="max-width:220px;border-radius:12px;margin:8px 0">
+                            <button type="submit" class="vl-btn vl-btn-ghost"><i class="fas fa-upload" aria-hidden="true"></i> Adjuntar</button>
+                        </form>
+                    </div>
+
+                    <!-- Finalizar -->
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-flag-checkered" aria-hidden="true"></i> Finalizar atención</h3>
+                        <ul th:unless="${#lists.isEmpty(pendientesFinalizar)}" class="vl-small" style="color:#b45309">
+                            <li th:each="p : ${pendientesFinalizar}" th:text="${p}"></li>
+                        </ul>
+                        <form th:action="@{'/agenda/' + ${cita.idCita} + '/finalizar'}" method="post"
+                              data-confirm="La cita pasará a «Atendida» y quedará registrada la hora de finalización. Después solo podrás editar el registro clínico durante 24 horas."
+                              data-confirm-title="¿Finalizar la atención?" data-confirm-ok="Finalizar">
+                            <button type="submit" class="vl-btn vl-btn-success" th:disabled="${!#lists.isEmpty(pendientesFinalizar)}">
+                                <i class="fas fa-circle-check" aria-hidden="true"></i> Finalizar atención</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="vl-stack">
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-circle-info" aria-hidden="true"></i> Datos de la cita</h3>
+                        <dl class="vl-dl" style="grid-template-columns:1fr">
+                            <div><dt>Hora</dt><dd th:text="${@fmt.rango(cita.hora, cita.duracionMin)}"></dd></div>
+                            <div><dt>Motivo indicado por el tutor</dt><dd th:text="${cita.motivo} ?: 'No indicado'"></dd></div>
+                            <div><dt>Peso registrado</dt><dd th:text="${cita.mascota.peso} + ' kg'"></dd></div>
+                        </dl>
+                    </div>
+                    <div class="vl-panel">
+                        <h3><i class="fas fa-folder-open" aria-hidden="true"></i> Historial previo</h3>
+                        <ul class="vl-docs" style="padding:0">
+                            <li class="vl-doc" th:each="h : ${historialPrevio}">
+                                <span class="ico"><i th:class="'fas ' + ${h.tipo.icono}" aria-hidden="true"></i></span>
+                                <div><a class="titulo" th:href="@{'/historial/documento/' + ${h.numeroHistorial}}" target="_blank" rel="noopener" th:text="${h.tipo.etiqueta}"></a>
+                                    <div class="meta"><span th:text="${h.fechaRegistro != null} ? ${@fmt.fecha(h.fechaRegistro.toLocalDate())} : ${h.fechaConsulta}"></span>
+                                        <span th:text="${h.diagnostico}"></span></div></div>
+                            </li>
+                        </ul>
+                        <p class="vl-muted" th:if="${#lists.isEmpty(historialPrevio)}">Primera atención registrada en VetLink.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<script>
+    (function () {
+        var input = document.getElementById('archivo');
+        var img = document.getElementById('previa');
+        if (!input || !img) return;
+        input.addEventListener('change', function () {
+            var f = input.files && input.files[0];
+            if (f && /^image\/(png|jpeg)$/.test(f.type)) { img.src = URL.createObjectURL(f); img.hidden = false; }
+            else { img.hidden = true; img.removeAttribute('src'); }
+        });
+    })();
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

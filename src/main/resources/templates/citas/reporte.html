@@ -28,7 +28,8 @@
 
             <p class="form-message" style="color:#16a34a" th:if="${param.agendada}">Cita agendada.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.cancelada}">Cita cancelada.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.reagendada}">Cita reagendada.</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.reagendada}">Cita reprogramada. La cita original quedó como «Reprogramada».</p>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
 
             <form th:action="@{/reportes/citas}" th:object="${filtro}" method="get" class="vl-table-wrap" style="padding:20px; margin-bottom:20px;">
                 <div class="vl-form-grid">
@@ -43,7 +44,7 @@
                         <label>Estado</label>
                         <select th:field="*{estado}">
                             <option value="">Todos</option>
-                            <option th:each="e : ${estados}" th:value="${e}" th:text="${e}"></option>
+                            <option th:each="e : ${estados}" th:value="${e}" th:text="${e.etiqueta}"></option>
                         </select>
                     </div>
                     <div class="vl-field">
@@ -63,20 +64,25 @@
                     <thead><tr><th>Fecha</th><th>Hora</th><th>Mascota</th><th>Veterinaria</th><th>Veterinario</th><th>Servicio</th><th>Estado</th><th sec:authorize="hasRole('RECEPCIONISTA')"></th></tr></thead>
                     <tbody>
                     <tr th:each="c : ${citas}">
-                        <td th:text="${c.fecha}"></td>
-                        <td th:text="${c.hora}"></td>
+                        <td th:text="${@fmt.fecha(c.fecha)}"></td>
+                        <td th:text="${@fmt.hora(c.hora)}"></td>
                         <td th:text="${c.mascota != null ? c.mascota.nombre : 'Cupo disponible'}"></td>
                         <td th:text="${c.veterinaria.nombre}"></td>
                         <td th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></td>
                         <td th:text="${c.servicio.nombreServicio}"></td>
-                        <td><span class="vl-badge" th:classappend="${c.estado.name() == 'AGENDADA' ? 'vl-badge-ok' : (c.estado.name() == 'CANCELADA' ? 'vl-badge-danger' : 'vl-badge-warn')}" th:text="${c.estado}"></span></td>
+                        <td><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span></td>
                         <td sec:authorize="hasRole('RECEPCIONISTA')">
-                            <div th:if="${c.estado.name() == 'AGENDADA'}" style="display:flex; gap:6px; align-items:center;">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <a th:href="@{'/agenda/' + ${c.idCita}}" class="vl-btn-icon" title="Detalle" aria-label="Ver detalle"><i class="fas fa-eye" aria-hidden="true"></i></a>
+                                <th:block th:if="${c.estado.name() == 'PENDIENTE' or c.estado.name() == 'CONFIRMADA'}">
                                 <!-- VL-23: reagendar = elegir otro cupo disponible -->
                                 <a th:href="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" class="vl-btn-icon" title="Reagendar"><i class="fas fa-calendar-days"></i></a>
-                                <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/cancelar'}" method="post">
-                                    <button type="submit" class="vl-btn-icon danger" title="Cancelar"><i class="fas fa-xmark"></i></button>
+                                <form th:action="@{'/citas/recepcion/' + ${c.idCita} + '/cancelar'}" method="post"
+                                      data-confirm="Se cancelará la cita y se notificará al dueño y al veterinario." data-confirm-title="¿Cancelar la cita?"
+                                      data-confirm-ok="Sí, cancelar" data-confirm-tipo="peligro">
+                                    <button type="submit" class="vl-btn-icon danger" title="Cancelar" aria-label="Cancelar cita"><i class="fas fa-xmark" aria-hidden="true"></i></button>
                                 </form>
+                                </th:block>
                             </div>
                         </td>
                     </tr>

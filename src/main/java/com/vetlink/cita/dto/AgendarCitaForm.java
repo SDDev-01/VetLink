@@ -1,6 +1,7 @@
 package com.vetlink.cita.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,4 +29,10 @@ public class AgendarCitaForm {
 
     @NotNull(message = "Selecciona una mascota")
     private Integer idMascota;
+
+    /** Cupo elegido en el calendario. Si llega, debe coincidir con veterinario, servicio, fecha y hora. */
+    private Integer idCupo;
+
+    @Size(max = 500, message = "El motivo no puede superar 500 caracteres")
+    private String motivo;
 }

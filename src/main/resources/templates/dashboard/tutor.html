@@ -32,7 +32,7 @@
                     <div class="stat-info">
                         <span class="stat-label">Próxima cita</span>
                         <span class="stat-number" style="font-size:1.1rem;"
-                              th:text="${proximaCita != null ? (proximaCita.fecha + ' · ' + proximaCita.hora) : 'Sin citas'}">—</span>
+                              th:text="${proximaCita != null ? (@fmt.fechaCorta(proximaCita.fecha) + ' · ' + @fmt.hora(proximaCita.hora)) : 'Sin citas'}">—</span>
                     </div>
                     <div class="stat-icon purple"><i class="fas fa-calendar-check"></i></div>
                 </div>

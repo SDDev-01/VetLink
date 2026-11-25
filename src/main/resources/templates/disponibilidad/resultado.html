@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cambio aplicado | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Recepción', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div><h1>Disponibilidad actualizada</h1>
+                    <p th:text="${resultado.solicitud().veterinario.nombre} + ' ' + ${resultado.solicitud().veterinario.apellido} + ' · ' + ${resultado.solicitud().tipo.etiqueta}"></p></div>
+                <a th:href="@{/recepcion/disponibilidad}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver</a>
+            </div>
+            <div class="vl-grid-3" style="margin-bottom:18px">
+                <div class="vl-kpi"><span class="vl-kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fas fa-calendar-minus" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${resultado.cuposRetirados()}">0</span><span class="vl-kpi-lbl" style="display:block">Cupos libres retirados</span></span></div>
+                <div class="vl-kpi"><span class="vl-kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fas fa-calendar-plus" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${resultado.cuposCreados()}">0</span><span class="vl-kpi-lbl" style="display:block">Cupos nuevos generados</span></span></div>
+                <div class="vl-kpi"><span class="vl-kpi-icon" style="background:#fef3c7;color:#b45309"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
+                    <span><span class="vl-kpi-num" th:text="${#lists.size(resultado.citasAfectadas())}">0</span><span class="vl-kpi-lbl" style="display:block">Citas afectadas</span></span></div>
+            </div>
+            <div class="vl-panel" th:unless="${#lists.isEmpty(resultado.citasAfectadas())}">
+                <h3><i class="fas fa-calendar-plus" aria-hidden="true"></i> Citas que requieren reprogramación</h3>
+                <p class="vl-small vl-muted">No se modificaron. Los dueños recibieron un aviso. Elige una alternativa o abre la reprogramación.</p>
+                <div class="vl-stack">
+                    <div class="vl-panel" style="background:#fbfdff" th:each="c : ${resultado.citasAfectadas()}">
+                        <div class="vl-row-between">
+                            <div><strong th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></strong>
+                                <div class="vl-small vl-muted" th:text="${@fmt.fechaCorta(c.fecha)} + ', ' + ${@fmt.hora(c.hora)} + ' · ' + ${c.estado.etiqueta}"></div></div>
+                            <a th:href="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" class="vl-btn vl-btn-ghost vl-btn-sm">Ver todos los cupos</a>
+                        </div>
+                        <div class="vl-row" style="margin-top:8px">
+                            <form th:each="alt : ${alternativas[c.idCita]}" th:action="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" method="post"
+                                  th:with="cuando=${@fmt.fechaCorta(alt.fecha) + ', ' + @fmt.hora(alt.hora)}"
+                                  th:data-confirm="${'Se moverá la cita a ' + cuando + ' con ' + alt.veterinario.nombre + ' ' + alt.veterinario.apellido + '. Se notificará al dueño.'}"
+                                  data-confirm-title="¿Reprogramar a esta alternativa?" data-confirm-ok="Reprogramar">
+                                <input type="hidden" name="idCupoNuevo" th:value="${alt.idCita}">
+                                <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm"
+                                        th:text="${@fmt.fechaCorta(alt.fecha)} + ' ' + ${@fmt.hora(alt.hora)} + ' · ' + ${alt.veterinario.apellido}"></button>
+                            </form>
+                            <span class="vl-small vl-muted" th:if="${#lists.isEmpty(alternativas[c.idCita])}">Sin alternativas compatibles en los próximos 7 días.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="vl-alert vl-alert-ok" th:if="${#lists.isEmpty(resultado.citasAfectadas())}"><i class="fas fa-circle-check" aria-hidden="true"></i>Ninguna cita reservada quedó afectada.</div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

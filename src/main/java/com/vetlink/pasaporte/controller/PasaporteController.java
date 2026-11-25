@@ -38,12 +38,14 @@ public class PasaporteController {
     private final MascotaService mascotaService;
     private final AccesoPacienteService accesoPacienteService;
     private final PasaporteService pasaporteService;
+    private final com.vetlink.comun.config.ReglasNegocio reglas;
 
     public PasaporteController(MascotaService mascotaService, AccesoPacienteService accesoPacienteService,
-                               PasaporteService pasaporteService) {
+                               PasaporteService pasaporteService, com.vetlink.comun.config.ReglasNegocio reglas) {
         this.mascotaService = mascotaService;
         this.accesoPacienteService = accesoPacienteService;
         this.pasaporteService = pasaporteService;
+        this.reglas = reglas;
     }
 
     @GetMapping
@@ -63,6 +65,8 @@ public class PasaporteController {
         model.addAttribute("mascota", mascota);
         model.addAttribute("pasaportes", pasaportes);
         model.addAttribute("duraciones", DuracionPasaporte.values());
+        // Aviso si el QR no podrá abrirse fuera de la red local (configuración PUBLIC_BASE_URL).
+        model.addAttribute("avisosUrlPublica", com.vetlink.comun.web.UrlPublica.problemas(reglas.publicBaseUrl()));
         return VISTA;
     }
 

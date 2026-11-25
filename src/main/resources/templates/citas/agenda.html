@@ -1,4 +1,114 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agenda | VetLink</title><link rel="stylesheet" th:href="@{/css/dashboard.css}"><link rel="stylesheet" th:href="@{/css/app.css}"></head>
-<body class="dashboard-body"><aside th:replace="~{layout/dashboard-shell :: sidebar('Agenda', ${navItems}, ${seccionActiva})}"></aside><main class="main-content"><header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar cita...')}"></header><section class="container"><div class="vl-section vl-section-active"><div class="vl-section-head"><div><h1 th:text="${usuario.rol.name()=='VETERINARIO'?'Mi agenda clínica':'Agenda de la clínica'}"></h1><p>Calendario operativo con cupos, citas agendadas y atenciones.</p></div><a th:if="${usuario.rol.name()=='RECEPCIONISTA'}" th:href="@{/citas/recepcion/ofertar}" class="vl-btn vl-btn-primary">Ofertar cupo</a></div><div class="panels-grid"><div class="panel"><div id="agenda-calendar"></div></div><div class="panel"><h3>Agenda del día</h3><div id="agenda-list" class="vl-agenda-list"></div></div></div><div class="vl-table-wrap" style="margin-top:22px"><table class="vl-table"><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente / cupo</th><th>Servicio</th><th>Veterinario</th><th>Estado</th><th></th></tr></thead><tbody><tr th:each="c:${citas}"><td th:text="${c.fecha}"></td><td th:text="${c.hora}"></td><td th:text="${c.mascota!=null?c.mascota.nombre:'Cupo disponible'}"></td><td th:text="${c.servicio.nombreServicio}"></td><td th:text="${c.veterinario.nombre+' '+c.veterinario.apellido}"></td><td><span class="vl-badge" th:text="${c.estado}"></span></td><td><a th:href="@{'/agenda/'+${c.idCita}}" class="vl-btn vl-btn-ghost vl-btn-sm">Detalle</a></td></tr></tbody></table></div></div></section></main>
-<script th:inline="javascript">var VL_CITAS_AGENDA=/*[[${citasJson}]]*/[];</script><script th:src="@{/js/vl-calendar-lite.js}"></script><script>document.addEventListener('DOMContentLoaded',function(){var list=document.getElementById('agenda-list'),marks={};VL_CITAS_AGENDA.forEach(function(c){(marks[c.fecha]||(marks[c.fecha]=[])).push({cls:c.estado==='DISPONIBLE'?'warn':c.estado==='CANCELADA'?'danger':''});});VlCalendarLite.render('agenda-calendar',{marks:marks,onSelectDay:function(day){var items=VL_CITAS_AGENDA.filter(function(x){return x.fecha===day});list.innerHTML=items.length?items.map(function(i){return '<a class="vl-agenda-item" href="/agenda/'+i.idCita+'"><strong>'+i.hora+'</strong><span>'+i.servicio+' · '+i.mascota+'</span></a>'}).join(''):'<p class="vl-empty">Sin eventos para este día.</p>';}});});</script><div th:replace="~{layout/dashboard-shell :: scripts}"></div></body></html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Agenda', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar cita...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div>
+                    <h1 th:text="${usuario.rol.name() == 'VETERINARIO'} ? 'Mi agenda clínica' : 'Agenda de la clínica'">Agenda</h1>
+                    <p th:if="${usuario.rol.name() == 'RECEPCIONISTA'}">Los cupos se generan automáticamente desde los horarios aprobados del equipo.</p>
+                    <p th:unless="${usuario.rol.name() == 'RECEPCIONISTA'}">Selecciona un día para ver sus citas. Abre una cita para iniciar la atención.</p>
+                </div>
+                <div class="vl-section-actions" th:if="${usuario.rol.name() == 'RECEPCIONISTA'}">
+                    <form th:action="@{/citas/recepcion/generar}" method="post"
+                          data-confirm="Se crearán cupos para los próximos días según los horarios aprobados, los servicios autorizados, las ausencias y las citas ya reservadas. No se duplican cupos existentes."
+                          data-confirm-title="¿Generar la agenda?" data-confirm-ok="Generar">
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Generar agenda</button>
+                    </form>
+                    <a th:href="@{/citas/recepcion/agendar}" class="vl-btn vl-btn-ghost"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar para un dueño</a>
+                    <a th:href="@{/citas/recepcion/ofertar}" class="vl-btn vl-btn-ghost"><i class="fas fa-plus" aria-hidden="true"></i> Cupo manual</a>
+                </div>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+            <div class="vl-alert vl-alert-warn" th:if="${usuario.rol.name() == 'RECEPCIONISTA' and pendientes > 0}">
+                <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                <span th:text="'Hay ' + ${pendientes} + ' reservas pendientes de confirmación. Aparecen en amarillo en el calendario.'"></span>
+            </div>
+
+            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)">
+                <div class="vl-panel">
+                    <div id="agenda-calendar"></div>
+                    <div class="vl-row vl-small vl-muted" style="margin-top:10px">
+                        <span><span class="vl-dot" style="background:#2563eb"></span>Cita</span>
+                        <span><span class="vl-dot" style="background:#f59e0b"></span>Pendiente / cupo libre</span>
+                        <span><span class="vl-dot" style="background:#dc2626"></span>Cancelada</span>
+                    </div>
+                </div>
+                <div class="vl-panel">
+                    <div class="vl-panel-head">
+                        <h3 id="titulo-dia"><i class="fas fa-calendar-day" aria-hidden="true"></i> Agenda del día</h3>
+                        <label class="vl-small vl-muted" th:if="${usuario.rol.name() == 'RECEPCIONISTA'}">
+                            <input type="checkbox" id="ver-cupos"> Mostrar cupos libres</label>
+                    </div>
+                    <div id="agenda-list" class="vl-cita-list" aria-live="polite"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<script th:inline="javascript">
+    var VL_CITAS_AGENDA = /*[[${citasJson}]]*/ [];
+    var VL_DIA_INICIAL = /*[[${diaInicial.toString()}]]*/ '';
+    var VL_ES_RECEPCION = /*[[${usuario.rol.name() == 'RECEPCIONISTA'}]]*/ false;
+</script>
+<script th:src="@{/js/vl-calendar-lite.js}"></script>
+<script th:src="@{/js/vl-minical.js}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var lista = document.getElementById('agenda-list');
+    var titulo = document.getElementById('titulo-dia');
+    var verCupos = document.getElementById('ver-cupos');
+    var diaActual = VL_DIA_INICIAL;
+    var marcas = {};
+    VL_CITAS_AGENDA.forEach(function (c) {
+        if (c.estado === 'DISPONIBLE' && !VL_ES_RECEPCION) return;
+        (marcas[c.fecha] = marcas[c.fecha] || []).push({ cls: c.estado === 'DISPONIBLE' || c.estado === 'PENDIENTE' ? 'warn'
+            : (c.estado === 'CANCELADA' || c.estado === 'RECHAZADA' ? 'danger' : '') });
+    });
+
+    function tarjeta(i) {
+        var libre = i.estado === 'DISPONIBLE';
+        return '<a class="vl-cita-card st-' + vlEsc(i.estado) + '" href="/agenda/' + i.idCita + '">' +
+            '<div class="vl-cita-hora">' + vlEsc(i.horaTexto) + '<small>' + (i.duracion || '') + ' min</small></div>' +
+            '<div class="vl-cita-main"><div class="vl-cita-titulo">' + (libre ? 'Cupo disponible' : vlEsc(i.mascota) +
+            (i.especie ? ' <span class="vl-muted vl-small">· ' + vlEsc(i.especie) + '</span>' : '')) + '</div>' +
+            '<div class="vl-cita-meta"><span><i class="fas fa-stethoscope" aria-hidden="true"></i>' + vlEsc(i.servicio) + '</span>' +
+            (libre ? '' : '<span><i class="fas fa-user" aria-hidden="true"></i>' + vlEsc(i.tutor) + '</span>') +
+            (VL_ES_RECEPCION ? '<span><i class="fas fa-user-doctor" aria-hidden="true"></i>' + vlEsc(i.veterinario) + '</span>' : '') + '</div></div>' +
+            '<div class="vl-cita-side"><span class="vl-st ' + vlEsc(i.estadoClase) + '">' + vlEsc(i.estadoEtiqueta) + '</span>' +
+            '<span class="vl-btn vl-btn-ghost vl-btn-sm">Ver detalle</span></div></a>';
+    }
+
+    function pintarDia(dia) {
+        diaActual = dia;
+        var f = new Date(dia + 'T00:00:00');
+        titulo.innerHTML = '<i class="fas fa-calendar-day" aria-hidden="true"></i> ' +
+            vlEsc(f.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }));
+        var items = VL_CITAS_AGENDA.filter(function (x) {
+            return x.fecha === dia && (x.estado !== 'DISPONIBLE' || (verCupos && verCupos.checked));
+        }).sort(function (a, b) { return a.hora < b.hora ? -1 : 1; });
+        lista.innerHTML = items.length ? items.map(tarjeta).join('')
+            : '<div class="vl-empty-state"><i class="fas fa-mug-hot" aria-hidden="true"></i>Sin citas para este día.</div>';
+    }
+
+    var cal = VlCalendarLite.render('agenda-calendar', { marks: marcas, initialDate: new Date(VL_DIA_INICIAL + 'T00:00:00'), onSelectDay: pintarDia });
+    if (cal) cal.seleccionar(VL_DIA_INICIAL);
+    if (verCupos) verCupos.addEventListener('change', function () { pintarDia(diaActual); });
+    pintarDia(VL_DIA_INICIAL);
+});
+</script>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>
