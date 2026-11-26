@@ -52,6 +52,13 @@ public class AusenciaVeterinario {
     @Column(nullable = false)
     private LocalDateTime creadoEn;
 
+    /** Desbloqueo de agenda (V10): quién lo hizo y cuándo. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "desbloqueadaPor")
+    private Usuario desbloqueadaPor;
+
+    private LocalDateTime desbloqueadaEn;
+
     public boolean cubre(LocalDateTime desde, LocalDateTime hasta) {
         return inicio.isBefore(hasta) && desde.isBefore(fin);
     }

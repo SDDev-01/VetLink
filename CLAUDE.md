@@ -31,7 +31,8 @@ Spring llama a las rutas `/internal/...` de FastAPI con la cabecera `X-Internal-
 | `src/main/resources/` | `application.properties` (incluye las reglas de negocio `vetlink.reglas.*`) y las plantillas Thymeleaf en `templates/` |
 | `src/test/` | Pruebas Spring con H2 (perfil `test`). Las pruebas web extienden `support/PruebaWebBase` |
 | `docs-service/` | FastAPI: `app/` (pasaporte, QR, reportes PDF), `tests/` (pytest) y su `Dockerfile` |
-| `database/` | `mydb.sql` (esquema base), `migrations/V*.sql`, `init/00-init.sh` (primer arranque), `aplicar_V8.sh` y `aplicar_V9.sh` (para bases que ya existen), `pruebas/` |
+| `database/` | `mydb.sql` (esquema base, V1), `migrations/V*.sql`, `migraciones.txt` (orden de las migraciones), `permisos_fastapi.sql`, `verificar_consistencia.sql`, `pruebas/`. Los `aplicar_V*.sh` están obsoletos |
+| `scripts/` | `migrate.sh` (crea o actualiza la base; lo corre el servicio `migrate` de Compose) y `reset-db.sh` (reinicio destructivo de la base de desarrollo, con respaldo) |
 | `nginx/` | Plantilla del proxy y su README |
 | `docs/` | Contrato Spring ↔ FastAPI |
 | `.github/workflows/ci.yml` | Corre las dos suites de pruebas en cada PR |
@@ -46,6 +47,9 @@ docker compose up -d --build          # levantar (necesita un .env; ver README �
 docker compose ps                     # estado: "Up" no significa "healthy"
 docker compose logs -f spring         # o fastapi, mysql, nginx
 docker compose up -d --build spring   # recompilar y reiniciar solo Spring
+bash scripts/migrate.sh --estado      # migraciones aplicadas y pendientes (sin cambiar nada)
+bash scripts/migrate.sh               # aplicar pendientes (también ocurre solo en cada up)
+bash scripts/reset-db.sh              # DESTRUCTIVO: borra la base de desarrollo (respalda antes) y la recrea
 docker compose -f compose.yaml -f compose.debug.yaml up -d --build   # publica 8080, 8000 y MySQL en 127.0.0.1
 ```
 
@@ -74,8 +78,8 @@ Para las pruebas de integración: levanta solo `mysql` con `compose.debug.yaml` 
 ## Reglas de base de datos
 
 - Spring es dueño de las tablas principales. FastAPI es dueño de `pasaporte`, `pasaporte_acceso` y también de `reporte_generado` (la bitácora de reportes). Spring no tiene entidades JPA para esas tres tablas ni permisos sobre ellas.
-- Cada servicio usa su propio usuario MySQL con permisos mínimos: `vetlink_spring` y `vetlink_fast`, creados en `00-init.sh`. Las apps nunca usan root. Si FastAPI necesita leer una tabla o columna nueva, hay que agregar el `GRANT` en el init y en la migración.
-- Migraciones: scripts SQL versionados en `database/migrations/`, sin Flyway. `00-init.sh` los aplica en orden y solo cuando el volumen de MySQL está vacío. Una migración nueva se agrega a ese script. Para bases que ya existen se hace un `database/aplicar_VN.sh` con respaldo, igual que V8 y V9. No re-ejecutar migraciones a mano.
+- Cada servicio usa su propio usuario MySQL con permisos mínimos: `vetlink_spring` y `vetlink_fast`, creados y actualizados por `scripts/migrate.sh` en cada arranque. Las apps nunca usan root. Si FastAPI necesita leer una tabla o columna nueva, hay que agregar el `GRANT` en `database/permisos_fastapi.sql`.
+- Migraciones: scripts SQL versionados en `database/migrations/`, sin Flyway. `database/migraciones.txt` es la fuente de verdad del orden. El servicio `migrate` (`scripts/migrate.sh`) corre en cada `docker compose up` antes de Spring y FastAPI: aplica solo lo pendiente, lo registra en la tabla `vetlink_migracion`, respalda antes en `respaldos/` y se detiene si algo falla (y entonces Spring no arranca). Una migración nueva se agrega como línea nueva al final de `migraciones.txt`; no se editan migraciones ya aplicadas (cambia su checksum). Las bases anteriores al historial se adoptan solas. No re-ejecutar migraciones a mano.
 - `mydb.sql` ya trae casi todo V2–V4, por eso el init no aplica V2–V4. Aplicarlas encima de `mydb.sql` falla.
 - Hibernate trabaja con `ddl-auto=validate` en `application.properties` y en Compose. Nunca `update` ni `create`. Toda columna nueva necesita su migración; sin ella Spring no arranca (error `Schema-validation`). La única excepción es el perfil de pruebas: H2 en memoria con `create-drop`.
 - Los nombres de columna son camelCase (`PhysicalNamingStrategyStandardImpl`). Todo trabaja en hora `America/Bogota`. En código nuevo usa el `Clock` de `comun/config/RelojConfig`.
@@ -88,7 +92,7 @@ Para las pruebas de integración: levanta solo `mysql` con `compose.debug.yaml` 
 - No digas que un test pasó sin haberlo corrido y visto el resultado.
 - Haz cambios mínimos y no toques configuración que no tenga relación con la tarea.
 - Nunca leas, pidas ni muestres los secretos del `.env`. Eso incluye `docker compose config`, que los imprime.
-- Nunca borres volúmenes (`docker compose down -v`) sin explicar antes qué se pierde: toda la base de datos y las fotos y adjuntos subidos (`vetlink_uploads`).
+- Nunca borres volúmenes (`docker compose down -v`) sin explicar antes qué se pierde: toda la base de datos y las fotos y adjuntos subidos (`vetlink_uploads`). Para reiniciar solo la base usa `bash scripts/reset-db.sh` (respalda antes y conserva los uploads).
 - Avisa si un cambio toca el área de otro integrante: el contrato Spring ↔ FastAPI, las migraciones o los GRANT, Nginx, `compose.yaml`.
 
 ## Git

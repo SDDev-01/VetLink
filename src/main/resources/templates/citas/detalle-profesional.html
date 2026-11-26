@@ -86,7 +86,12 @@
             <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
                 <div class="vl-panel">
                     <div class="vl-panel-head"><h3><i class="fas fa-file-lines" aria-hidden="true"></i> Información</h3>
-                        <span th:replace="~{layout/dashboard-shell :: estado(${cita.estado})}"></span></div>
+                        <span class="vl-row" style="gap:6px">
+                            <span th:if="${cita.respuestaDuenio != null}" class="vl-badge"
+                                  th:classappend="${cita.respuestaDuenio.name() == 'PENDIENTE'} ? 'vl-badge-warn' : (${cita.respuestaDuenio.name() == 'CONFIRMADA'} ? 'vl-badge-ok' : 'vl-badge-muted')"
+                                  th:text="${cita.respuestaDuenio.name() == 'PENDIENTE'} ? 'Esperando respuesta del dueño' : ${cita.respuestaDuenio.etiqueta}"></span>
+                            <span th:replace="~{layout/dashboard-shell :: estado(${cita.estado})}"></span>
+                        </span></div>
                     <dl class="vl-dl">
                         <th:block th:if="${cita.mascota != null}">
                             <div><dt>Mascota</dt><dd th:text="${cita.mascota.nombre}"></dd></div>

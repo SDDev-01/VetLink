@@ -35,13 +35,15 @@
                             <small class="vl-error" th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
                         </div>
 
-                        <!-- DUE-01: en la edición especie, género y fecha de nacimiento se muestran pero no se editan -->
+                        <!-- DUE-01: en la edición especie, raza, género y fecha de nacimiento se muestran pero no se editan -->
                         <th:block th:if="${editando}">
                             <div class="vl-field">
                                 <span class="vl-label">Especie <i class="fas fa-lock vl-lock" aria-hidden="true"></i></span>
                                 <div class="vl-readonly" th:text="${mascotaActual.especie.nombreEspecie}">Especie</div>
-                                <input type="hidden" id="pet-especie-sel" th:value="${mascotaActual.especie.idEspecie}"
-                                       data-especie-de="pet-raza-sel" data-otra-raza="pet-otra-raza">
+                            </div>
+                            <div class="vl-field">
+                                <span class="vl-label">Raza <i class="fas fa-lock vl-lock" aria-hidden="true"></i></span>
+                                <div class="vl-readonly" th:text="${mascotaActual.raza.nombreRaza}">Raza</div>
                             </div>
                             <div class="vl-field">
                                 <span class="vl-label">Género <i class="fas fa-lock vl-lock" aria-hidden="true"></i></span>
@@ -52,13 +54,13 @@
                                 <div class="vl-readonly" th:text="${@fmt.fecha(mascotaActual.fechaNacimiento)}">Fecha</div>
                             </div>
                             <p class="vl-small vl-muted vl-full" style="margin:-6px 0 0"><i class="fas fa-circle-info" aria-hidden="true"></i>
-                                La especie, el género y la fecha de nacimiento no se pueden modificar después del registro.</p>
+                                La especie, la raza, el género y la fecha de nacimiento no se pueden modificar después del registro.</p>
                         </th:block>
 
                         <th:block th:unless="${editando}">
                             <div class="vl-field">
                                 <label for="pet-especie-sel">Especie *</label>
-                                <select th:field="*{idEspecie}" id="pet-especie-sel" data-especie-de="pet-raza-sel" data-otra-raza="pet-otra-raza" required>
+                                <select th:field="*{idEspecie}" id="pet-especie-sel" data-especie-de="pet-raza-sel" required>
                                     <option value="">Selecciona</option>
                                     <option th:each="e : ${especies}" th:value="${e.idEspecie}" th:text="${e.nombreEspecie}"></option>
                                 </select>
@@ -79,23 +81,17 @@
                                 <small class="vl-hint">No se podrá cambiar después del registro.</small>
                                 <small class="vl-error" th:if="${#fields.hasErrors('fechaNacimiento')}" th:errors="*{fechaNacimiento}"></small>
                             </div>
+                            <div class="vl-field">
+                                <label for="pet-raza-sel">Raza *</label>
+                                <select th:field="*{idRaza}" id="pet-raza-sel" required>
+                                    <option value="">Seleccione una raza</option>
+                                    <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}"
+                                            th:attr="data-especie=${r.especie.idEspecie}"></option>
+                                </select>
+                                <small class="vl-hint">Si no está en la lista, elige «Otra». No se podrá cambiar después del registro.</small>
+                                <small class="vl-error" th:if="${#fields.hasErrors('idRaza')}" th:errors="*{idRaza}"></small>
+                            </div>
                         </th:block>
-
-                        <div class="vl-field">
-                            <label for="pet-raza-sel">Raza *</label>
-                            <select th:field="*{idRaza}" id="pet-raza-sel" required>
-                                <option value="">Seleccione una raza</option>
-                                <option th:each="r : ${razas}" th:value="${r.idRaza}" th:text="${r.nombreRaza}"
-                                        th:attr="data-especie=${r.especie.idEspecie}"></option>
-                            </select>
-                            <small class="vl-error" th:if="${#fields.hasErrors('idRaza')}" th:errors="*{idRaza}"></small>
-                        </div>
-                        <div class="vl-field" id="pet-otra-raza" hidden>
-                            <label for="pet-raza-otra">Nombre de la raza *</label>
-                            <input type="text" id="pet-raza-otra" th:field="*{razaPersonalizada}" maxlength="45" placeholder="Ej.: Pastor Catalán">
-                            <small class="vl-hint">Si ya existe en el catálogo, se usará la registrada.</small>
-                            <small class="vl-error" th:if="${#fields.hasErrors('razaPersonalizada')}" th:errors="*{razaPersonalizada}"></small>
-                        </div>
                         <div class="vl-field">
                             <label for="pet-peso">Peso (kg) *</label>
                             <input type="number" id="pet-peso" step="0.01" min="0.01" max="1500" th:field="*{peso}" required>

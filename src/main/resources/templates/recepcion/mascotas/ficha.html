@@ -41,7 +41,11 @@
                 </div>
                 <div class="vl-panel">
                     <h3><i class="fas fa-weight-scale" aria-hidden="true"></i> Actualizar peso</h3>
-                    <form th:action="@{'/recepcion/mascotas/' + ${mascota.idMascota} + '/peso'}" method="post"
+                    <div class="vl-solo-lectura" th:if="${mascota.fallecida}" role="status">
+                        <i class="fas fa-dove" aria-hidden="true"></i>
+                        <span>Mascota registrada como fallecida: su ficha es de solo lectura. El historial se conserva para consulta.</span>
+                    </div>
+                    <form th:unless="${mascota.fallecida}" th:action="@{'/recepcion/mascotas/' + ${mascota.idMascota} + '/peso'}" method="post"
                           th:attr="data-confirm=${'Se actualizará el peso de ' + mascota.nombre + '. Quedará registrado quién y cuándo hizo el cambio.'}"
                           data-confirm-title="¿Actualizar el peso?" data-confirm-ok="Actualizar">
                         <div class="vl-field">

@@ -22,7 +22,7 @@ public interface HistorialClinicoRepository extends JpaRepository<HistorialClini
     /** VL-12: mismo orden que listarPorMascotaRecientes, para todas las mascotas de un dueño. */
     @Query("""
            select h from HistorialClinico h
-           where h.mascota.tutor.idUsuario = :idTutor
+           where h.mascota.tutor.idUsuario = :idTutor and h.mascota.estado = 1
            order by h.fechaRegistro desc nulls last, h.numeroHistorial desc
            """)
     List<HistorialClinico> listarPorTutorRecientes(@Param("idTutor") Integer idTutor);

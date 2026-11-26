@@ -272,6 +272,7 @@ public class GestionMascotaService {
             throw new IllegalArgumentException("Ingresa un peso mayor que cero");
         }
         Mascota m = mascotas.bloquear(idMascota).orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
+        m.exigirEditable();
         Double anterior = m.getPeso();
         double redondeado = Math.round(peso * 100.0) / 100.0;
         m.setPeso(redondeado);
@@ -335,7 +336,7 @@ public class GestionMascotaService {
     }
 
     private static void exigirDuenio(Mascota m, Integer idTutor) {
-        if (!m.getTutor().getIdUsuario().equals(idTutor)) {
+        if (!com.vetlink.security.AccesoPacienteService.esDuenioVigente(m, idTutor)) {
             throw new AccessDeniedException("No tienes permiso sobre esta mascota");
         }
     }

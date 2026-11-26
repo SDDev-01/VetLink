@@ -114,7 +114,8 @@ cliente no puede falsificarlos.
 | `pasaporte` | FastAPI (`vetlink_fast`) | FastAPI |
 | `pasaporte_acceso` | FastAPI (`vetlink_fast`) | FastAPI |
 
-Permisos de `vetlink_fast` (los crea `database/init/00-init.sh`):
+Permisos de `vetlink_fast` (los aplica `scripts/migrate.sh` en cada arranque, desde
+`database/permisos_fastapi.sql` y `database/migrations/V8_permisos_fastapi.sql`):
 `SELECT, INSERT, UPDATE` sobre `pasaporte` y `pasaporte_acceso`; `SELECT` sobre
 las tablas y columnas de la sección 5. Sin `DELETE` ni `DROP`.
 
@@ -125,7 +126,7 @@ de `docs-service` las consulta todas.
 
 | Tabla | Columnas |
 |---|---|
-| `mascota` | `idMascota`, `nombre`, `idEspecie`, `idRaza`, `genero`, `fechaNacimiento`, `peso` |
+| `mascota` | `idMascota`, `nombre`, `idEspecie`, `idRaza`, `genero`, `fechaNacimiento`, `peso`; reportes PDF: también `situacion`, `estado` y `Tutor_idUsuario` (acceso del dueño: solo su mascota con `estado = 1`) |
 | `especie` | `idEspecie`, `nombreEspecie` |
 | `raza` | `idRaza`, `nombreRaza` |
 | `carnet_vacuna` | `idCarnet`, `idMascota`, `idVacuna`, `fechaAplicacion`, `proximaDosis`, `dosis` |

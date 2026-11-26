@@ -58,6 +58,7 @@ public class FotoMascotaService {
         if (!hayArchivo(archivo)) {
             return;
         }
+        mascota.exigirEditable();
         String ext = extension(archivo).orElseThrow();
         String relativa = "mascotas/" + mascota.getIdMascota() + "/" + UUID.randomUUID() + "." + ext;
         Path destino = resolver(relativa);

@@ -5,17 +5,14 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
-      MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
-      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
       # Hora de Colombia para NOW()/CURRENT_TIMESTAMP (Spring y FastAPI trabajan en esa zona).
       TZ: America/Bogota
     # Sin puertos publicados: solo Nginx sale al exterior.
     # Para depurar desde el equipo: docker compose -f compose.yaml -f compose.debug.yaml up
+    # MySQL solo crea la base vacía; las tablas, los datos y los usuarios de aplicación
+    # los crea el servicio «migrate» (scripts/migrate.sh).
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./database:/database:ro,Z
-      - ./database/init/00-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro,Z
     networks:
       - vetlink_net
     healthcheck:
@@ -26,6 +23,37 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+
+  # Crea o actualiza la base (migraciones pendientes, datos demo, usuarios y permisos) y termina.
+  # Corre en cada «docker compose up»; si no hay nada pendiente, no cambia nada.
+  # Spring y FastAPI solo arrancan si termina con éxito (código 0).
+  # A mano: bash scripts/migrate.sh  (o --estado para ver las pendientes).
+  migrate:
+    image: mysql:8.4
+    restart: "no"
+    entrypoint: ["bash", "/vetlink/scripts/migrate.sh"]
+    environment:
+      VETLINK_MIGRATE_EN_CONTENEDOR: "1"
+      VETLINK_DATABASE_DIR: /vetlink/database
+      VETLINK_RESPALDOS_DIR: /vetlink/respaldos
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_SPRING_PASSWORD: ${MYSQL_SPRING_PASSWORD}
+      MYSQL_FAST_PASSWORD: ${MYSQL_FAST_PASSWORD}
+      RUN_DEMO_SEED: ${RUN_DEMO_SEED:-false}
+      TZ: America/Bogota
+    volumes:
+      - ./database:/vetlink/database:ro,Z
+      - ./scripts:/vetlink/scripts:ro,Z
+      # Respaldo automático antes de aplicar migraciones sobre una base con datos.
+      - ./respaldos:/vetlink/respaldos:Z
+    networks:
+      - vetlink_net
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   spring:
     build:
@@ -57,9 +85,12 @@ services:
       - vetlink_net
     # Spring no espera a FastAPI: si el servicio de pasaportes falla,
     # el resto de la aplicación sigue funcionando.
+    # Sí espera a «migrate»: si una migración falla, Spring no arranca contra una base a medias.
     depends_on:
       mysql:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   fastapi:
     build:
@@ -101,6 +132,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   nginx:
     image: nginx:1.30-alpine

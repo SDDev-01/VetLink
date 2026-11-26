@@ -28,7 +28,7 @@
 
             <p class="form-message" style="color:#16a34a" th:if="${param.agendada}">Cita agendada.</p>
             <p class="form-message" style="color:#16a34a" th:if="${param.cancelada}">Cita cancelada.</p>
-            <p class="form-message" style="color:#16a34a" th:if="${param.reagendada}">Cita reprogramada. La cita original quedó como «Reprogramada».</p>
+            <p class="form-message" style="color:#16a34a" th:if="${param.reagendada}">Cita reprogramada. Se notificó al dueño para que confirme el nuevo horario, elija otro o cancele.</p>
             <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
 
             <form th:action="@{/reportes/citas}" th:object="${filtro}" method="get" class="vl-table-wrap" style="padding:20px; margin-bottom:20px;">

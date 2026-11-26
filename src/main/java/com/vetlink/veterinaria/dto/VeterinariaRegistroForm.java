@@ -19,22 +19,29 @@ import java.util.List;
 public class VeterinariaRegistroForm {
 
     @NotBlank(message = "El NIT es obligatorio")
+    @Pattern(regexp = "^$|\\d{9,11}", message = "El NIT debe tener entre 9 y 11 dígitos, sin puntos ni guiones")
     private String nit;
 
     @NotBlank(message = "El nombre comercial es obligatorio")
+    @Size(min = 3, max = 50, message = "El nombre comercial debe tener entre 3 y 50 caracteres")
     private String nombre;
 
     @NotBlank(message = "El telefono corporativo es obligatorio; ingresa entre 7 y 15 dígitos")
+    @Pattern(regexp = "^$|\\d{7,15}", message = "El teléfono corporativo debe tener entre 7 y 15 dígitos, sin espacios ni guiones")
     private String telefono;
 
     @NotBlank(message = "El correo de la empresa es obligatorio")
     @Email(message = "Ingresa un correo válido, por ejemplo clinica@dominio.com")
+    @Size(max = 45, message = "El correo de la empresa puede tener máximo 45 caracteres")
     private String correo;
 
+    @Size(max = 50, message = "La página web puede tener máximo 50 caracteres")
+    @Pattern(regexp = "^$|(?i)https?://[^\\s.]+\\.\\S{2,}", message = "Escribe la dirección completa de la página web, por ejemplo https://www.tuweb.com")
     private String paginaWeb;
     private String descripcion;
 
     @NotBlank(message = "La direccion es obligatoria")
+    @Size(min = 5, message = "Ingresa una dirección válida (mínimo 5 caracteres)")
     private String direccion;
 
     @NotNull(message = "Selecciona una ciudad")
@@ -55,11 +62,21 @@ public class VeterinariaRegistroForm {
     @Getter
     @Setter
     public static class ServicioOfrecidoForm {
-        @NotNull(message = "Selecciona un servicio")
+        /** Servicio del catálogo; null cuando se eligió «Otros» y se escribió el nombre. */
         private Integer idServicio;
-        @NotNull(message = "Indica un precio")
-        @PositiveOrZero
+        /** Opción «Otros»: nombre de un servicio que no está en el catálogo. */
+        @Size(max = 45, message = "El nombre del servicio puede tener máximo 45 caracteres")
+        private String nombrePersonalizado;
+        @PositiveOrZero(message = "El precio no puede ser negativo")
         private Double precio;
+
+        public boolean esPersonalizado() {
+            return idServicio == null && nombrePersonalizado != null && !nombrePersonalizado.isBlank();
+        }
+
+        public boolean estaVacio() {
+            return idServicio == null && (nombrePersonalizado == null || nombrePersonalizado.isBlank());
+        }
     }
 
     @Getter

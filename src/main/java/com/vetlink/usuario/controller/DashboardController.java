@@ -97,7 +97,7 @@ public class DashboardController {
         List<Mascota> mascotas = mascotaRepository.findByTutor_IdUsuarioAndEstado(idTutor, (byte) 1);
         List<Cita> proximas = citaRepository.proximasAgendadasDeTutor(idTutor, hoy, ahora.toLocalTime());
         List<Cita> todasCitas = new ArrayList<>(proximas);
-        citaRepository.findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(idTutor).stream()
+        citaRepository.deTutorConMascotaVigente(idTutor).stream()
                 .filter(c -> !EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()))
                 .forEach(todasCitas::add);
         var vacunasPendientes = carnetVacunaRepository.pendientesDeTutorHasta(idTutor, hoy.plusDays(30));

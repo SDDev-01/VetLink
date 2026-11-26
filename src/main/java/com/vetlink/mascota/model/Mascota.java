@@ -86,14 +86,44 @@ public class Mascota {
         return Math.max(p.getDays(), 0) + " días";
     }
 
+    /**
+     * ¿Registro vigente? Las dadas de baja (estado 0, borrado lógico de versiones anteriores,
+     * p. ej. «Max» del seed de mydb.sql) ya no forman parte de las mascotas del dueño: no salen
+     * en «Mis mascotas» ni en ninguna otra vista del dueño, y no se consultan por URL directa.
+     * Las fallecidas sí son vigentes (conservan su historial en solo lectura).
+     */
+    @Transient
+    public boolean isVigente() {
+        return estado != null && estado == 1;
+    }
+
     /** ¿Se le pueden agendar citas? Registro activo y no fallecida. */
     @Transient
     public boolean isAgendable() {
-        return estado != null && estado == 1 && situacion != SituacionMascota.FALLECIDA;
+        return isVigente() && situacion != SituacionMascota.FALLECIDA;
     }
 
     @Transient
     public SituacionMascota getSituacionSegura() {
         return situacion == null ? SituacionMascota.ACTIVA : situacion;
+    }
+
+    public static final String MENSAJE_SOLO_LECTURA =
+            "La mascota está registrada como fallecida: su ficha es de solo lectura. Su historial se conserva para consulta.";
+
+    @Transient
+    public boolean isFallecida() {
+        return situacion == SituacionMascota.FALLECIDA;
+    }
+
+    /** ¿Se pueden modificar sus datos? Una mascota fallecida queda en solo lectura. */
+    @Transient
+    public boolean isEditable() {
+        return !isFallecida();
+    }
+
+    /** Barrera del backend: ninguna modificación de datos sobre una mascota fallecida. */
+    public void exigirEditable() {
+        if (isFallecida()) throw new IllegalStateException(MENSAJE_SOLO_LECTURA);
     }
 }

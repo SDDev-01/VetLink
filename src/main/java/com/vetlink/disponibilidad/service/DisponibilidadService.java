@@ -199,6 +199,22 @@ public class DisponibilidadService {
      */
     public List<Cita> cuposReservables(Integer idVeterinaria, Integer idServicio, Integer idVeterinario,
                                       LocalDate desde, LocalDate hasta, Integer idMascota, Integer ignorarCita) {
+        return buscarCupos(idVeterinaria, idServicio, idVeterinario, desde, hasta, idMascota, ignorarCita, Integer.MAX_VALUE);
+    }
+
+    /** El primer cupo reservable (en orden de fecha y hora) o vacío; se detiene al encontrarlo. */
+    @Transactional(readOnly = true)
+    public Optional<Cita> primerCupoReservable(Integer idVeterinaria, Integer idServicio, LocalDate desde, LocalDate hasta) {
+        return buscarCupos(idVeterinaria, idServicio, null, desde, hasta, null, null, 1).stream().findFirst();
+    }
+
+    /**
+     * Rendimiento: las ausencias aprobadas de cada veterinario se cargan UNA vez para todo el
+     * rango (antes se consultaban por cada cupo candidato) y las citas que ocupan horario se
+     * cargan una vez por veterinario y día. Las reglas son las mismas.
+     */
+    private List<Cita> buscarCupos(Integer idVeterinaria, Integer idServicio, Integer idVeterinario,
+                                   LocalDate desde, LocalDate hasta, Integer idMascota, Integer ignorarCita, int maximo) {
         LocalDateTime limite = ahora().plusMinutes(reglas.anticipacionMinimaReservaMin());
         LocalDate inicio = desde.isBefore(limite.toLocalDate()) ? limite.toLocalDate() : desde;
         if (hasta.isBefore(inicio)) return List.of();
@@ -207,17 +223,21 @@ public class DisponibilidadService {
         Map<String, List<Cita>> ocupadasVet = new HashMap<>();
         Map<LocalDate, List<Cita>> ocupadasMascota = new HashMap<>();
         Map<Integer, Boolean> autorizado = new HashMap<>();
+        Map<Integer, List<AusenciaVeterinario>> ausenciasVet = new HashMap<>();
+        LocalDateTime rangoIni = inicio.atStartOfDay();
+        LocalDateTime rangoFin = hasta.plusDays(1).atStartOfDay();
         List<Cita> r = new ArrayList<>();
         for (Cita c : candidatos) {
+            if (r.size() >= maximo) break;
             if (c.getInicio().isBefore(limite)) continue;
             Usuario vet = c.getVeterinario();
             if (!vet.isActivo()) continue;
             boolean aut = autorizado.computeIfAbsent(vet.getIdUsuario(),
                     id -> !tieneServiciosAutorizados(id) || autorizadoPara(id, idServicio));
             if (!aut) continue;
-            if (!ausencias.enIntervalo(vet.getIdUsuario(), EstadoAprobacion.APROBADO, c.getInicio(), c.getFin()).isEmpty()) {
-                continue;
-            }
+            List<AusenciaVeterinario> aus = ausenciasVet.computeIfAbsent(vet.getIdUsuario(),
+                    id -> ausencias.enIntervalo(id, EstadoAprobacion.APROBADO, rangoIni, rangoFin));
+            if (aus.stream().anyMatch(a -> a.cubre(c.getInicio(), c.getFin()))) continue;
             List<Cita> ov = ocupadasVet.computeIfAbsent(vet.getIdUsuario() + "|" + c.getFecha(),
                     k -> citas.deVeterinarioEnFechaConEstados(vet.getIdUsuario(), c.getFecha(), EstadoCita.OCUPAN_HORARIO));
             if (ov.stream().anyMatch(o -> !o.getIdCita().equals(ignorarCita) && o.seSolapaCon(c.getInicio(), c.getFin()))) continue;
@@ -356,19 +376,54 @@ public class DisponibilidadService {
         return retirados;
     }
 
-    /** Citas reservadas que quedan fuera de la disponibilidad aprobada del veterinario. */
+    /**
+     * Citas reservadas que quedan fuera de la disponibilidad aprobada del veterinario, solo en
+     * su clínica actual (un veterinario que cambió de clínica puede conservar citas en otra:
+     * esas las gestiona la clínica dueña de la cita, ver {@link #citasAfectadasDeClinica}).
+     */
     @Transactional(readOnly = true)
     public List<Cita> citasAfectadas(Integer idVeterinario) {
         Veterinario v = veterinarios.findById(idVeterinario).orElseThrow();
+        Integer clinica = v.getVeterinaria() == null ? null : v.getVeterinaria().getIdVeterinaria();
         LocalDateTime ahora = ahora();
         Set<Integer> autorizados = serviciosAutorizados(idVeterinario);
         boolean exigirHorario = tieneHorarioAprobado(idVeterinario);
         return citas.deVeterinarioEntreConEstados(idVeterinario, ahora.toLocalDate(), ahora.toLocalDate().plusYears(1),
                         EstadoCita.RESERVAS_VIGENTES).stream()
+                .filter(c -> clinica != null && c.getVeterinaria().getIdVeterinaria().equals(clinica))
                 .filter(c -> c.getInicio().isAfter(ahora))
                 .filter(c -> !(autorizados.isEmpty() || autorizados.contains(c.getServicio().getIdServicio()))
                         || !disponibleEn(v.getUsuario(), c.getInicio(), c.getFin(), exigirHorario))
                 .sorted(Comparator.comparing(Cita::getInicio))
+                .toList();
+    }
+
+    /**
+     * Citas futuras (pendientes o confirmadas) de la clínica que necesitan reprogramarse: su
+     * veterinario ya no pertenece a la clínica o está inactivo, ya no está autorizado para el
+     * servicio, o el horario quedó fuera de su disponibilidad (horario, ausencia o bloqueo).
+     * Solo devuelve citas de esa clínica: la recepción nunca ve citas de otra veterinaria.
+     */
+    @Transactional(readOnly = true)
+    public List<Cita> citasAfectadasDeClinica(Integer idClinica) {
+        LocalDateTime ahora = ahora();
+        Map<Integer, Set<Integer>> autorizadosPorVet = new HashMap<>();
+        Map<Integer, Boolean> horarioPorVet = new HashMap<>();
+        return citas.findByVeterinaria_IdVeterinariaAndEstadoInAndFechaGreaterThanEqualOrderByFechaAscHoraAsc(
+                        idClinica, EstadoCita.RESERVAS_VIGENTES, ahora.toLocalDate()).stream()
+                .filter(c -> c.getMascota() != null && c.getInicio().isAfter(ahora))
+                .filter(c -> {
+                    Usuario vet = c.getVeterinario();
+                    if (vet.getVeterinario() == null || vet.getVeterinario().getVeterinaria() == null
+                            || !vet.getVeterinario().getVeterinaria().getIdVeterinaria().equals(idClinica)
+                            || !vet.isActivo()) {
+                        return true;
+                    }
+                    Set<Integer> aut = autorizadosPorVet.computeIfAbsent(vet.getIdUsuario(), this::serviciosAutorizados);
+                    if (!aut.isEmpty() && !aut.contains(c.getServicio().getIdServicio())) return true;
+                    boolean exigir = horarioPorVet.computeIfAbsent(vet.getIdUsuario(), this::tieneHorarioAprobado);
+                    return !disponibleEn(vet, c.getInicio(), c.getFin(), exigir);
+                })
                 .toList();
     }
 

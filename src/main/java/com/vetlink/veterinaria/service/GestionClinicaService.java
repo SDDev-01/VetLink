@@ -47,7 +47,6 @@ public class GestionClinicaService {
 
     public static final Set<String> TURNOS = Set.of("MAÑANA", "TARDE", "NOCHE", "COMPLETO");
     private static final Pattern CORREO = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
-    private static final Pattern NOMBRE_SERVICIO = Pattern.compile("^(?=.*\\p{L})[\\p{L}\\p{M}0-9 '’.,()/+\\-]{3,45}$");
 
     private final VeterinariaRepository veterinarias;
     private final UsuarioRepository usuarios;
@@ -60,6 +59,7 @@ public class GestionClinicaService {
     private final SolicitudDisponibilidadService solicitudes;
     private final DisponibilidadService disponibilidad;
     private final AuditoriaService auditoria;
+    private final CatalogoServiciosService catalogoServicios;
     private final Clock reloj;
 
     public GestionClinicaService(VeterinariaRepository veterinarias, UsuarioRepository usuarios,
@@ -67,7 +67,7 @@ public class GestionClinicaService {
                                  ServicioVeterinariaRepository serviciosClinica, TelefonoVeterinariaRepository telefonos,
                                  CorreoVeterinariaRepository correos, CitaRepository citas,
                                  SolicitudDisponibilidadService solicitudes, DisponibilidadService disponibilidad,
-                                 AuditoriaService auditoria, Clock reloj) {
+                                 AuditoriaService auditoria, CatalogoServiciosService catalogoServicios, Clock reloj) {
         this.veterinarias = veterinarias;
         this.usuarios = usuarios;
         this.recepcionistas = recepcionistas;
@@ -79,6 +79,7 @@ public class GestionClinicaService {
         this.solicitudes = solicitudes;
         this.disponibilidad = disponibilidad;
         this.auditoria = auditoria;
+        this.catalogoServicios = catalogoServicios;
         this.reloj = reloj;
     }
 
@@ -155,30 +156,24 @@ public class GestionClinicaService {
     // ------------------------------------------------------------------
 
     /**
-     * Agrega un servicio al catálogo de la clínica. Si ya existe en el catálogo general con el
-     * mismo nombre (sin importar mayúsculas ni espacios) se reutiliza; no se duplican servicios.
+     * Agrega un servicio al catálogo de la clínica: uno del catálogo general (idServicio) o, con
+     * la opción «Otros», uno escrito por la recepción (nombre). Un «Otros» que ya existe en el
+     * catálogo (sin importar mayúsculas, espacios ni tildes) se reutiliza: no se duplican servicios.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ServicioVeterinaria agregarServicio(Usuario recepcionista, String nombre, String descripcion, Double precio,
-                                               Integer duracion, Servicio.TipoRegistro tipoRegistro) {
+    public ServicioVeterinaria agregarServicio(Usuario recepcionista, Integer idServicio, String nombre, String descripcion,
+                                               Double precio, Integer duracion, Servicio.TipoRegistro tipoRegistro) {
         Veterinaria v = clinicaDe(recepcionista);
-        String n = Textos.capitalizarPalabras(nombre);
-        if (n == null || !NOMBRE_SERVICIO.matcher(n).matches()) {
-            throw new IllegalArgumentException("Escribe un nombre de servicio válido (3 a 45 caracteres)");
-        }
         validarPrecioDuracion(precio, duracion);
-        String clave = Textos.claveComparacion(n);
-        Servicio servicio = servicios.findAll().stream()
-                .filter(s -> Textos.claveComparacion(s.getNombreServicio()).equals(clave))
-                .findFirst()
-                .orElseGet(() -> {
-                    Servicio s = new Servicio();
-                    s.setNombreServicio(n);
-                    s.setDescripcion(descripcion == null || descripcion.isBlank() ? null : descripcion.strip());
-                    s.setTipoRegistro(tipoRegistro == null ? Servicio.TipoRegistro.CLINICO : tipoRegistro);
-                    s.setEsEmergencia(false);
-                    return servicios.save(s);
-                });
+        Servicio servicio;
+        if (idServicio != null) {
+            servicio = servicios.findById(idServicio)
+                    .orElseThrow(() -> new IllegalArgumentException("Selecciona un servicio del listado"));
+        } else if (nombre != null && !nombre.isBlank()) {
+            servicio = catalogoServicios.obtenerOCrear(nombre, descripcion, tipoRegistro);
+        } else {
+            throw new IllegalArgumentException("Selecciona un servicio del listado o elige «Otros» y escribe su nombre");
+        }
         if (serviciosClinica.existsById(new ServicioVeterinariaId(servicio.getIdServicio(), v.getIdVeterinaria()))) {
             throw new IllegalArgumentException("«" + servicio.getNombreServicio() + "» ya está en el catálogo de tu veterinaria");
         }
@@ -192,6 +187,18 @@ public class GestionClinicaService {
                 "veterinaria=" + v.getIdVeterinaria());
         disponibilidad.generarAgendaClinica(v.getIdVeterinaria());
         return sv;
+    }
+
+    /** Catálogo general de servicios (opciones del selector). */
+    public java.util.List<Servicio> catalogoServicios() {
+        return catalogoServicios.catalogo();
+    }
+
+    /** Compatibilidad: agregar por nombre (equivale a la opción «Otros»). */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ServicioVeterinaria agregarServicio(Usuario recepcionista, String nombre, String descripcion, Double precio,
+                                               Integer duracion, Servicio.TipoRegistro tipoRegistro) {
+        return agregarServicio(recepcionista, null, nombre, descripcion, precio, duracion, tipoRegistro);
     }
 
     /** Cambia precio y duración. Si cambia la duración, los cupos libres futuros se regeneran con la nueva. */

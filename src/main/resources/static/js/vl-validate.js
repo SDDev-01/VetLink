@@ -14,6 +14,10 @@
      data-tipo="telefono"      solo dígitos (7 a 15)
      data-no-pasado            fecha/fecha-hora no anterior a hoy/ahora
    Para excluir un formulario: data-sin-validacion
+   Errores del servidor (th:errors con clase vl-error, vl-field-error o error-text junto al
+   campo): se reutilizan como mensaje del campo y desaparecen en cuanto el valor cambia y
+   pasa las validaciones del cliente. Un resumen con data-vl-resumen-errores se oculta
+   cuando ya no queda ningún campo inválido.
    ========================================================= */
 (function () {
     'use strict';
@@ -35,9 +39,68 @@
         return el.closest('.vl-field, .form-group, .input-group, .field, .vl-col') || el.parentElement;
     }
 
+    /* Mensajes que pinta el servidor (Thymeleaf th:errors) junto al campo. */
+    var SELECTOR_ERROR_SERVIDOR = '.vl-error, .vl-field-error, .error-text';
+
+    /**
+     * Busca el mensaje de error que el servidor dejó para este campo. Solo se adopta si
+     * pertenece sin ambigüedad al campo: es un hermano posterior antes del siguiente
+     * campo, o el contenedor tiene un único campo (o un único grupo de radios).
+     */
+    function errorDelServidor(el) {
+        if (el.type === 'radio' || el.type === 'checkbox') return null;
+        var sig = el.nextElementSibling;
+        while (sig && !sig.matches(SELECTOR)) {
+            if (sig.matches(SELECTOR_ERROR_SERVIDOR) && !sig._vlPropio) return sig;
+            sig = sig.nextElementSibling;
+        }
+        var cont = contenedor(el);
+        if (!cont || cont.tagName === 'FORM') return null;
+        var campos = cont.querySelectorAll(SELECTOR);
+        if (campos.length !== 1) return null;
+        var err = cont.querySelector(SELECTOR_ERROR_SERVIDOR);
+        return err && !err._vlPropio ? err : null;
+    }
+
+    /**
+     * Si el servidor rechazó el campo, se adopta su mensaje como el del campo (así no se
+     * acumulan dos mensajes) y se recuerda el valor rechazado: el aviso del servidor sigue
+     * visible solo mientras el campo conserve ese valor.
+     */
+    function adoptarErrorServidor(el) {
+        if (el._vlAdoptado) return;
+        el._vlAdoptado = true;
+        var err = errorDelServidor(el);
+        if (!err) return;
+        err._vlPropio = true;
+        if (!err.id) err.id = 'vlerr-srv-' + (++contador);
+        var desc = (el.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+        if (desc.indexOf(err.id) < 0) desc.push(err.id);
+        el.setAttribute('aria-describedby', desc.join(' '));
+        err.setAttribute('aria-live', 'polite');
+        el._vlError = err;
+        var texto = (err.textContent || '').trim();
+        if (texto) {
+            el._vlMsgServidor = texto;
+            el._vlValorServidor = el.value;
+            el._vlTocado = true;
+            el.classList.add('vl-invalid');
+            el.setAttribute('aria-invalid', 'true');
+        }
+    }
+
+    /** Resúmenes de errores del formulario (data-vl-resumen-errores): visibles solo si queda algún campo inválido. */
+    function actualizarResumen(form) {
+        var resumenes = form.querySelectorAll('[data-vl-resumen-errores]');
+        if (!resumenes.length) return;
+        var hayErrores = !!form.querySelector('.vl-invalid');
+        resumenes.forEach(function (r) { r.hidden = !hayErrores; });
+    }
+
     function spanError(el) {
         if (el._vlError) return el._vlError;
         var span = document.createElement('span');
+        span._vlPropio = true;
         span.className = 'vl-field-error';
         span.id = 'vlerr-' + (el.id || el.name || 'campo').replace(/[^\w-]/g, '') + '-' + (++contador);
         span.setAttribute('aria-live', 'polite');
@@ -135,18 +198,28 @@
         if (!forzar && !el._vlTocado) return true;
         var m = mensaje(el);
         if (m && el.dataset.msg && !/obligatorio/.test(m)) m = el.dataset.msg;
+        // Error que solo detecta el servidor (p. ej. documento ya registrado): sigue vigente
+        // mientras el valor sea el mismo que se rechazó; al cambiarlo, desaparece.
+        // No bloquea el envío: el servidor vuelve a decidir (puede depender de datos que cambiaron).
+        var soloServidor = false;
+        if (!m && el._vlMsgServidor) {
+            if (el.value === el._vlValorServidor) { m = el._vlMsgServidor; soloServidor = true; }
+            else el._vlMsgServidor = null;
+        }
         var span = spanError(el);
         span.textContent = m;
         el.classList.toggle('vl-invalid', !!m);
         el.classList.toggle('vl-valid', !m && (el.value || '').trim() !== '');
         if (m) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
-        return !m;
+        if (el.form) actualizarResumen(el.form);
+        return !m || soloServidor;
     }
 
     function enlazar(form) {
         if (form._vlValidado || form.hasAttribute('data-sin-validacion')) return;
         form._vlValidado = true;
         form.setAttribute('novalidate', 'novalidate');
+        form.querySelectorAll(SELECTOR).forEach(adoptarErrorServidor);
         form.addEventListener('focusout', function (e) {
             var el = e.target;
             if (!el.matches || !el.matches(SELECTOR)) return;

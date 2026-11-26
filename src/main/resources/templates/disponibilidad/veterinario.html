@@ -112,7 +112,8 @@
                             <input type="datetime-local" id="inicioA" name="inicio" required data-no-pasado></div>
                         <div class="vl-field"><label for="finA">Hasta *</label>
                             <input type="datetime-local" id="finA" name="fin" required data-no-pasado data-posterior-a="inicioA"
-                                   data-msg-posterior="La fecha final debe ser posterior a la inicial"></div>
+                                   data-msg-posterior="La fecha final debe ser posterior a la inicial" aria-describedby="ayuda-finA">
+                            <small class="vl-hint" id="ayuda-finA" hidden>Para un día de ausencia se completa con la misma fecha de «Desde»; puedes cambiarla.</small></div>
                     </div>
                     <div class="vl-form-actions">
                         <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar novedad</button>
@@ -290,6 +291,52 @@
                 var primero = form.querySelector('.vl-franja.invalida input, .vl-dia-error:not([hidden])');
                 if (primero && primero.focus) primero.focus();
                 (form.querySelector('.vl-dia-error:not([hidden])') || general).scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }, true);
+    })();
+</script>
+<script>
+    /* Registrar novedad · «Día de ausencia»: «Hasta» se autocompleta con la misma fecha de «Desde»
+       (hasta las 11:59 p. m. de ese día) mientras el usuario no la cambie a mano. Si la cambia,
+       se respeta su valor; la validación impide que quede antes de «Desde» (también en el servidor). */
+    (function () {
+        'use strict';
+        var tipo = document.getElementById('tipo');
+        var desde = document.getElementById('inicioA');
+        var hasta = document.getElementById('finA');
+        var ayuda = document.getElementById('ayuda-finA');
+        if (!tipo || !desde || !hasta) return;
+        var editadoAMano = false;
+        var ultimoAuto = '';
+
+        function esDiaAusencia() { return tipo.value === 'AUSENCIA'; }
+
+        function autocompletar() {
+            if (ayuda) ayuda.hidden = !esDiaAusencia();
+            if (!esDiaAusencia() || !desde.value) return;
+            if (editadoAMano && hasta.value && hasta.value !== ultimoAuto) return;
+            var fecha = desde.value.slice(0, 10);
+            ultimoAuto = fecha + 'T23:59';
+            hasta.value = ultimoAuto;
+            editadoAMano = false;
+            hasta.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        hasta.addEventListener('input', function () { editadoAMano = hasta.value !== ultimoAuto; });
+        hasta.addEventListener('change', function (e) { if (e.isTrusted) editadoAMano = hasta.value !== ultimoAuto; });
+        desde.addEventListener('change', autocompletar);
+        tipo.addEventListener('change', function () {
+            // Al pasar a «Día de ausencia» se propone la fecha si «Hasta» está vacío o no fue editado.
+            if (esDiaAusencia() && (!hasta.value || !editadoAMano)) { editadoAMano = false; }
+            autocompletar();
+        });
+        hasta.form.addEventListener('submit', function (e) {
+            if (desde.value && hasta.value && hasta.value <= desde.value) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                hasta.setCustomValidity('La fecha final debe ser posterior a la inicial');
+                hasta.reportValidity();
+                setTimeout(function () { hasta.setCustomValidity(''); }, 0);
             }
         }, true);
     })();

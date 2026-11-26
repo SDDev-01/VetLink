@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elegir otro horario | VetLink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="dashboard-body">
+<aside th:replace="~{layout/dashboard-shell :: sidebar('Panel', ${navItems}, ${seccionActiva})}"></aside>
+<main class="main-content">
+    <header th:replace="~{layout/dashboard-shell :: topbar(${usuario}, 'Buscar...')}"></header>
+    <section class="container">
+        <div class="vl-section vl-section-active">
+            <div class="vl-section-head">
+                <div>
+                    <h1>Elegir otro horario</h1>
+                    <p th:text="${cita.mascota.nombre} + ' · ' + ${cita.servicio.nombreServicio} + ' · ' + ${cita.veterinaria.nombre}"></p>
+                </div>
+                <a th:href="@{'/citas/' + ${cita.idCita}}" class="vl-btn vl-btn-ghost"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver a la cita</a>
+            </div>
+            <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
+
+            <div class="vl-panel">
+                <p class="vl-small vl-muted" style="margin-top:0">
+                    Horario propuesto por la clínica: <strong th:text="${@fmt.fechaLarga(cita.fecha)} + ', ' + ${@fmt.hora(cita.hora)}"></strong>.
+                    Solo se muestran horarios libres del mismo servicio, dentro de la jornada de los veterinarios y sin bloqueos ni ausencias.
+                    La clínica confirmará el horario que elijas.
+                </p>
+                <form th:unless="${#maps.isEmpty(cuposPorDia)}" th:action="@{'/citas/' + ${cita.idCita} + '/reprogramacion/modificar'}" method="post"
+                      data-un-envio data-confirm="Tu cita se moverá al horario elegido y quedará pendiente de confirmación de la clínica. El horario propuesto se liberará."
+                      data-confirm-title="¿Cambiar el horario?" data-confirm-ok="Enviar nuevo horario">
+                    <div class="vl-dias-cupos" role="radiogroup" aria-label="Horarios disponibles">
+                        <div class="vl-dia-cupos" th:each="dia : ${cuposPorDia}">
+                            <h4><i class="far fa-calendar" aria-hidden="true"></i> <span th:text="${@fmt.fechaLarga(dia.key)}"></span></h4>
+                            <div class="vl-cupo-opciones">
+                                <label class="vl-cupo-opcion" th:each="c : ${dia.value}">
+                                    <input type="radio" name="idCupoNuevo" th:value="${c.idCita}" required>
+                                    <span><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></small></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vl-barra-envio">
+                        <a th:href="@{'/citas/' + ${cita.idCita}}" class="vl-btn vl-btn-ghost">Cancelar</a>
+                        <button type="submit" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-check" aria-hidden="true"></i> Enviar nuevo horario</button>
+                    </div>
+                </form>
+                <div class="vl-empty-state" th:if="${#maps.isEmpty(cuposPorDia)}">
+                    <i class="fas fa-calendar-xmark" aria-hidden="true"></i>
+                    No hay otros horarios libres para este servicio en las próximas semanas. Puedes confirmar el horario propuesto o comunicarte con la clínica.
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<div th:replace="~{layout/dashboard-shell :: scripts}"></div>
+</body>
+</html>

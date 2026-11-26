@@ -87,7 +87,7 @@ public class RecepcionMascotaController {
                          @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
                          @RequestParam Integer idTutor, Model model) {
         if (form.getIdRaza() == null && !form.usaRazaPersonalizada()) {
-            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza o elige «Otra raza» y escríbela");
+            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza (si no está en la lista, elige «Otra»)");
         }
         if (result.hasErrors()) {
             recargarNueva(model, principal, idTutor);
@@ -137,7 +137,7 @@ public class RecepcionMascotaController {
             ra.addFlashAttribute("mensajeOk", "Peso actualizado.");
         } catch (NumberFormatException e) {
             ra.addFlashAttribute("errorGeneral", "Ingresa un peso mayor que cero");
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             ra.addFlashAttribute("errorGeneral", e.getMessage());
         }
         return "redirect:/recepcion/mascotas/" + id;

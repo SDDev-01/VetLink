@@ -25,7 +25,11 @@ class VL30TransicionCitaTest {
         assertThat(TransicionCita.permitida(EstadoCita.PENDIENTE, EstadoCita.CONFIRMADA, Actor.VETERINARIO)).isFalse();
         assertThat(TransicionCita.permitida(EstadoCita.CONFIRMADA, EstadoCita.EN_ATENCION, Actor.RECEPCIONISTA)).isFalse();
         assertThat(TransicionCita.permitida(EstadoCita.EN_ATENCION, EstadoCita.ATENDIDA, Actor.RECEPCIONISTA)).isFalse();
-        assertThat(TransicionCita.permitida(EstadoCita.CONFIRMADA, EstadoCita.REPROGRAMADA, Actor.TUTOR)).isFalse();
+        // V10: el dueño solo puede mover una cita CONFIRMADA a otro horario para responder a una
+        // reprogramación de la clínica (CitaServiceImpl.modificarReprogramacion lo exige). Una
+        // reserva PENDIENTE sigue sin poder reprogramarse desde el dueño.
+        assertThat(TransicionCita.permitida(EstadoCita.CONFIRMADA, EstadoCita.REPROGRAMADA, Actor.TUTOR)).isTrue();
+        assertThat(TransicionCita.permitida(EstadoCita.PENDIENTE, EstadoCita.REPROGRAMADA, Actor.TUTOR)).isFalse();
     }
 
     @Test

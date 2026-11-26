@@ -6,6 +6,7 @@ import com.vetlink.cita.dto.FiltroCitaForm;
 import com.vetlink.cita.dto.OfertarCitaForm;
 import com.vetlink.cita.model.Cita;
 import com.vetlink.cita.model.EstadoCita;
+import com.vetlink.cita.model.RespuestaDuenio;
 import com.vetlink.cita.model.TransicionCita;
 import com.vetlink.cita.model.TransicionCita.Actor;
 import com.vetlink.cita.repository.CitaRepository;
@@ -114,7 +115,7 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     public List<Cita> listarPorTutor(Integer idTutor) {
-        return citaRepository.findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(idTutor);
+        return citaRepository.deTutorConMascotaVigente(idTutor);
     }
 
     @Override
@@ -282,9 +283,16 @@ public class CitaServiceImpl implements CitaService {
             throw new SecurityException("No tienes permiso sobre esta cita");
         }
         Usuario tutor = usuarioRepository.findById(idTutor).orElseThrow();
+        boolean respondiaReprogramacion = cita.isEsperandoRespuestaDuenio();
         cancelarInterno(cita, Actor.TUTOR, tutor);
+        if (respondiaReprogramacion) {
+            cita.setRespuestaDuenio(RespuestaDuenio.CANCELADA);
+            cita.setRespuestaDuenioEn(ahora());
+            citaRepository.save(cita);
+        }
         notificaciones.notificarVarios(recepcionistasDe(cita.getVeterinaria().getIdVeterinaria()), "CITA_CANCELADA",
-                "Cita cancelada por el dueño", cita.getMascota().getNombre() + " · " + describir(cita),
+                respondiaReprogramacion ? "El dueño canceló la cita reprogramada" : "Cita cancelada por el dueño",
+                cita.getMascota().getNombre() + " · " + cita.getServicio().getNombreServicio() + " · " + describir(cita),
                 "/agenda/" + cita.getIdCita(), "cita-" + cita.getIdCita() + "-cancelada");
         notificaciones.notificar(cita.getVeterinario().getIdUsuario(), "CITA_CANCELADA", "Cita cancelada",
                 cita.getMascota().getNombre() + " · " + describir(cita), "/agenda/" + cita.getIdCita(),
@@ -439,6 +447,9 @@ public class CitaServiceImpl implements CitaService {
             nueva.setCitaOrigen(original);
             nueva.setObservaciones(original.getObservaciones());
             nueva.setIndicacionesPrevias(original.getIndicacionesPrevias());
+            // El horario queda reservado para la mascota y el dueño debe confirmarlo, cambiarlo o cancelarlo.
+            nueva.setRespuestaDuenio(RespuestaDuenio.PENDIENTE);
+            nueva.setRespuestaDuenioEn(null);
             citaRepository.save(nueva);
 
             estados.cambiar(original, EstadoCita.REPROGRAMADA, Actor.RECEPCIONISTA, null,
@@ -448,8 +459,12 @@ public class CitaServiceImpl implements CitaService {
             auditoria.registrar(null, "CITA_REPROGRAMAR", "cita", idCita, "nueva=" + nueva.getIdCita());
             liberarHorario(original);
 
-            notificaciones.notificar(mascota.getTutor().getIdUsuario(), "CITA_REPROGRAMADA", "Cita reprogramada",
-                    "La cita de " + mascota.getNombre() + " pasó del " + describir(original) + " al " + describir(nueva) + ".",
+            notificaciones.notificar(mascota.getTutor().getIdUsuario(), "CITA_REPROGRAMADA",
+                    "Tu cita fue reprogramada: confírmala",
+                    mascota.getNombre() + " · " + nueva.getVeterinaria().getNombre() + " · "
+                            + nueva.getServicio().getNombreServicio() + ". Antes: " + describir(original)
+                            + ". Nueva propuesta: " + describir(nueva)
+                            + ". Estado: pendiente de tu confirmación. Puedes confirmarla, elegir otro horario o cancelarla.",
                     "/citas/" + nueva.getIdCita(), "cita-" + idCita + "-reprogramada");
             notificaciones.notificarVarios(List.of(original.getVeterinario().getIdUsuario(),
                             nueva.getVeterinario().getIdUsuario()), "CITA_REPROGRAMADA", "Cita reprogramada",
@@ -470,6 +485,124 @@ public class CitaServiceImpl implements CitaService {
                         hoy, hoy.plusDays(Math.max(reglas.horizonteAgendaDias(), 30)), idMascota, idCita).stream()
                 .filter(c -> !c.getIdCita().equals(idCita))
                 .toList();
+    }
+
+    // ------------------------------------------------------------------
+    // Respuesta del dueño a una reprogramación hecha por la clínica
+    // ------------------------------------------------------------------
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Cita confirmarReprogramacion(Integer idCita, Integer idTutor) {
+        return traducirConcurrencia(() -> {
+            Cita cita = citaRepository.bloquear(idCita)
+                    .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+            exigirPropuestaDelDuenio(cita, idTutor);
+            // Se vuelve a validar el horario antes de confirmar: el veterinario debe seguir
+            // disponible (horario, ausencias y bloqueos) y sin otra cita que se cruce.
+            veterinarioRepository.bloquear(cita.getVeterinario().getIdUsuario());
+            mascotaRepository.bloquear(cita.getMascota().getIdMascota());
+            if (!disponibilidad.disponibleEn(cita.getVeterinario(), cita.getInicio(), cita.getFin(), false)) {
+                throw new IllegalStateException("El horario propuesto ya no está disponible. Elige otro horario o cancela la cita.");
+            }
+            boolean choque = citaRepository.deVeterinarioEnFechaConEstados(cita.getVeterinario().getIdUsuario(),
+                            cita.getFecha(), EstadoCita.OCUPAN_HORARIO).stream()
+                    .anyMatch(c -> !c.getIdCita().equals(cita.getIdCita()) && c.seSolapaCon(cita.getInicio(), cita.getFin()));
+            if (choque) {
+                throw new IllegalStateException("El horario propuesto ya no está disponible. Elige otro horario o cancela la cita.");
+            }
+            Usuario tutor = usuarioRepository.findById(idTutor).orElseThrow();
+            cita.setRespuestaDuenio(RespuestaDuenio.CONFIRMADA);
+            cita.setRespuestaDuenioEn(ahora());
+            citaRepository.save(cita);
+            estados.registrar(cita, EstadoCita.CONFIRMADA, EstadoCita.CONFIRMADA, tutor,
+                    "El dueño confirmó el horario reprogramado");
+            auditoria.registrar(idTutor, "CITA_REPROGRAMACION_CONFIRMAR", "cita", idCita, null);
+            String texto = cita.getMascota().getNombre() + " · " + cita.getServicio().getNombreServicio() + " · " + describir(cita);
+            notificaciones.notificarVarios(recepcionistasDe(cita.getVeterinaria().getIdVeterinaria()),
+                    "CITA_REPROGRAMACION_RESPUESTA", "El dueño confirmó la cita reprogramada", texto,
+                    "/agenda/" + idCita, "cita-" + idCita + "-respuesta-duenio");
+            notificaciones.notificar(cita.getVeterinario().getIdUsuario(), "CITA_REPROGRAMACION_RESPUESTA",
+                    "Cita reprogramada confirmada", texto, "/agenda/" + idCita, "cita-" + idCita + "-respuesta-duenio");
+            return cita;
+        });
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Cita modificarReprogramacion(Integer idCita, Integer idCupoNuevo, Integer idTutor) {
+        return traducirConcurrencia(() -> {
+            if (idCupoNuevo == null) throw new IllegalArgumentException("Elige un horario disponible");
+            if (idCita.equals(idCupoNuevo)) throw new IllegalArgumentException("Elige un horario distinto al actual");
+            Cita propuesta = citaRepository.bloquear(idCita)
+                    .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+            exigirPropuestaDelDuenio(propuesta, idTutor);
+            Cita cupo = citaRepository.bloquear(idCupoNuevo)
+                    .orElseThrow(() -> new IllegalArgumentException("Ese horario ya no está disponible"));
+            // El servicio y la clínica no cambian en este flujo.
+            if (!cupo.getVeterinaria().getIdVeterinaria().equals(propuesta.getVeterinaria().getIdVeterinaria())
+                    || !cupo.getServicio().getIdServicio().equals(propuesta.getServicio().getIdServicio())) {
+                throw new IllegalArgumentException("Solo puedes elegir horarios del mismo servicio y la misma veterinaria");
+            }
+            if (cupo.getEstado() != EstadoCita.DISPONIBLE) throw new ReservaConcurrenteException();
+            Mascota mascota = propuesta.getMascota();
+            exigirAgendable(mascota);
+            Usuario tutor = usuarioRepository.findById(idTutor).orElseThrow();
+            Cita nueva = reservarCupoBloqueado(cupo, mascota, Actor.TUTOR, tutor, propuesta.getMotivo(), propuesta);
+            nueva.setCitaOrigen(propuesta);
+            nueva.setObservaciones(propuesta.getObservaciones());
+            nueva.setIndicacionesPrevias(propuesta.getIndicacionesPrevias());
+            citaRepository.save(nueva);
+
+            estados.cambiar(propuesta, EstadoCita.REPROGRAMADA, Actor.TUTOR, tutor,
+                    "El dueño eligió otro horario: cita #" + nueva.getIdCita());
+            propuesta.setRespuestaDuenio(RespuestaDuenio.MODIFICADA);
+            propuesta.setRespuestaDuenioEn(ahora());
+            propuesta.setExpiraEn(null);
+            citaRepository.save(propuesta);
+            auditoria.registrar(idTutor, "CITA_REPROGRAMACION_MODIFICAR", "cita", idCita, "nueva=" + nueva.getIdCita());
+            liberarHorario(propuesta);
+
+            String texto = mascota.getNombre() + " · " + nueva.getServicio().getNombreServicio() + ": "
+                    + describir(propuesta) + " → " + describir(nueva) + " (pendiente de confirmación de la clínica)";
+            notificaciones.notificarVarios(recepcionistasDe(nueva.getVeterinaria().getIdVeterinaria()),
+                    "CITA_REPROGRAMACION_RESPUESTA", "El dueño eligió otro horario", texto,
+                    "/agenda/" + nueva.getIdCita(), "cita-" + idCita + "-respuesta-duenio");
+            notificaciones.notificarVarios(List.of(propuesta.getVeterinario().getIdUsuario(), nueva.getVeterinario().getIdUsuario()),
+                    "CITA_REPROGRAMACION_RESPUESTA", "El dueño eligió otro horario", texto,
+                    "/agenda/" + nueva.getIdCita(), "cita-" + idCita + "-respuesta-duenio");
+            notificaciones.notificar(idTutor, "CITA_RESERVADA", "Nuevo horario enviado",
+                    "Pediste mover la cita de " + mascota.getNombre() + " al " + describir(nueva)
+                            + ". La clínica debe confirmarlo.",
+                    "/citas/" + nueva.getIdCita(), "cita-" + nueva.getIdCita() + "-reservada");
+            return nueva;
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Cita> cuposParaModificarReprogramacion(Integer idCita, Integer idTutor) {
+        Cita cita = citaRepository.findById(idCita).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+        exigirPropuestaDelDuenio(cita, idTutor);
+        LocalDate hoy = ahora().toLocalDate();
+        return disponibilidad.cuposReservables(cita.getVeterinaria().getIdVeterinaria(), cita.getServicio().getIdServicio(),
+                        null, hoy, hoy.plusDays(Math.max(reglas.horizonteAgendaDias(), 30)),
+                        cita.getMascota().getIdMascota(), idCita).stream()
+                .filter(c -> !c.getIdCita().equals(idCita))
+                .toList();
+    }
+
+    /** Solo el dueño de la mascota responde, y solo a una reprogramación vigente y futura. */
+    private void exigirPropuestaDelDuenio(Cita cita, Integer idTutor) {
+        if (cita.getMascota() == null || !cita.getMascota().getTutor().getIdUsuario().equals(idTutor)) {
+            throw new SecurityException("No tienes permiso sobre esta cita");
+        }
+        if (!cita.isEsperandoRespuestaDuenio()) {
+            throw new IllegalStateException("Esta cita no tiene una reprogramación pendiente de tu respuesta.");
+        }
+        if (!cita.getInicio().isAfter(ahora())) {
+            throw new IllegalStateException("La hora propuesta ya pasó. Comunícate con la clínica.");
+        }
     }
 
     // ------------------------------------------------------------------

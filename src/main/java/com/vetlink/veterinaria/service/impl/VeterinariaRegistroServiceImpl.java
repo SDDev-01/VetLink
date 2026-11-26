@@ -32,6 +32,8 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
     private final ServicioVeterinariaRepository servicioVeterinariaRepository;
     private final DiaSemanaRepository diaSemanaRepository;
     private final HorarioVeterinariaRepository horarioVeterinariaRepository;
+    private final com.vetlink.veterinaria.service.CatalogoServiciosService catalogoServicios;
+    private final java.time.Clock reloj;
 
     public VeterinariaRegistroServiceImpl(VeterinariaRepository veterinariaRepository,
                                            TelefonoVeterinariaRepository telefonoVeterinariaRepository,
@@ -40,7 +42,9 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
                                            LocalidadRepository localidadRepository, BarrioRepository barrioRepository,
                                            UbicacionVeterinariaRepository ubicacionVeterinariaRepository,
                                            ServicioRepository servicioRepository, ServicioVeterinariaRepository servicioVeterinariaRepository,
-                                           DiaSemanaRepository diaSemanaRepository, HorarioVeterinariaRepository horarioVeterinariaRepository) {
+                                           DiaSemanaRepository diaSemanaRepository, HorarioVeterinariaRepository horarioVeterinariaRepository,
+                                           com.vetlink.veterinaria.service.CatalogoServiciosService catalogoServicios,
+                                           java.time.Clock reloj) {
         this.veterinariaRepository = veterinariaRepository;
         this.telefonoVeterinariaRepository = telefonoVeterinariaRepository;
         this.correoVeterinariaRepository = correoVeterinariaRepository;
@@ -52,23 +56,37 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         this.servicioVeterinariaRepository = servicioVeterinariaRepository;
         this.diaSemanaRepository = diaSemanaRepository;
         this.horarioVeterinariaRepository = horarioVeterinariaRepository;
+        this.catalogoServicios = catalogoServicios;
+        this.reloj = reloj;
     }
 
     @Override
     @Transactional
     public Veterinaria registrarVeterinariaCompleta(VeterinariaRegistroForm form) {
-        if (veterinariaRepository.findAll().stream().anyMatch(v -> v.getNit().equalsIgnoreCase(form.getNit()))) {
+        String nit = form.getNit() == null ? "" : form.getNit().strip();
+        String nombre = com.vetlink.comun.validacion.Textos.normalizar(form.getNombre());
+        if (nitEnUso(nit)) {
             throw new IllegalArgumentException("Ya existe una veterinaria registrada con ese NIT");
         }
+        if (nombreEnUso(nombre)) {
+            throw new IllegalArgumentException("Ya existe una veterinaria registrada con ese nombre comercial");
+        }
+        if (correoEnUso(form.getCorreo())) {
+            throw new IllegalArgumentException("Ese correo ya está registrado por otra veterinaria");
+        }
         validarHorarios(form.getHorarios());
+        List<ServicioElegido> elegidos = resolverServicios(form.getServicios());
 
         Veterinaria veterinaria = new Veterinaria();
-        veterinaria.setNit(form.getNit());
-        veterinaria.setNombre(form.getNombre());
+        veterinaria.setNit(nit);
+        veterinaria.setNombre(nombre);
         veterinaria.setDescripcion(form.getDescripcion());
         veterinaria.setPaginaWeb(form.getPaginaWeb());
-        // VL-09: la clínica nueva queda pendiente de verificación y no aparece en el directorio.
-        veterinaria.setEstado((byte) 0);
+        // Aprobación automática: al completar el registro (con todas sus validaciones) la clínica
+        // queda activa. Se guarda cuándo y que fue automática; la suspensión sigue siendo estado = 0.
+        veterinaria.setEstado((byte) 1);
+        veterinaria.setAprobadaEn(java.time.LocalDateTime.now(reloj));
+        veterinaria.setAprobacionAutomatica(true);
         veterinaria = veterinariaRepository.save(veterinaria);
 
         TelefonoVeterinaria telefono = new TelefonoVeterinaria();
@@ -93,13 +111,13 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         ubicacion.setBarrio(barrio);
         ubicacionVeterinariaRepository.save(ubicacion);
 
-        for (VeterinariaRegistroForm.ServicioOfrecidoForm s : form.getServicios()) {
-            Servicio servicio = servicioRepository.findById(s.getIdServicio())
-                    .orElseThrow(() -> new IllegalArgumentException("Servicio invalido"));
+        for (ServicioElegido e : elegidos) {
+            Servicio servicio = e.servicio() != null ? e.servicio()
+                    : catalogoServicios.obtenerOCrear(e.nombrePersonalizado(), null, Servicio.TipoRegistro.CLINICO);
             ServicioVeterinaria sv = new ServicioVeterinaria();
             sv.setVeterinaria(veterinaria);
             sv.setServicio(servicio);
-            sv.setPrecio(s.getPrecio());
+            sv.setPrecio(e.precio() == null ? 0.0 : e.precio());
             sv.setDuracionAprox(30);
             servicioVeterinariaRepository.save(sv);
         }
@@ -119,6 +137,66 @@ public class VeterinariaRegistroServiceImpl implements VeterinariaRegistroServic
         }
 
         return veterinaria;
+    }
+
+    private record ServicioElegido(Servicio servicio, String nombrePersonalizado, Double precio) {}
+
+    /**
+     * Servicios del selector: del catálogo (por id) o «Otros» (nombre escrito). Se ignoran las
+     * filas vacías, se exige al menos uno y no se aceptan servicios repetidos (un «Otros» que ya
+     * existe en el catálogo cuenta como ese servicio).
+     */
+    private List<ServicioElegido> resolverServicios(List<VeterinariaRegistroForm.ServicioOfrecidoForm> lista) {
+        java.util.List<ServicioElegido> r = new java.util.ArrayList<>();
+        java.util.Set<String> claves = new java.util.HashSet<>();
+        if (lista != null) {
+            for (VeterinariaRegistroForm.ServicioOfrecidoForm s : lista) {
+                if (s == null || s.estaVacio()) continue;
+                if (s.getPrecio() == null || s.getPrecio() < 0 || s.getPrecio() > 100_000_000) {
+                    throw new IllegalArgumentException("Ingresa un precio válido (0 o mayor) para cada servicio");
+                }
+                ServicioElegido e;
+                String clave;
+                if (s.getIdServicio() != null) {
+                    Servicio servicio = servicioRepository.findById(s.getIdServicio())
+                            .orElseThrow(() -> new IllegalArgumentException("Servicio invalido"));
+                    e = new ServicioElegido(servicio, null, s.getPrecio());
+                    clave = com.vetlink.comun.validacion.Textos.claveSinTildes(servicio.getNombreServicio());
+                } else {
+                    String n = com.vetlink.veterinaria.service.CatalogoServiciosService.normalizarNombre(s.getNombrePersonalizado());
+                    var existente = catalogoServicios.buscarPorNombre(n);
+                    e = existente.map(sv -> new ServicioElegido(sv, null, s.getPrecio()))
+                            .orElseGet(() -> new ServicioElegido(null, n, s.getPrecio()));
+                    clave = com.vetlink.comun.validacion.Textos.claveSinTildes(n);
+                }
+                if (!claves.add(clave)) {
+                    String nombre = e.servicio() != null ? e.servicio().getNombreServicio() : e.nombrePersonalizado();
+                    throw new IllegalArgumentException("El servicio «" + nombre + "» está repetido");
+                }
+                r.add(e);
+            }
+        }
+        if (r.isEmpty()) throw new IllegalArgumentException("Agrega al menos un servicio");
+        return r;
+    }
+
+    @Override
+    public boolean nitEnUso(String nit) {
+        String n = nit == null ? "" : nit.strip();
+        return !n.isEmpty() && veterinariaRepository.findAll().stream().anyMatch(v -> v.getNit().equalsIgnoreCase(n));
+    }
+
+    @Override
+    public boolean nombreEnUso(String nombre) {
+        String clave = com.vetlink.comun.validacion.Textos.claveSinTildes(nombre);
+        return !clave.isEmpty() && veterinariaRepository.findAll().stream()
+                .anyMatch(v -> com.vetlink.comun.validacion.Textos.claveSinTildes(v.getNombre()).equals(clave));
+    }
+
+    @Override
+    public boolean correoEnUso(String correo) {
+        String c = correo == null ? "" : correo.strip();
+        return !c.isEmpty() && correoVeterinariaRepository.findAll().stream().anyMatch(x -> x.getCorreo().equalsIgnoreCase(c));
     }
 
     /**

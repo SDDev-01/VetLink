@@ -35,12 +35,18 @@ public class AuthController {
     private final ServicioRepository servicioRepository;
     private final DiaSemanaRepository diaSemanaRepository;
     private final Validator validator;
+    private final com.vetlink.veterinaria.service.VeterinariaRegistroService registroVeterinarias;
+    private final com.vetlink.veterinaria.service.CatalogoServiciosService catalogoServicios;
+    private final com.vetlink.usuario.repository.TelefonoRepository telefonoRepository;
 
     public AuthController(UsuarioService usuarioService, TipoDocumentoRepository tipoDocumentoRepository,
                            VeterinariaRepository veterinariaRepository, EspecialidadVeterinarioRepository especialidadRepository,
                            EspecieRepository especieRepository, CiudadRepository ciudadRepository,
                            ServicioRepository servicioRepository, DiaSemanaRepository diaSemanaRepository,
-                           Validator validator) {
+                           Validator validator,
+                           com.vetlink.veterinaria.service.VeterinariaRegistroService registroVeterinarias,
+                           com.vetlink.veterinaria.service.CatalogoServiciosService catalogoServicios,
+                           com.vetlink.usuario.repository.TelefonoRepository telefonoRepository) {
         this.usuarioService = usuarioService;
         this.tipoDocumentoRepository = tipoDocumentoRepository;
         this.veterinariaRepository = veterinariaRepository;
@@ -50,6 +56,39 @@ public class AuthController {
         this.servicioRepository = servicioRepository;
         this.diaSemanaRepository = diaSemanaRepository;
         this.validator = validator;
+        this.registroVeterinarias = registroVeterinarias;
+        this.catalogoServicios = catalogoServicios;
+        this.telefonoRepository = telefonoRepository;
+    }
+
+    /** Respuesta de la validación inmediata del registro. */
+    public record Disponibilidad(boolean disponible, String mensaje) {}
+
+    /**
+     * Validación inmediata del registro: indica si un dato ya está registrado, para avisar
+     * mientras se llena el formulario. Solo responde sí/no con un mensaje genérico (no devuelve
+     * datos de la cuenta existente). El envío del formulario vuelve a validar todo.
+     */
+    @GetMapping("/api/registro/disponible")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public Disponibilidad disponible(@RequestParam String campo, @RequestParam String valor) {
+        String v = valor == null ? "" : valor.strip();
+        if (v.isEmpty() || v.length() > 100) return new Disponibilidad(true, "");
+        return switch (campo) {
+            case "correo" -> usuarioService.correoEnUso(v)
+                    ? new Disponibilidad(false, "Ya existe una cuenta con ese correo") : new Disponibilidad(true, "");
+            case "documento" -> usuarioService.documentoEnUso(v)
+                    ? new Disponibilidad(false, "Ya existe una cuenta con ese número de documento") : new Disponibilidad(true, "");
+            case "telefono" -> telefonoRepository.existsByNumeroTelefono(v)
+                    ? new Disponibilidad(false, "Ya existe una cuenta con ese número de teléfono") : new Disponibilidad(true, "");
+            case "nit" -> registroVeterinarias.nitEnUso(v)
+                    ? new Disponibilidad(false, "Ya existe una veterinaria registrada con ese NIT") : new Disponibilidad(true, "");
+            case "nombreVeterinaria" -> registroVeterinarias.nombreEnUso(v)
+                    ? new Disponibilidad(false, "Ya existe una veterinaria con ese nombre comercial") : new Disponibilidad(true, "");
+            case "correoVeterinaria" -> registroVeterinarias.correoEnUso(v)
+                    ? new Disponibilidad(false, "Ese correo ya está registrado por otra veterinaria") : new Disponibilidad(true, "");
+            default -> throw new IllegalArgumentException("Campo no válido");
+        };
     }
 
     @GetMapping("/login")
@@ -136,6 +175,11 @@ public class AuthController {
             String campo = error.getPropertyPath().toString();
             result.rejectValue("nuevaVeterinaria." + campo, error.getMessageTemplate(), error.getMessage());
         });
+        // Cuentas de veterinaria: contraseña de mínimo 8 caracteres, con mayúscula y símbolo
+        // (la misma regla que muestra el formulario mientras se escribe).
+        if (!com.vetlink.comun.validacion.Textos.esPasswordSegura(form.getPassword())) {
+            result.rejectValue("password", "password.debil", com.vetlink.comun.validacion.Textos.MENSAJE_PASSWORD_SEGURA);
+        }
     }
 
     private void cargarCatalogos(Model model) {
@@ -144,7 +188,9 @@ public class AuthController {
         model.addAttribute("especialidades", especialidadRepository.findAll());
         model.addAttribute("especies", especieRepository.findAll());
         model.addAttribute("ciudades", ciudadRepository.findAll());
-        model.addAttribute("servicios", servicioRepository.findAll());
+        model.addAttribute("servicios", catalogoServicios.catalogo());
+        model.addAttribute("catalogoServicios", catalogoServicios.catalogo().stream()
+                .map(s -> java.util.Map.of("id", s.getIdServicio(), "nombre", s.getNombreServicio())).toList());
         model.addAttribute("diasSemana", diaSemanaRepository.findAll());
     }
 }

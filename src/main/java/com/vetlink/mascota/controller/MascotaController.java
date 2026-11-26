@@ -108,9 +108,14 @@ public class MascotaController {
     }
 
     @GetMapping("/{id}/editar")
-    public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
+                             RedirectAttributes ra) {
         var mascota = mascotaService.buscarPorId(id);
         verificarPropietario(mascota, principal);
+        if (!mascota.isEditable()) {
+            ra.addFlashAttribute("errorMascota", com.vetlink.mascota.model.Mascota.MENSAJE_SOLO_LECTURA);
+            return "redirect:/mascotas/" + id;
+        }
         MascotaForm form = new MascotaForm();
         form.setIdMascota(mascota.getIdMascota());
         form.setNombre(mascota.getNombre());
@@ -130,13 +135,21 @@ public class MascotaController {
     @PostMapping("/{id}/editar")
     public String actualizar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
-                             @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+                             @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model,
+                             RedirectAttributes ra) {
         var actual = mascotaService.buscarPorId(id);
         verificarPropietario(actual, principal);
+        if (!actual.isEditable()) {
+            // Barrera también ante peticiones directas: no se procesa ningún cambio.
+            ra.addFlashAttribute("errorMascota", com.vetlink.mascota.model.Mascota.MENSAJE_SOLO_LECTURA);
+            return "redirect:/mascotas/" + id;
+        }
         form.setIdMascota(id);
-        // DUE-01: especie, género y fecha de nacimiento no se editan: se usan los guardados
+        // DUE-01: especie, raza, género y fecha de nacimiento no se editan: se usan los guardados
         // (lo que llegue en la petición se descarta y sus errores de validación no aplican).
         form.setIdEspecie(actual.getEspecie().getIdEspecie());
+        form.setIdRaza(actual.getRaza().getIdRaza());
+        form.setRazaPersonalizada(null);
         form.setGenero(actual.getGenero());
         form.setFechaNacimiento(actual.getFechaNacimiento());
         validarFoto(archivoFoto, result);
@@ -167,10 +180,10 @@ public class MascotaController {
         return "mascotas/formulario";
     }
 
-    /** DUE-02: una raza del catálogo o «Otra raza» con su nombre. */
+    /** DUE-02: una raza del catálogo de la especie (incluida «Otra»). */
     private static void validarRaza(MascotaForm form, BindingResult result) {
         if (form.getIdRaza() == null && !form.usaRazaPersonalizada()) {
-            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza o elige «Otra raza» y escríbela");
+            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza (si no está en la lista, elige «Otra»)");
         }
     }
 

@@ -24,6 +24,49 @@
             </div>
             <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
             <div class="vl-alert vl-alert-ok" role="status" th:if="${param.cancelada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Cita cancelada.</div>
+            <!-- Reprogramación hecha por la clínica: el dueño confirma, elige otro horario o cancela -->
+            <section class="vl-propuesta" th:if="${esperaRespuesta}" aria-labelledby="titulo-propuesta">
+                <h2 id="titulo-propuesta"><i class="fas fa-calendar-plus" aria-hidden="true"></i> La clínica reprogramó tu cita</h2>
+                <p>Revisa el nuevo horario. Tu cupo queda reservado mientras respondes.</p>
+                <div class="vl-propuesta-fechas">
+                    <div class="caja antes" th:if="${citaAnterior != null}">
+                        <small>Fecha y hora anterior</small>
+                        <strong th:text="${@fmt.fechaCorta(citaAnterior.fecha)} + ', ' + ${@fmt.hora(citaAnterior.hora)}"></strong>
+                    </div>
+                    <i class="fas fa-arrow-right flecha" aria-hidden="true" th:if="${citaAnterior != null}"></i>
+                    <div class="caja nueva">
+                        <small>Nueva fecha y hora propuesta</small>
+                        <strong th:text="${@fmt.fechaLarga(cita.fecha)} + ', ' + ${@fmt.hora(cita.hora)}"></strong>
+                    </div>
+                </div>
+                <div class="vl-propuesta-detalle">
+                    <span><i class="fas fa-paw" aria-hidden="true"></i><span th:text="${cita.mascota.nombre}"></span></span>
+                    <span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${cita.veterinaria.nombre}"></span></span>
+                    <span><i class="fas fa-stethoscope" aria-hidden="true"></i><span th:text="${cita.servicio.nombreServicio}"></span></span>
+                    <span><i class="fas fa-circle-info" aria-hidden="true"></i><span th:text="'Estado: ' + ${cita.respuestaDuenio.etiqueta}"></span></span>
+                </div>
+                <div class="vl-propuesta-acciones">
+                    <form th:action="@{'/citas/' + ${cita.idCita} + '/reprogramacion/confirmar'}" method="post" data-un-envio
+                          th:with="cuandoNuevo=${@fmt.fechaCorta(cita.fecha) + ' a las ' + @fmt.hora(cita.hora)}"
+                          th:data-confirm="${'Confirmarás la cita de ' + cita.mascota.nombre + ' para el ' + cuandoNuevo + '.'}"
+                          data-confirm-title="¿Confirmar el nuevo horario?" data-confirm-ok="Confirmar cita">
+                        <button type="submit" class="vl-btn vl-btn-success"><i class="fas fa-circle-check" aria-hidden="true"></i> Confirmar cita</button>
+                    </form>
+                    <a th:href="@{'/citas/' + ${cita.idCita} + '/reprogramacion/modificar'}" class="vl-btn vl-btn-ghost">
+                        <i class="fas fa-calendar-days" aria-hidden="true"></i> Elegir otro horario</a>
+                    <form th:action="@{'/citas/' + ${cita.idCita} + '/cancelar'}" method="post"
+                          th:data-confirm="${'Se cancelará la cita de ' + cita.mascota.nombre + ' y el horario quedará libre. Esta acción no se puede deshacer.'}"
+                          data-confirm-title="¿Cancelar la cita?" data-confirm-ok="Sí, cancelar" data-confirm-tipo="peligro">
+                        <input type="hidden" name="origen" value="detalle">
+                        <input type="hidden" name="idMascota" th:value="${cita.mascota.idMascota}">
+                        <button type="submit" class="vl-btn vl-btn-danger"><i class="fas fa-ban" aria-hidden="true"></i> Cancelar cita</button>
+                    </form>
+                </div>
+            </section>
+            <div class="vl-alert vl-alert-info" th:if="${cita.respuestaDuenio != null and !esperaRespuesta}">
+                <i class="fas fa-reply" aria-hidden="true"></i>
+                <span th:text="'Reprogramación: ' + ${cita.respuestaDuenio.etiqueta} + (${cita.respuestaDuenioEn != null} ? ' (' + ${@fmt.fechaHora(cita.respuestaDuenioEn)} + ')' : '') + '.'"></span>
+            </div>
             <div class="vl-alert vl-alert-warn" th:if="${cita.estado.name() == 'PENDIENTE'}">
                 <i class="fas fa-hourglass-half" aria-hidden="true"></i>
                 <span>Tu horario está reservado y la clínica debe confirmarlo<span th:if="${cita.expiraEn != null}" th:text="' antes del ' + ${@fmt.fechaHora(cita.expiraEn)}"></span>. Si no confirma a tiempo, la reserva se libera.</span>
@@ -55,7 +98,7 @@
                         <div th:if="${cita.finAtencion}"><dt>Fin de la atención</dt><dd th:text="${@fmt.fechaHora(cita.finAtencion)}"></dd></div>
                     </dl>
 
-                    <div class="vl-row" style="margin-top:18px" th:if="${puedeCancelar or puedeReprogramar}">
+                    <div class="vl-row" style="margin-top:18px" th:if="${(puedeCancelar or puedeReprogramar) and !esperaRespuesta}">
                         <form th:if="${puedeReprogramar}" th:action="@{'/citas/' + ${cita.idCita} + '/reprogramacion'}" method="post"
                               data-confirm="La clínica revisará tu solicitud y te propondrá un nuevo horario. Tu cita actual sigue vigente mientras tanto."
                               data-confirm-title="¿Solicitar reprogramación?" data-confirm-ok="Enviar solicitud"

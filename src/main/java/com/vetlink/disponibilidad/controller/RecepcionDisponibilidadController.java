@@ -49,15 +49,20 @@ public class RecepcionDisponibilidadController {
         m.addAttribute("equipo", equipo);
         Map<Integer, Object> horarios = new LinkedHashMap<>();
         Map<Integer, Object> servicios = new LinkedHashMap<>();
-        Map<Integer, List<Cita>> afectadas = new LinkedHashMap<>();
+        Map<Integer, Object> bloqueos = new LinkedHashMap<>();
         for (Usuario v : equipo) {
             horarios.put(v.getIdUsuario(), solicitudes.horarioAprobado(v.getIdUsuario()));
             servicios.put(v.getIdUsuario(), solicitudes.serviciosAprobados(v.getIdUsuario()));
-            List<Cita> af = disponibilidad.citasAfectadas(v.getIdUsuario());
-            if (!af.isEmpty()) afectadas.put(v.getIdUsuario(), af);
+            bloqueos.put(v.getIdUsuario(), solicitudes.bloqueosVigentes(v.getIdUsuario()));
         }
+        // Solo citas de ESTA clínica (antes se listaban las del veterinario en cualquier clínica
+        // y al abrir una ajena la seguridad respondía 403).
+        Map<Integer, List<Cita>> afectadas = disponibilidad.citasAfectadasDeClinica(clinica).stream()
+                .collect(java.util.stream.Collectors.groupingBy(c -> c.getVeterinario().getIdUsuario(),
+                        LinkedHashMap::new, java.util.stream.Collectors.toList()));
         m.addAttribute("horarios", horarios);
         m.addAttribute("serviciosEquipo", servicios);
+        m.addAttribute("bloqueos", bloqueos);
         m.addAttribute("afectadas", afectadas);
         m.addAttribute("srv", solicitudes);
         return "disponibilidad/recepcion";
@@ -113,6 +118,20 @@ public class RecepcionDisponibilidadController {
         }
     }
 
+    /** Levanta un bloqueo de agenda de un veterinario de la clínica (pide confirmación en la vista). */
+    @PostMapping("/bloqueo/{idAusencia}/desbloquear")
+    public String desbloquear(@PathVariable Integer idAusencia, @AuthenticationPrincipal VetlinkUserPrincipal p,
+                              RedirectAttributes ra) {
+        try {
+            int creados = solicitudes.desbloquearAgenda(idAusencia, recepcionista(p));
+            ra.addFlashAttribute("mensajeOk", "Agendamiento desbloqueado. Se publicaron " + creados
+                    + " cupo(s) nuevos dentro del horario laboral del veterinario; las ausencias y citas existentes se respetan.");
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            ra.addFlashAttribute("errorGeneral", e.getMessage());
+        }
+        return "redirect:/recepcion/disponibilidad#equipo";
+    }
+
     private static void shell(Model m, Usuario u) {
         m.addAttribute("usuario", u);
         m.addAttribute("seccionActiva", "disponibilidad");
@@ -122,6 +141,12 @@ public class RecepcionDisponibilidadController {
     private static Usuario recepcionista(VetlinkUserPrincipal p) {
         if (p.getUsuario().getRecepcionista() == null) throw new AccessDeniedException("No autorizado");
         return p.getUsuario();
+    }
+
+    /** Encabezados de la cuadrícula semanal del horario solicitado (1 = lunes … 7 = domingo). */
+    @ModelAttribute("nombresDiaCorto")
+    public Map<Integer, String> nombresDiaCorto() {
+        return Map.of(1, "Lun", 2, "Mar", 3, "Mié", 4, "Jue", 5, "Vie", 6, "Sáb", 7, "Dom");
     }
 
     @ModelAttribute("tipoSolicitudClase")

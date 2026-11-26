@@ -284,12 +284,13 @@ public class VeterinariaAdminController {
 
     @PostMapping("/servicios")
     public String agregarServicio(@AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                  @RequestParam(required = false) Integer idServicio,
                                   @RequestParam(required = false) String nombre, @RequestParam(required = false) String descripcion,
                                   @RequestParam(required = false) Double precio, @RequestParam(required = false) Integer duracion,
                                   @RequestParam(required = false) Servicio.TipoRegistro tipoRegistro, RedirectAttributes ra) {
         exigirRecepcionistaPrincipal(principal);
         return ejecutar(ra, "#servicios", () -> {
-            var sv = gestion.agregarServicio(principal.getUsuario(), nombre, descripcion, precio, duracion, tipoRegistro);
+            var sv = gestion.agregarServicio(principal.getUsuario(), idServicio, nombre, descripcion, precio, duracion, tipoRegistro);
             return "Servicio «" + sv.getServicio().getNombreServicio() + "» agregado. Asígnalo a los veterinarios que lo atienden.";
         });
     }
@@ -346,6 +347,10 @@ public class VeterinariaAdminController {
         model.addAttribute("veterinaria", veterinaria);
         model.addAttribute("logoUrl", VeterinariaInfoService.logoUrl(veterinaria));
         model.addAttribute("tamanoMaximoImagenMb", 2);
+        // Selector de servicios: opciones del catálogo de la base de datos (no listas fijas en el código).
+        model.addAttribute("catalogoServicios", gestion.catalogoServicios().stream()
+                .map(s -> java.util.Map.of("id", s.getIdServicio(), "nombre", s.getNombreServicio()))
+                .toList());
         model.addAttribute("direccion", info.direccion(id));
         model.addAttribute("telefonosClinica", info.telefonos(id));
         model.addAttribute("correosClinica", info.correos(id));

@@ -25,7 +25,7 @@ def cabeceras(usuario, rol, clinica=None, token=None):
 
 
 MASCOTA = {"idMascota": 9, "nombre": "Ñoño Pérez", "genero": "M", "fechaNacimiento": date(2022, 5, 1), "peso": 8.2,
-           "situacion": "ACTIVA", "idTutor": 1, "especie": "Perro", "raza": "Criolla", "tutor": "Ana Ruiz"}
+           "situacion": "ACTIVA", "estado": 1, "idTutor": 1, "especie": "Perro", "raza": "Criolla", "tutor": "Ana Ruiz"}
 REGISTRO = {"numeroHistorial": 3, "idMascota": 9, "fechaRegistro": datetime(2026, 3, 5, 14, 30), "fechaConsulta": 2026,
             "tipoRegistro": "CONSULTA", "motivoConsulta": "Cojera", "antecedentes": None, "temperatura": 38.4,
             "frecuenciaCardiaca": 90, "frecuenciaRespiratoria": None, "pesoKg": 8.1, "evaluacionClinica": None,
@@ -80,6 +80,20 @@ def test_recepcion_sin_clinica_responde_403():
     assert r.status_code == 403
 
 
+def test_tutor_solo_ve_su_mascota_vigente():
+    import contextlib
+    from app import reportes_repo
+
+    class SinBase:  # el caso TUTOR no consulta la base
+        def cursor(self):
+            return contextlib.nullcontext()
+
+    assert reportes_repo.puede_ver_mascota(SinBase(), MASCOTA, 1, "TUTOR", None)
+    assert not reportes_repo.puede_ver_mascota(SinBase(), MASCOTA, 2, "TUTOR", None)
+    # Dada de baja (estado 0): el dueño ya no la ve en ninguna vista, tampoco en reportes.
+    assert not reportes_repo.puede_ver_mascota(SinBase(), {**MASCOTA, "estado": 0}, 1, "TUTOR", None)
+
+
 def test_health_publico():
     assert TestClient(app).get("/api/reportes/health").json()["status"] == "ok"
 
@@ -93,7 +107,8 @@ def mascota_con_historial(conn):
             """
             SELECT m.idMascota, m.Tutor_idUsuario AS tutor
             FROM mascota m
-            WHERE EXISTS (SELECT 1 FROM historial_clinico h WHERE h.idMascota = m.idMascota)
+            WHERE m.estado = 1  -- el dueño solo accede a sus mascotas vigentes (las dadas de baja dan 403)
+              AND EXISTS (SELECT 1 FROM historial_clinico h WHERE h.idMascota = m.idMascota)
             ORDER BY m.idMascota LIMIT 1
             """
         )

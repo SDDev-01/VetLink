@@ -26,51 +26,90 @@
             </div>
 
             <div class="vl-panel" style="margin-bottom:18px">
-                <h3><i class="fas fa-inbox" aria-hidden="true"></i> Solicitudes pendientes</h3>
-                <div class="vl-stack">
-                    <div class="vl-panel" style="background:#fbfdff" th:each="s : ${pendientes}">
-                        <div class="vl-row-between">
-                            <div>
-                                <strong th:text="${s.veterinario.nombre} + ' ' + ${s.veterinario.apellido}"></strong>
-                                <span class="vl-chip"><i th:class="'fas ' + ${tipoSolicitudClase[s.tipo.name()]}" aria-hidden="true"></i> <span th:text="${s.tipo.etiqueta}"></span></span>
-                                <div class="vl-small vl-muted" th:text="'Enviada ' + ${@fmt.fechaHora(s.creadaEn)} + (${s.descripcion != null} ? ' · ' + ${s.descripcion} : '')"></div>
+                <div class="vl-panel-head">
+                    <h3><i class="fas fa-inbox" aria-hidden="true"></i> Solicitudes pendientes</h3>
+                    <span class="vl-badge" th:classappend="${#lists.isEmpty(pendientes)} ? 'vl-badge-muted' : 'vl-badge-warn'"
+                          th:text="${#lists.size(pendientes)} + (${#lists.size(pendientes) == 1} ? ' pendiente' : ' pendientes')"></span>
+                </div>
+                <div class="vl-sol-lista">
+                    <article class="vl-sol-card" th:each="s : ${pendientes}" th:with="nombreVet=${s.veterinario.nombre + ' ' + s.veterinario.apellido}">
+                        <header class="vl-sol-head">
+                            <span class="vl-sol-avatar" aria-hidden="true" th:text="${#strings.substring(s.veterinario.nombre,0,1)} + ${#strings.substring(s.veterinario.apellido,0,1)}">AB</span>
+                            <div class="vl-sol-quien">
+                                <strong th:text="${nombreVet}">Veterinario</strong>
+                                <span class="vl-sol-fecha"><i class="far fa-clock" aria-hidden="true"></i><span th:text="'Enviada el ' + ${@fmt.fechaHora(s.creadaEn)}"></span></span>
                             </div>
-                            <div class="vl-row">
-                                <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/rechazar'}" method="post"
-                                      data-confirm="Se rechazará la solicitud y se notificará al veterinario." data-confirm-title="¿Rechazar?" data-confirm-ok="Rechazar"
-                                      data-confirm-tipo="peligro" data-confirm-input="observacion" data-confirm-input-label="Motivo (opcional)">
-                                    <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Rechazar</button>
-                                </form>
-                                <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/aprobar'}" method="post"
-                                      data-confirm="Se actualizará la disponibilidad, se retirarán los cupos libres que ya no apliquen y se generarán los nuevos. Las citas reservadas no se eliminan: verás las afectadas y alternativas."
-                                      data-confirm-title="¿Aprobar la solicitud?" data-confirm-ok="Aprobar">
-                                    <button type="submit" class="vl-btn vl-btn-success vl-btn-sm">Aprobar</button>
-                                </form>
+                            <span class="vl-sol-tipo" th:classappend="'t-' + ${s.tipo.name()}">
+                                <i th:class="'fas ' + ${tipoSolicitudClase[s.tipo.name()]}" aria-hidden="true"></i><span th:text="${s.tipo.etiqueta}"></span></span>
+                            <span class="vl-badge vl-badge-warn" th:text="${s.estado.etiqueta}">Pendiente</span>
+                        </header>
+                        <div class="vl-sol-body" th:switch="${s.tipo.name()}">
+                            <!-- Horario laboral: una casilla por día con sus franjas de inicio y fin -->
+                            <div th:case="'HORARIO'" th:with="franjas=${srv.franjasDe(s.idSolicitud)}">
+                                <p class="vl-sol-sub">Horario solicitado</p>
+                                <div class="vl-semana-grid">
+                                    <div class="vl-semana-dia" th:each="d : ${#numbers.sequence(1, 7)}" th:with="delDia=${franjas.?[diaSemana == __${d}__]}"
+                                         th:classappend="${#lists.isEmpty(delDia)} ? 'off' : 'activo'">
+                                        <span class="d" th:text="${nombresDiaCorto.get(d)}">Lun</span>
+                                        <span class="r" th:unless="${#lists.isEmpty(delDia)}">
+                                            <span class="franja" th:each="h : ${delDia}">
+                                                <span th:text="${@fmt.hora(h.horaInicio)}"></span><small>a</small><span th:text="${@fmt.hora(h.horaFin)}"></span>
+                                            </span>
+                                        </span>
+                                        <span class="nl" th:if="${#lists.isEmpty(delDia)}">No laborable</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Novedad / ausencia: periodo con inicio y fin -->
+                            <div th:case="'AUSENCIA'">
+                                <div th:each="a : ${srv.ausenciasDe(s.idSolicitud)}">
+                                    <p class="vl-sol-sub" th:text="${a.tipo.etiqueta}">Novedad</p>
+                                    <div class="vl-periodo">
+                                        <div class="vl-periodo-box"><small>Desde</small>
+                                            <strong th:text="${@fmt.fechaLarga(a.inicio.toLocalDate())}"></strong><span th:text="${@fmt.hora(a.inicio)}"></span></div>
+                                        <i class="fas fa-arrow-right vl-periodo-flecha" aria-hidden="true"></i>
+                                        <div class="vl-periodo-box"><small>Hasta</small>
+                                            <strong th:text="${@fmt.fechaLarga(a.fin.toLocalDate())}"></strong><span th:text="${@fmt.hora(a.fin)}"></span></div>
+                                    </div>
+                                    <div class="vl-sol-obs" th:if="${a.motivo != null}" style="margin-top:10px"><strong>Motivo:</strong> <span th:text="${a.motivo}"></span></div>
+                                </div>
+                            </div>
+                            <div th:case="'SERVICIOS'">
+                                <p class="vl-sol-sub">Servicios que quiere atender</p>
+                                <span class="vl-chip" th:each="v : ${srv.serviciosDe(s.idSolicitud)}" th:text="${v.servicio.nombreServicio}"></span>
+                            </div>
+                            <div class="vl-sol-obs" th:if="${s.descripcion != null and s.tipo.name() != 'AUSENCIA'}">
+                                <strong>Observaciones:</strong> <span th:text="${s.descripcion}"></span>
                             </div>
                         </div>
-                        <div th:switch="${s.tipo.name()}" style="margin-top:8px">
-                            <ul th:case="'HORARIO'" class="vl-small" style="margin:0">
-                                <li th:each="h : ${srv.franjasDe(s.idSolicitud)}" th:text="${h.nombreDia} + ': ' + ${@fmt.hora(h.horaInicio)} + ' – ' + ${@fmt.hora(h.horaFin)}"></li>
-                            </ul>
-                            <ul th:case="'AUSENCIA'" class="vl-small" style="margin:0">
-                                <li th:each="a : ${srv.ausenciasDe(s.idSolicitud)}" th:text="${a.tipo.etiqueta} + ': ' + ${@fmt.fechaHora(a.inicio)} + ' – ' + ${@fmt.fechaHora(a.fin)} + (${a.motivo != null} ? ' · ' + ${a.motivo} : '')"></li>
-                            </ul>
-                            <div th:case="'SERVICIOS'"><span class="vl-chip" th:each="v : ${srv.serviciosDe(s.idSolicitud)}" th:text="${v.servicio.nombreServicio}"></span></div>
-                        </div>
-                    </div>
-                    <p class="vl-muted" th:if="${#lists.isEmpty(pendientes)}">No hay solicitudes pendientes.</p>
+                        <footer class="vl-sol-acciones">
+                            <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/rechazar'}" method="post"
+                                  th:attr="data-confirm=${'Se rechazará la solicitud de ' + nombreVet + ' y se le notificará.'}" data-confirm-title="¿Rechazar la solicitud?" data-confirm-ok="Rechazar"
+                                  data-confirm-tipo="peligro" data-confirm-input="observacion" data-confirm-input-label="Motivo (opcional)">
+                                <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-xmark" aria-hidden="true"></i> Rechazar</button>
+                            </form>
+                            <form th:action="@{'/recepcion/disponibilidad/' + ${s.idSolicitud} + '/aprobar'}" method="post"
+                                  data-confirm="Se actualizará la disponibilidad, se retirarán los cupos libres que ya no apliquen y se generarán los nuevos. Las citas reservadas no se eliminan: verás las afectadas y alternativas."
+                                  data-confirm-title="¿Aprobar la solicitud?" data-confirm-ok="Aprobar">
+                                <button type="submit" class="vl-btn vl-btn-success vl-btn-sm"><i class="fas fa-check" aria-hidden="true"></i> Aprobar</button>
+                            </form>
+                        </footer>
+                    </article>
+                    <div class="vl-empty-state" th:if="${#lists.isEmpty(pendientes)}"><i class="fas fa-inbox" aria-hidden="true"></i>No hay solicitudes pendientes.</div>
                 </div>
             </div>
 
             <div class="vl-panel" style="margin-bottom:18px" th:unless="${#maps.isEmpty(afectadas)}">
                 <h3><i class="fas fa-calendar-plus" aria-hidden="true"></i> Citas por reprogramar</h3>
+                <p class="vl-small vl-muted" style="margin-top:-6px">Citas de tu clínica cuyo veterinario ya no está disponible en ese horario. Al reprogramarlas se notifica al dueño para que confirme.</p>
                 <div class="vl-cita-list">
                     <th:block th:each="entry : ${afectadas}">
                         <a th:each="c : ${entry.value}" th:href="@{'/citas/recepcion/' + ${c.idCita} + '/reagendar'}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
                             <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
-                            <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
-                                <div class="vl-cita-meta" th:text="'Dr(a). ' + ${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></div></div>
-                            <div class="vl-cita-side"><span class="vl-btn vl-btn-primary vl-btn-sm">Reprogramar</span></div>
+                            <div class="vl-cita-main"><div class="vl-cita-titulo" th:text="${c.mascota.nombre}"></div>
+                                <div class="vl-cita-servicio"><i class="fas fa-stethoscope" aria-hidden="true"></i><span th:text="${c.servicio.nombreServicio}"></span></div>
+                                <div class="vl-cita-meta"><span><i class="fas fa-user-doctor" aria-hidden="true"></i><span th:text="'Dr(a). ' + ${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></span></span></div></div>
+                            <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span><span class="vl-btn vl-btn-primary vl-btn-sm">Reprogramar</span></div>
                         </a>
                     </th:block>
                 </div>
@@ -101,15 +140,30 @@
                 </form>
 
                 <!-- REC-08: bloques separados por profesional, con jerarquía y estados -->
-                <div class="vl-panel">
+                <div class="vl-panel" id="equipo">
                     <h3><i class="fas fa-users" aria-hidden="true"></i> Horarios y servicios aprobados</h3>
                     <div class="vl-equipo-lista">
                         <article class="vl-equipo-card" th:each="v : ${equipo}">
                             <header>
                                 <h4><i class="fas fa-user-doctor" aria-hidden="true"></i> <span th:text="${v.nombre} + ' ' + ${v.apellido}"></span></h4>
-                                <span class="vl-badge" th:classappend="${#lists.isEmpty(horarios[v.idUsuario])} ? 'vl-badge-warn' : 'vl-badge-ok'"
-                                      th:text="${#lists.isEmpty(horarios[v.idUsuario])} ? 'Sin horario' : 'Horario aprobado'"></span>
+                                <span class="vl-row" style="gap:6px">
+                                    <span class="vl-badge" th:classappend="${#lists.isEmpty(horarios[v.idUsuario])} ? 'vl-badge-warn' : 'vl-badge-ok'"
+                                          th:text="${#lists.isEmpty(horarios[v.idUsuario])} ? 'Sin horario' : 'Horario aprobado'"></span>
+                                    <span class="vl-badge" th:classappend="${#lists.isEmpty(bloqueos[v.idUsuario])} ? 'vl-badge-ok' : 'vl-badge-danger'"
+                                          th:text="${#lists.isEmpty(bloqueos[v.idUsuario])} ? 'Agendamiento habilitado' : 'Agendamiento bloqueado'"></span>
+                                </span>
                             </header>
+                            <!-- Estado del agendamiento: bloqueos vigentes o futuros con su motivo y la acción para desbloquear -->
+                            <div class="vl-bloqueo" th:each="b : ${bloqueos[v.idUsuario]}">
+                                <strong><i class="fas fa-lock" aria-hidden="true"></i>
+                                    <span th:text="'Bloqueado del ' + ${@fmt.fechaHora(b.inicio)} + ' al ' + ${@fmt.fechaHora(b.fin)}"></span></strong>
+                                <span class="vl-small" th:text="'Motivo: ' + (${b.motivo} ?: 'no indicado')"></span>
+                                <form th:action="@{'/recepcion/disponibilidad/bloqueo/' + ${b.idAusencia} + '/desbloquear'}" method="post" data-un-envio
+                                      th:attr="data-confirm=${'Se levantará el bloqueo de la agenda de ' + v.nombre + ' ' + v.apellido + ' y se publicarán cupos en su horario laboral. Las ausencias aprobadas, las citas ya reservadas y el horario laboral se siguen respetando.'}"
+                                      data-confirm-title="¿Desbloquear agendamiento?" data-confirm-ok="Desbloquear agendamiento">
+                                    <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-lock-open" aria-hidden="true"></i> Desbloquear agendamiento</button>
+                                </form>
+                            </div>
                             <div class="vl-equipo-sub">Horario</div>
                             <ul class="vl-horario-lista" th:unless="${#lists.isEmpty(horarios[v.idUsuario])}">
                                 <li th:each="h : ${horarios[v.idUsuario]}"><strong th:text="${h.nombreDia}"></strong>

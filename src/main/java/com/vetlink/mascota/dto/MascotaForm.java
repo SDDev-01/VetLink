@@ -16,7 +16,7 @@ public class MascotaForm {
      * DUE-01: datos que no cambian después del registro. En la edición no se muestran como
      * campos editables y el servidor los ignora aunque lleguen en la petición.
      */
-    public static final Set<String> CAMPOS_INMUTABLES = Set.of("idEspecie", "genero", "fechaNacimiento");
+    public static final Set<String> CAMPOS_INMUTABLES = Set.of("idEspecie", "idRaza", "razaPersonalizada", "genero", "fechaNacimiento");
 
     private Integer idMascota;
 

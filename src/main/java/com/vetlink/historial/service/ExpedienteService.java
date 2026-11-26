@@ -53,7 +53,10 @@ public class ExpedienteService {
     /** Carpetas visibles para el usuario. */
     public List<Carpeta> carpetasPara(Usuario u) {
         List<Mascota> lista = switch (u.getRol()) {
-            case TUTOR -> mascotas.findByTutor_IdUsuario(u.getIdUsuario());
+            // Solo las mascotas vigentes del dueño (las mismas de «Mis mascotas», incluidas las
+            // fallecidas, que conservan su historial). Antes se listaban también las dadas de baja
+            // (estado 0), como «Max» del seed de mydb.sql, que el dueño nunca veía en «Mis mascotas».
+            case TUTOR -> mascotas.findByTutor_IdUsuarioAndEstado(u.getIdUsuario(), (byte) 1);
             case VETERINARIO -> mascotas.buscarConCitaConVeterinarioYEstados(u.getIdUsuario(), EstadoCita.RELACION_CLINICA);
             case RECEPCIONISTA -> mascotas.buscarConCitaEnVeterinariaYEstados(
                     u.getRecepcionista().getVeterinaria().getIdVeterinaria(), EstadoCita.RELACION_CLINICA);

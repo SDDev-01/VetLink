@@ -78,12 +78,13 @@ class DuenioV9Test extends PruebaWebBase {
     // ------------------------------------------------------------------ DUE-01
 
     @Test
-    void especieGeneroYFechaNoCambianAunqueLaPeticionLosTraiga() throws Exception {
+    void especieRazaGeneroYFechaNoCambianAunqueLaPeticionLosTraiga() throws Exception {
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
         var otraEspecie = crearEspecie("Ave");
         LocalDate nacimiento = mascota.getFechaNacimiento();
         Integer especieOriginal = mascota.getEspecie().getIdEspecie();
+        Integer razaOriginal = mascota.getRaza().getIdRaza();
         Raza otraRazaMismaEspecie = crearRaza(mascota.getEspecie(), "Labrador");
 
         mockMvc.perform(multipart("/mascotas/" + mascota.getIdMascota() + "/editar").with(csrf()).with(como(duenio))
@@ -99,14 +100,14 @@ class DuenioV9Test extends PruebaWebBase {
         Mascota m = mascotaRepository.findById(mascota.getIdMascota()).orElseThrow();
         assertThat(m.getNombre()).isEqualTo("Nuevo Nombre");
         assertThat(m.getPeso()).isEqualTo(12.5);
-        assertThat(m.getRaza().getIdRaza()).isEqualTo(otraRazaMismaEspecie.getIdRaza());
+        assertThat(m.getRaza().getIdRaza()).isEqualTo(razaOriginal);
         assertThat(m.getEspecie().getIdEspecie()).isEqualTo(especieOriginal);
         assertThat(m.getGenero()).isEqualTo("M");
         assertThat(m.getFechaNacimiento()).isEqualTo(nacimiento);
     }
 
     @Test
-    void edicionMuestraEspecieGeneroYFechaComoSoloLectura() throws Exception {
+    void edicionMuestraEspecieRazaGeneroYFechaComoSoloLectura() throws Exception {
         var duenio = crearDuenio();
         var mascota = crearMascota(duenio);
 
@@ -114,7 +115,9 @@ class DuenioV9Test extends PruebaWebBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("vl-readonly")))
                 .andExpect(content().string(containsString(mascota.getEspecie().getNombreEspecie())))
+                .andExpect(content().string(containsString(mascota.getRaza().getNombreRaza())))
                 .andExpect(content().string(not(containsString("name=\"idEspecie\""))))
+                .andExpect(content().string(not(containsString("name=\"idRaza\""))))
                 .andExpect(content().string(not(containsString("name=\"genero\""))))
                 .andExpect(content().string(not(containsString("name=\"fechaNacimiento\""))));
     }
@@ -174,7 +177,7 @@ class DuenioV9Test extends PruebaWebBase {
     }
 
     @Test
-    void formularioListaLasRazasEnOrdenAlfabeticoConOpcionOtraRaza() throws Exception {
+    void formularioListaLasRazasEnOrdenAlfabeticoSinCampoDeNombreDeRaza() throws Exception {
         var duenio = crearDuenio();
         var especie = especiePorDefecto();
         crearRaza(especie, "Zeta");
@@ -185,7 +188,8 @@ class DuenioV9Test extends PruebaWebBase {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(html.indexOf(">Ápice<")).isLessThan(html.indexOf(">Beagle<"));
         assertThat(html.indexOf(">Beagle<")).isLessThan(html.indexOf(">Zeta<"));
-        assertThat(html).contains("razaPersonalizada").contains("data-otra-raza");
+        // Sin buscador ni campo «Nombre de la raza»: «Otra» es una raza más del catálogo (V12).
+        assertThat(html).doesNotContain("razaPersonalizada").doesNotContain("data-otra-raza");
     }
 
     // ------------------------------------------------------------------ DUE-04
