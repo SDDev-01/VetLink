@@ -64,6 +64,7 @@ public class MascotaServiceImpl implements MascotaService {
         mascota.setEspecie(especie);
         mascota.setGenero(form.getGenero());
         mascota.setFechaNacimiento(form.getFechaNacimiento());
+        mascota.setRaza(resolverRaza(especie, form));
         aplicarEditables(mascota, form);
         mascota.setTutor(tutor);
         mascota.setEstado((byte) 1);
@@ -71,7 +72,7 @@ public class MascotaServiceImpl implements MascotaService {
     }
 
     /**
-     * DUE-01: especie, género y fecha de nacimiento NO se modifican después del registro,
+     * DUE-01: especie, raza, género y fecha de nacimiento NO se modifican después del registro,
      * aunque la petición HTTP los traiga cambiados: se conservan los valores guardados.
      */
     @Override
@@ -99,7 +100,7 @@ public class MascotaServiceImpl implements MascotaService {
         }
     }
 
-    /** Nombre, raza y peso: lo único que se puede cambiar de una mascota registrada. */
+    /** Nombre y peso: lo único que se puede cambiar de una mascota registrada. */
     private void aplicarEditables(Mascota mascota, MascotaForm form) {
         String nombre = Textos.normalizar(form.getNombre());
         if (!Textos.esNombreValido(nombre)) {
@@ -110,7 +111,6 @@ public class MascotaServiceImpl implements MascotaService {
             throw new IllegalArgumentException("Ingresa un peso mayor que cero");
         }
         mascota.setNombre(nombre);
-        mascota.setRaza(resolverRaza(mascota.getEspecie(), form));
         mascota.setPeso(form.getPeso());
         // VL-22: la foto ya no viene como texto del formulario; solo la cambia FotoMascotaService al subir un archivo.
     }
@@ -121,7 +121,7 @@ public class MascotaServiceImpl implements MascotaService {
             return catalogoRazas.obtenerOCrearPersonalizada(especie, form.getRazaPersonalizada());
         }
         if (form.getIdRaza() == null) {
-            throw new IllegalArgumentException("Selecciona una raza o elige «Otra raza» y escríbela");
+            throw new IllegalArgumentException("Selecciona una raza (si no está en la lista, elige «Otra»)");
         }
         Raza raza = razaRepository.findById(form.getIdRaza())
                 .orElseThrow(() -> new IllegalArgumentException("Raza inválida"));

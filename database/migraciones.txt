@@ -28,3 +28,4 @@ V9_mejoras          | migrations/V9_mejoras_integrales.sql                      
 V10_reprogramacion  | migrations/V10_reprogramacion_desbloqueo_aprobacion.sql   | esquema | SELECT COUNT(*) > 0 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cita' AND COLUMN_NAME = 'respuestaDuenio'
 # Sin marcador: es idempotente y en una base adoptada se ejecuta (solo corrige datos).
 V11_mascotas_baja   | migrations/V11_mascotas_dadas_de_baja.sql                 | esquema |
+V12_raza_otra       | migrations/V12_raza_otra_por_especie.sql                  | esquema |

@@ -145,9 +145,11 @@ public class MascotaController {
             return "redirect:/mascotas/" + id;
         }
         form.setIdMascota(id);
-        // DUE-01: especie, género y fecha de nacimiento no se editan: se usan los guardados
+        // DUE-01: especie, raza, género y fecha de nacimiento no se editan: se usan los guardados
         // (lo que llegue en la petición se descarta y sus errores de validación no aplican).
         form.setIdEspecie(actual.getEspecie().getIdEspecie());
+        form.setIdRaza(actual.getRaza().getIdRaza());
+        form.setRazaPersonalizada(null);
         form.setGenero(actual.getGenero());
         form.setFechaNacimiento(actual.getFechaNacimiento());
         validarFoto(archivoFoto, result);
@@ -178,10 +180,10 @@ public class MascotaController {
         return "mascotas/formulario";
     }
 
-    /** DUE-02: una raza del catálogo o «Otra raza» con su nombre. */
+    /** DUE-02: una raza del catálogo de la especie (incluida «Otra»). */
     private static void validarRaza(MascotaForm form, BindingResult result) {
         if (form.getIdRaza() == null && !form.usaRazaPersonalizada()) {
-            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza o elige «Otra raza» y escríbela");
+            result.rejectValue("idRaza", "raza.requerida", "Selecciona una raza (si no está en la lista, elige «Otra»)");
         }
     }
 
