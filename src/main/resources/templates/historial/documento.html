@@ -27,9 +27,10 @@
             <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
             <div class="vl-alert vl-alert-ok vl-no-print" th:if="${param.archivoSubido}"><i class="fas fa-circle-check" aria-hidden="true"></i>Archivo adjuntado.</div>
 
-            <article class="vl-expediente">
+            <!-- Identidad: logo de la veterinaria que hizo el registro y marca de agua discreta de VetLink -->
+            <article class="vl-expediente vl-doc-marca">
                 <header class="vl-exp-head">
-                    <img th:src="@{${logoClinica}}" alt="">
+                    <img class="vl-doc-logo" th:src="@{${logoClinica}}" th:alt="${clinica != null} ? 'Logo de ' + ${clinica.nombre} : 'Logo de la veterinaria'">
                     <div>
                         <h1 th:text="${clinica != null} ? ${clinica.nombre} : 'Veterinaria'">Veterinaria</h1>
                         <div class="vl-small vl-muted" th:text="${clinica != null} ? 'NIT ' + ${clinica.nit} + (${#strings.isEmpty(direccionClinica)} ? '' : ' · ' + ${direccionClinica}) : ''"></div>

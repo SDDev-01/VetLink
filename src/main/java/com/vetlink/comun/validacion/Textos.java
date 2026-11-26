@@ -21,6 +21,10 @@ public final class Textos {
     public static final String MENSAJE_NOMBRE = "Usa solo letras, espacios, guiones o apóstrofos (sin números)";
 
     public static final String REGEX_TELEFONO = "^\\d{7,15}$";
+
+    /** Contraseña de las cuentas de veterinaria: 8+ caracteres, una mayúscula y un símbolo. */
+    public static final String MENSAJE_PASSWORD_SEGURA =
+            "La contraseña debe tener mínimo 8 caracteres, al menos una letra mayúscula y al menos un símbolo (por ejemplo ! @ # $ %)";
     public static final String MENSAJE_TELEFONO = "El teléfono solo puede tener números (entre 7 y 15 dígitos)";
 
     private static final Pattern NOMBRE = Pattern.compile(REGEX_NOMBRE);
@@ -49,6 +53,26 @@ public final class Textos {
     public static String claveComparacion(String texto) {
         String n = normalizar(texto);
         return n == null ? "" : n.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Clave sin mayúsculas, espacios sobrantes ni tildes («Ecografía» = «ecografia»), igual que la
+     * intercalación utf8mb4_0900_ai_ci de MySQL. Se usa para detectar nombres duplicados.
+     */
+    public static String claveSinTildes(String texto) {
+        String n = normalizar(texto);
+        if (n == null) return "";
+        return java.text.Normalizer.normalize(n, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    /** Mínimo 8 caracteres, al menos una mayúscula y al menos un carácter que no sea letra, número ni espacio. */
+    public static boolean esPasswordSegura(String password) {
+        if (password == null || password.length() < 8) return false;
+        boolean mayuscula = password.codePoints().anyMatch(Character::isUpperCase);
+        boolean simbolo = password.codePoints().anyMatch(c -> !Character.isLetterOrDigit(c) && !Character.isWhitespace(c));
+        return mayuscula && simbolo;
     }
 
     /** «pastor  ganadero» → «Pastor Ganadero». Respeta tildes y ñ. */

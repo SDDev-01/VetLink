@@ -272,6 +272,7 @@ public class GestionMascotaService {
             throw new IllegalArgumentException("Ingresa un peso mayor que cero");
         }
         Mascota m = mascotas.bloquear(idMascota).orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
+        m.exigirEditable();
         Double anterior = m.getPeso();
         double redondeado = Math.round(peso * 100.0) / 100.0;
         m.setPeso(redondeado);

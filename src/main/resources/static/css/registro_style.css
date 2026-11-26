@@ -624,3 +624,46 @@ body.reg-body {
     border: none; background: transparent; color: #ef4444; cursor: pointer;
     padding: 6px; align-self: flex-end;
 }
+
+/* =========================================================
+   V10 · Validación inmediata, contraseña segura y selector
+   de servicios del registro de veterinarias
+   ========================================================= */
+.input-box input.is-valid, .input-box select.is-valid { border-color: #22c55e; background-image: none; }
+.input-box input.is-invalid, .input-box select.is-invalid { border-color: var(--error); }
+.pass-wrap { position: relative; display: flex; align-items: center; }
+.pass-wrap input { width: 100%; padding-right: 46px; }
+.pass-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: none; background: transparent; color: #64748b; border-radius: 8px; cursor: pointer; }
+.pass-toggle:hover, .pass-toggle:focus-visible { background: #f1f5f9; color: var(--primary); outline: none; }
+.pass-reqs { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; font-size: .78rem; }
+.pass-reqs.hidden { display: none; }
+.pass-reqs li { color: #94a3b8; display: flex; gap: 8px; align-items: center; transition: color .15s; }
+.pass-reqs li i { font-size: .7rem; width: 14px; text-align: center; }
+.pass-reqs li.ok { color: #15803d; font-weight: 600; }
+.pass-reqs li.ok i { font-size: .82rem; }
+
+.svc-combo { position: relative; margin-bottom: 6px; }
+.svc-combo .svc-input { width: 100%; box-sizing: border-box; padding: 12px 40px 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; font: inherit; background: #fff; }
+.svc-combo .svc-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.svc-combo .svc-ico { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; }
+.svc-lista { position: absolute; left: 0; right: 0; top: calc(100% + 6px); max-height: 260px; overflow-y: auto; background: #fff; border: 1px solid #e5e9f0; border-radius: 12px; box-shadow: 0 12px 28px rgba(15,23,42,.14); z-index: 30; padding: 6px; margin: 0; list-style: none; }
+.svc-lista[hidden] { display: none; }
+.svc-lista li { padding: 9px 12px; border-radius: 9px; cursor: pointer; font-size: .9rem; color: #0f172a; display: flex; gap: 8px; align-items: center; }
+.svc-lista li[aria-selected="true"], .svc-lista li:hover { background: #eff6ff; color: #1d4ed8; }
+.svc-lista li.otros { border-top: 1px solid #f1f5f9; margin-top: 4px; font-weight: 700; color: #6d28d9; }
+.svc-lista li.vacio { color: #64748b; cursor: default; background: none; }
+.svc-otro { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.svc-otro.hidden { display: none; }
+.svc-otro input { flex: 1 1 220px; padding: 11px 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; font: inherit; }
+.svc-elegidos { display: grid; gap: 8px; margin-top: 10px; }
+#services-container .svc-fila { display: grid; grid-template-columns: minmax(0, 1fr) 150px 40px; gap: 8px; align-items: center; padding: 8px 10px; margin: 0; border: 1px solid #e5e9f0; border-radius: 12px; background: #fbfdff; }
+#services-container .svc-fila .nombre { font-weight: 700; color: #0f172a; overflow-wrap: anywhere; display: flex; gap: 8px; align-items: center; }
+#services-container .svc-fila .nombre .tag { font-size: .66rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ede9fe; color: #6d28d9; text-transform: uppercase; }
+#services-container .svc-fila .service-precio { width: 100%; min-width: 0; flex: none; box-sizing: border-box; padding: 9px 10px; border: 1.5px solid #e2e8f0; border-radius: 10px; font: inherit; }
+#services-container .svc-fila .btn-remove { width: 38px; height: 38px; border-radius: 10px; }
+.svc-vacio { color: #94a3b8; font-size: .84rem; margin: 8px 0 0; }
+.svc-vacio.hidden { display: none; }
+@media (max-width: 520px) {
+    #services-container .svc-fila { grid-template-columns: minmax(0, 1fr) 40px; }
+    #services-container .svc-fila .service-precio { grid-column: 1 / 2; grid-row: 2; }
+}

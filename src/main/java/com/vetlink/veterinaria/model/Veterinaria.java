@@ -34,6 +34,13 @@ public class Veterinaria {
     @Column(nullable = false)
     private Byte estado = 1;
 
+    /** Fecha de aprobación (V10). En las clínicas anteriores a V10 puede ser null. */
+    private java.time.LocalDateTime aprobadaEn;
+
+    /** true = aprobada automáticamente al completar el registro (V10). */
+    @Column(nullable = false)
+    private Boolean aprobacionAutomatica = false;
+
     public boolean isActiva() {
         return estado != null && estado == 1;
     }

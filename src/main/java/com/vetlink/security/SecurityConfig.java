@@ -43,10 +43,10 @@ public class SecurityConfig {
             .authenticationProvider(authProvider)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/registro", "/login", "/directorio/**", "/css/**", "/js/**", "/resource/**",
-                        "/api/catalogos/**", "/error").permitAll()
+                        "/api/catalogos/**", "/api/registro/disponible", "/error").permitAll()
                 // La foto también la ve el personal que atiende a la mascota (lo verifica AccesoPacienteService).
                 .requestMatchers(HttpMethod.GET, "/mascotas/*/foto").authenticated()
-                .requestMatchers("/mascotas/**", "/citas/mias/**").hasRole("TUTOR")
+                .requestMatchers("/mascotas/**", "/citas/mias/**", "/citas/*/reprogramacion/**").hasRole("TUTOR")
                 .requestMatchers("/recepcion/**", "/citas/recepcion/**").hasRole("RECEPCIONISTA")
                 .requestMatchers("/disponibilidad/**").hasRole("VETERINARIO")
                 .requestMatchers("/agenda/**").hasAnyRole("VETERINARIO", "RECEPCIONISTA")

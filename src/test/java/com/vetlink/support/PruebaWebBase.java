@@ -66,6 +66,9 @@ public abstract class PruebaWebBase {
 
     public static final String PASSWORD_PRUEBAS = "Clave12345";
 
+    /** Las cuentas de veterinaria exigen 8+ caracteres, una mayúscula y un símbolo (V10). */
+    public static final String PASSWORD_SEGURA_PRUEBAS = "Clave#12345";
+
     private static final AtomicInteger SECUENCIA = new AtomicInteger(1000);
 
     @Autowired protected MockMvc mockMvc;
@@ -351,10 +354,12 @@ public abstract class PruebaWebBase {
                         .param("apellido", "Admin")
                         .param("correo", "admin" + n + "@pruebas.vetlink")
                         .param("telefono", "3001234567")
-                        .param("password", PASSWORD_PRUEBAS)
-                        .param("confirmarPassword", PASSWORD_PRUEBAS)
+                        .param("password", PASSWORD_SEGURA_PRUEBAS)
+                        .param("confirmarPassword", PASSWORD_SEGURA_PRUEBAS)
                         .param("rol", "VETERINARIA")
-                        .param("nuevaVeterinaria.nit", "900" + n)
+                        .param("nuevaVeterinaria.nit", String.format("900%06d", n))
+                        .param("nuevaVeterinaria.servicios[0].idServicio", servicioPorDefecto().getIdServicio().toString())
+                        .param("nuevaVeterinaria.servicios[0].precio", "50000")
                         .param("nuevaVeterinaria.nombre", nombreClinica)
                         .param("nuevaVeterinaria.telefono", "6011234567")
                         .param("nuevaVeterinaria.correo", "clinica" + n + "@pruebas.vetlink")

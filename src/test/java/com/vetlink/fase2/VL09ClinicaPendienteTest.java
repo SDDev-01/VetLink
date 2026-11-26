@@ -10,37 +10,43 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** VL-09: una clínica recién registrada queda pendiente y no es pública. */
+/**
+ * V10 (antes VL-09): la clínica que completa el registro queda aprobada automáticamente
+ * (activa, con fecha de aprobación) y aparece en el directorio. Una clínica suspendida
+ * (estado 0) sigue fuera del directorio y su recepción ve el aviso.
+ */
 class VL09ClinicaPendienteTest extends PruebaWebBase {
 
     @Test
-    void clinicaNuevaQuedaPendienteYNoApareceEnDirectorio() throws Exception {
-        var activa = crearClinica();
-        var recepcion = registrarClinicaNueva("Clinica Pendiente Zeta");
-        var clinica = recepcion.getRecepcionista().getVeterinaria();
+    void clinicaNuevaQuedaAprobadaAutomaticamenteYApareceEnDirectorio() throws Exception {
+        var recepcion = registrarClinicaNueva("Clinica Aprobada Zeta");
+        var clinica = veterinariaRepository.findById(recepcion.getRecepcionista().getVeterinaria().getIdVeterinaria()).orElseThrow();
 
-        assertThat(clinica.getEstado()).isEqualTo((byte) 0);
-        // El directorio muestra resultados después del formulario de búsqueda (buscar=1).
+        assertThat(clinica.getEstado()).isEqualTo((byte) 1);
+        assertThat(clinica.getAprobadaEn()).isNotNull();
+        assertThat(clinica.getAprobacionAutomatica()).isTrue();
+        // Recepcionista principal, sin permisos de administración del sistema (no existe ese rol).
+        assertThat(recepcion.getRecepcionista().getEsPrincipal()).isTrue();
         mockMvc.perform(get("/directorio").param("buscar", "1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString(activa.getNombre())))
-                .andExpect(content().string(not(containsString("Clinica Pendiente Zeta"))));
-        mockMvc.perform(get("/directorio/" + clinica.getIdVeterinaria()))
-                .andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("Clinica Pendiente Zeta"))));
-        mockMvc.perform(get("/directorio").param("q", "Pendiente Zeta"))
-                .andExpect(content().string(not(containsString("Clinica Pendiente Zeta"))));
+                .andExpect(content().string(containsString("Clinica Aprobada Zeta")));
     }
 
     @Test
-    void recepcionistaPrincipalEntraAlDashboardYVeElAviso() throws Exception {
-        var recepcion = registrarClinicaNueva("Clinica Aviso");
+    void clinicaSuspendidaNoApareceEnDirectorioYSuRecepcionVeElAviso() throws Exception {
+        var recepcion = registrarClinicaNueva("Clinica Suspendida Zeta");
+        var clinica = veterinariaRepository.findById(recepcion.getRecepcionista().getVeterinaria().getIdVeterinaria()).orElseThrow();
+        clinica.setEstado((byte) 0); // suspensión administrativa
+        veterinariaRepository.save(clinica);
+        sincronizar();
 
-        mockMvc.perform(get("/dashboard").with(como(recepcion)))
+        mockMvc.perform(get("/directorio").param("buscar", "1"))
+                .andExpect(content().string(not(containsString("Clinica Suspendida Zeta"))));
+        mockMvc.perform(get("/directorio/" + clinica.getIdVeterinaria()))
+                .andExpect(content().string(not(containsString("Clinica Suspendida Zeta"))));
+        mockMvc.perform(get("/dashboard").with(como(usuarioRepository.findById(recepcion.getIdUsuario()).orElseThrow())))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Tu clínica está pendiente de verificación")));
-        mockMvc.perform(get("/veterinarias/admin").with(como(recepcion)))
-                .andExpect(status().isOk());
+                .andExpect(content().string(containsString("Tu clínica está inactiva")));
     }
 
     @Test
@@ -50,6 +56,6 @@ class VL09ClinicaPendienteTest extends PruebaWebBase {
 
         mockMvc.perform(get("/dashboard").with(como(recepcion)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("pendiente de verificación"))));
+                .andExpect(content().string(not(containsString("Tu clínica está inactiva"))));
     }
 }

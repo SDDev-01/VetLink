@@ -6,7 +6,9 @@ public enum EstadoAprobacion {
     APROBADO("Aprobado"),
     RECHAZADO("Rechazado"),
     /** Elemento aprobado que dejó de regir porque se aprobó otro que lo sustituye. */
-    REEMPLAZADO("Reemplazado");
+    REEMPLAZADO("Reemplazado"),
+    /** Bloqueo de agenda levantado por recepción antes de terminar (se conserva como historia). */
+    ANULADO("Desbloqueado");
 
     private final String etiqueta;
 

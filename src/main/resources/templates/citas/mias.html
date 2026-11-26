@@ -16,43 +16,113 @@
     <section class="container">
         <div class="vl-section vl-section-active">
             <div class="vl-section-head">
-                <div><h1>Mis citas</h1><p>Toca una cita para ver todos sus detalles.</p></div>
+                <div><h1>Mis citas</h1><p>Tus citas activas y tu historial, con filtros. Toca una cita para ver sus detalles.</p></div>
                 <a th:href="@{/citas/agendar}" class="vl-btn vl-btn-primary"><i class="fas fa-plus" aria-hidden="true"></i> Agendar cita</a>
             </div>
             <div th:replace="~{layout/dashboard-shell :: mensajes}"></div>
             <div class="vl-alert vl-alert-ok" role="status" th:if="${param.cancelada}"><i class="fas fa-circle-check" aria-hidden="true"></i>Cita cancelada.</div>
+            <div class="vl-alert vl-alert-warn" role="status" th:if="${requierenAccion > 0}">
+                <i class="fas fa-bell" aria-hidden="true"></i>
+                <span th:text="${requierenAccion == 1} ? 'La clínica reprogramó 1 cita y espera tu respuesta: confírmala, elige otro horario o cancélala.' : 'La clínica reprogramó ' + ${requierenAccion} + ' citas y espera tu respuesta.'"></span>
+            </div>
 
-            <div class="vl-grid-2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
-                <div class="vl-panel">
-                    <h3><i class="fas fa-calendar-day" aria-hidden="true"></i> Próximas</h3>
-                    <div class="vl-cita-list" th:unless="${#lists.isEmpty(proximas)}">
-                        <a th:each="c : ${proximas}" th:href="@{'/citas/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
-                            <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}">9:00 a. m.</span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
-                            <div class="vl-cita-main">
-                                <div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
-                                <div class="vl-cita-meta">
-                                    <span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${c.veterinaria.nombre}"></span></span>
-                                    <span><i class="fas fa-user-doctor" aria-hidden="true"></i><span th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></span></span>
-                                </div>
-                            </div>
-                            <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span>
-                                <span class="vl-small vl-muted">Ver detalle <i class="fas fa-chevron-right" aria-hidden="true"></i></span></div>
+            <div class="vl-mis-citas-grid">
+                <div>
+                    <!-- Pestañas: mismas clases que las fichas de «Mis mascotas» -->
+                    <nav class="vl-drawer-tabs vl-tabs-bar" aria-label="Secciones de mis citas">
+                        <a class="vl-drawer-tab" th:classappend="${tab == 'activas'} ? 'active'"
+                           th:href="@{/citas/mias(tab='activas',idMascota=${fMascota},idVeterinaria=${fVeterinaria},idServicio=${fServicio},desde=${fDesde},hasta=${fHasta})}"
+                           th:attr="aria-current=${tab == 'activas'} ? 'page' : null">
+                            <i class="fas fa-calendar-check" aria-hidden="true"></i> Mis citas
+                            <span class="vl-tab-count" th:classappend="${requierenAccion > 0} ? 'vl-tab-alerta'" th:text="${#lists.size(proximas)}">0</span>
                         </a>
-                    </div>
-                    <div class="vl-empty-state" th:if="${#lists.isEmpty(proximas)}"><i class="fas fa-calendar-plus" aria-hidden="true"></i>No tienes citas próximas.</div>
+                        <a class="vl-drawer-tab" th:classappend="${tab == 'historial'} ? 'active'"
+                           th:href="@{/citas/mias(tab='historial',idMascota=${fMascota},idVeterinaria=${fVeterinaria},idServicio=${fServicio},desde=${fDesde},hasta=${fHasta})}"
+                           th:attr="aria-current=${tab == 'historial'} ? 'page' : null">
+                            <i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Historial de citas
+                            <span class="vl-tab-count" th:text="${#lists.size(pasadas)}">0</span>
+                        </a>
+                    </nav>
+                    <div class="vl-tabs-body">
+                        <!-- Filtros (las opciones salen de tus citas reales) -->
+                        <form class="vl-filtros" th:action="@{/citas/mias}" method="get" aria-label="Filtrar citas">
+                            <input type="hidden" name="tab" th:value="${tab}">
+                            <div class="vl-field"><label for="f-mascota">Mascota</label>
+                                <select id="f-mascota" name="idMascota">
+                                    <option value="">Todas</option>
+                                    <option th:each="o : ${opMascotas}" th:value="${o.valor}" th:text="${o.etiqueta}" th:selected="${fMascota != null and o.valor == #strings.toString(fMascota)}"></option>
+                                </select></div>
+                            <div class="vl-field"><label for="f-estado">Estado</label>
+                                <select id="f-estado" name="estado">
+                                    <option value="">Todos</option>
+                                    <option th:each="o : ${opEstados}" th:value="${o.valor}" th:text="${o.etiqueta}" th:selected="${o.valor == fEstado}"></option>
+                                </select></div>
+                            <div class="vl-field"><label for="f-vet">Veterinaria</label>
+                                <select id="f-vet" name="idVeterinaria">
+                                    <option value="">Todas</option>
+                                    <option th:each="o : ${opVeterinarias}" th:value="${o.valor}" th:text="${o.etiqueta}" th:selected="${fVeterinaria != null and o.valor == #strings.toString(fVeterinaria)}"></option>
+                                </select></div>
+                            <div class="vl-field"><label for="f-servicio">Servicio</label>
+                                <select id="f-servicio" name="idServicio">
+                                    <option value="">Todos</option>
+                                    <option th:each="o : ${opServicios}" th:value="${o.valor}" th:text="${o.etiqueta}" th:selected="${fServicio != null and o.valor == #strings.toString(fServicio)}"></option>
+                                </select></div>
+                            <div class="vl-field"><label for="f-desde">Desde</label>
+                                <input type="date" id="f-desde" name="desde" th:value="${fDesde}"></div>
+                            <div class="vl-field"><label for="f-hasta">Hasta</label>
+                                <input type="date" id="f-hasta" name="hasta" th:value="${fHasta}" data-posterior-a="f-desde"
+                                       data-msg-posterior="La fecha final no puede ser anterior a la inicial"></div>
+                            <div class="vl-filtros-acciones">
+                                <a th:if="${hayFiltros}" th:href="@{/citas/mias(tab=${tab})}" class="vl-btn vl-btn-ghost vl-btn-sm"><i class="fas fa-eraser" aria-hidden="true"></i> Limpiar filtros</a>
+                                <button type="submit" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-filter" aria-hidden="true"></i> Filtrar</button>
+                            </div>
+                        </form>
 
-                    <h3 style="margin-top:22px"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Historial de citas</h3>
-                    <div class="vl-cita-list" th:unless="${#lists.isEmpty(pasadas)}">
-                        <a th:each="c : ${pasadas}" th:href="@{'/citas/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
-                            <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fecha(c.fecha)}"></small></div>
-                            <div class="vl-cita-main">
-                                <div class="vl-cita-titulo" th:text="${c.mascota.nombre} + ' · ' + ${c.servicio.nombreServicio}"></div>
-                                <div class="vl-cita-meta"><span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${c.veterinaria.nombre}"></span></span></div>
+                        <!-- Pestaña: Mis citas -->
+                        <div th:if="${tab == 'activas'}">
+                            <div class="vl-cita-list" th:unless="${#lists.isEmpty(proximas)}">
+                                <a th:each="c : ${proximas}" th:href="@{'/citas/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                                    <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}">9:00 a. m.</span><small th:text="${@fmt.fechaCorta(c.fecha)}"></small></div>
+                                    <div class="vl-cita-main">
+                                        <div class="vl-cita-titulo" th:text="${c.mascota.nombre}">Mascota</div>
+                                        <div class="vl-cita-servicio"><i class="fas fa-stethoscope" aria-hidden="true"></i><span th:text="${c.servicio.nombreServicio}"></span></div>
+                                        <div class="vl-cita-meta">
+                                            <span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${c.veterinaria.nombre}"></span></span>
+                                            <span><i class="fas fa-user-doctor" aria-hidden="true"></i><span th:text="${c.veterinario.nombre} + ' ' + ${c.veterinario.apellido}"></span></span>
+                                        </div>
+                                    </div>
+                                    <div class="vl-cita-side">
+                                        <span th:if="${c.esperandoRespuestaDuenio}" class="vl-cita-accion"><i class="fas fa-bell" aria-hidden="true"></i> Requiere tu respuesta</span>
+                                        <span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span>
+                                        <span class="vl-small vl-muted">Ver detalle <i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+                                    </div>
+                                </a>
                             </div>
-                            <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span></div>
-                        </a>
+                            <div class="vl-empty-state" th:if="${#lists.isEmpty(proximas)}">
+                                <i class="fas fa-calendar-plus" aria-hidden="true"></i>
+                                <span th:text="${hayFiltros} ? 'Ninguna cita activa coincide con los filtros.' : 'No tienes citas activas.'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Pestaña: Historial de citas -->
+                        <div th:if="${tab == 'historial'}">
+                            <div class="vl-cita-list" th:unless="${#lists.isEmpty(pasadas)}">
+                                <a th:each="c : ${pasadas}" th:href="@{'/citas/' + ${c.idCita}}" class="vl-cita-card" th:classappend="'st-' + ${c.estado}">
+                                    <div class="vl-cita-hora"><span th:text="${@fmt.hora(c.hora)}"></span><small th:text="${@fmt.fecha(c.fecha)}"></small></div>
+                                    <div class="vl-cita-main">
+                                        <div class="vl-cita-titulo" th:text="${c.mascota.nombre}"></div>
+                                        <div class="vl-cita-servicio"><i class="fas fa-stethoscope" aria-hidden="true"></i><span th:text="${c.servicio.nombreServicio}"></span></div>
+                                        <div class="vl-cita-meta"><span><i class="fas fa-hospital" aria-hidden="true"></i><span th:text="${c.veterinaria.nombre}"></span></span></div>
+                                    </div>
+                                    <div class="vl-cita-side"><span th:replace="~{layout/dashboard-shell :: estado(${c.estado})}"></span></div>
+                                </a>
+                            </div>
+                            <div class="vl-empty-state" th:if="${#lists.isEmpty(pasadas)}">
+                                <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                                <span th:text="${hayFiltros} ? 'Ninguna cita del historial coincide con los filtros.' : 'Aún no hay citas en tu historial.'"></span>
+                            </div>
+                        </div>
                     </div>
-                    <p class="vl-muted" th:if="${#lists.isEmpty(pasadas)}">Aún no hay citas anteriores.</p>
                 </div>
                 <div class="vl-panel">
                     <h3><i class="fas fa-calendar" aria-hidden="true"></i> Calendario</h3>
@@ -77,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var items = VL_CITAS.filter(function (x) { return x.fecha === dia; });
         lista.innerHTML = items.length ? items.map(function (i) {
             return '<a class="vl-cita-card st-' + vlEsc(i.estado) + '" href="/citas/' + i.idCita + '"><div class="vl-cita-hora">' + vlEsc(i.horaTexto) +
-                '</div><div class="vl-cita-main"><div class="vl-cita-titulo">' + vlEsc(i.mascota) + '</div><div class="vl-cita-meta">' +
+                '</div><div class="vl-cita-main"><div class="vl-cita-titulo">' + vlEsc(i.mascota) + '</div><div class="vl-cita-servicio">' +
                 vlEsc(i.servicio) + '</div></div><div class="vl-cita-side"><span class="vl-st ' + vlEsc(i.estadoClase) + '">' + vlEsc(i.estadoEtiqueta) + '</span></div></a>';
         }).join('') : '<p class="vl-muted">Sin citas este día.</p>';
     }});

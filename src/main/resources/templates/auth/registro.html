@@ -86,12 +86,24 @@
                         </div>
                         <div class="input-box">
                             <label>Contraseña</label>
-                            <input type="password" id="reg-pass" th:field="*{password}" placeholder="Mínimo 6 caracteres">
+                            <div class="pass-wrap">
+                                <input type="password" id="reg-pass" th:field="*{password}" placeholder="Mínimo 6 caracteres" autocomplete="new-password" aria-describedby="reqs-pass">
+                                <button type="button" class="pass-toggle" data-toggle-pass="reg-pass" aria-label="Mostrar contraseña" aria-pressed="false"><i class="fas fa-eye" aria-hidden="true"></i></button>
+                            </div>
+                            <!-- Requisitos para las cuentas de veterinaria: se marcan mientras se escribe -->
+                            <ul class="pass-reqs hidden" id="reqs-pass" aria-live="polite">
+                                <li data-req="largo"><i class="fas fa-circle" aria-hidden="true"></i> Mínimo 8 caracteres</li>
+                                <li data-req="mayuscula"><i class="fas fa-circle" aria-hidden="true"></i> Al menos una letra mayúscula</li>
+                                <li data-req="simbolo"><i class="fas fa-circle" aria-hidden="true"></i> Al menos un símbolo (por ejemplo ! @ # $ %)</li>
+                            </ul>
                             <small class="error-text" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></small>
                         </div>
                         <div class="input-box">
                             <label>Confirmar contraseña</label>
-                            <input type="password" id="reg-confirmar-pass" th:field="*{confirmarPassword}" placeholder="Repite tu contraseña">
+                            <div class="pass-wrap">
+                                <input type="password" id="reg-confirmar-pass" th:field="*{confirmarPassword}" placeholder="Repite tu contraseña" autocomplete="new-password">
+                                <button type="button" class="pass-toggle" data-toggle-pass="reg-confirmar-pass" aria-label="Mostrar contraseña" aria-pressed="false"><i class="fas fa-eye" aria-hidden="true"></i></button>
+                            </div>
                             <small class="error-text" th:if="${#fields.hasErrors('confirmarPassword')}" th:errors="*{confirmarPassword}"></small>
                         </div>
                         <div class="input-box" id="box-direccion">
@@ -191,21 +203,32 @@
 
                         <div class="input-box full-width">
                             <label>Servicios que ofrece</label>
-                            <div id="services-container">
-                                <div class="service-item" th:each="s, sStat : *{nuevaVeterinaria.servicios}">
-                                    <select th:field="*{nuevaVeterinaria.servicios[__${sStat.index}__].idServicio}" class="service-nombre">
-                                        <option value="">Selecciona</option>
-                                        <option th:each="cat : ${servicios}" th:value="${cat.idServicio}" th:text="${cat.nombreServicio}"></option>
-                                    </select>
-                                    <input type="number" th:field="*{nuevaVeterinaria.servicios[__${sStat.index}__].precio}" class="service-precio" placeholder="Precio" min="0">
-                                    <button type="button" class="btn-remove" onclick="quitarServicio(this)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                            <!-- Selector de servicios: opciones del catálogo de la base de datos, con buscador.
+                                 Los ya elegidos no se vuelven a mostrar; «Otros» permite escribir un servicio nuevo. -->
+                            <div class="svc-combo" id="svc-combo">
+                                <input type="text" id="svc-buscar" class="svc-input" placeholder="Busca y elige un servicio…" autocomplete="off"
+                                       role="combobox" aria-expanded="false" aria-controls="svc-lista" aria-autocomplete="list">
+                                <i class="fas fa-magnifying-glass svc-ico" aria-hidden="true"></i>
+                                <ul class="svc-lista" id="svc-lista" role="listbox" hidden></ul>
+                            </div>
+                            <div class="svc-otro hidden" id="svc-otro">
+                                <input type="text" id="svc-otro-nombre" maxlength="45" placeholder="Nombre del servicio (ej.: Acupuntura)">
+                                <button type="button" class="btn-add" id="svc-otro-agregar"><i class="fas fa-plus"></i> Agregar</button>
+                            </div>
+                            <small class="error-text" id="err-svc-otro"></small>
+                            <div id="services-container" class="svc-elegidos" aria-live="polite">
+                                <!-- Al volver con errores del servidor se conservan los servicios elegidos -->
+                                <div class="service-item svc-fila" th:each="s, sStat : *{nuevaVeterinaria.servicios}"
+                                     th:if="${s != null and (s.idServicio != null or (s.nombrePersonalizado != null and !#strings.isEmpty(s.nombrePersonalizado)))}"
+                                     th:attr="data-id=${s.idServicio},data-nombre=${s.nombrePersonalizado}">
+                                    <input type="hidden" class="svc-id" th:name="'nuevaVeterinaria.servicios[' + ${sStat.index} + '].idServicio'" th:value="${s.idServicio}">
+                                    <input type="hidden" class="svc-nombre" th:name="'nuevaVeterinaria.servicios[' + ${sStat.index} + '].nombrePersonalizado'" th:value="${s.nombrePersonalizado}">
+                                    <span class="nombre"></span>
+                                    <input type="number" class="service-precio" th:name="'nuevaVeterinaria.servicios[' + ${sStat.index} + '].precio'" th:value="${s.precio}" placeholder="Precio (COP)" min="0" step="100" aria-label="Precio">
+                                    <button type="button" class="btn-remove" aria-label="Quitar servicio"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
-                            <button type="button" class="btn-add" onclick="addService()">
-                                <i class="fas fa-plus"></i> Agregar servicio
-                            </button>
+                            <p class="svc-vacio" id="svc-vacio">Aún no has elegido servicios.</p>
                             <small class="error-text" id="err-services"></small>
                             <small class="error-text" id="err-horarios"></small>
                         </div>
@@ -292,6 +315,7 @@
         /*<![CDATA[*/
         var VL_FORM_TIENE_ERRORES = /*[[${#fields.hasErrors('*')}]]*/ false;
         var VL_ROL_ENVIADO = /*[[*{rol}]]*/ '';
+        var VL_CATALOGO_SERVICIOS = /*[[${catalogoServicios}]]*/ [];
         /*]]>*/
     </script>
     <script th:src="@{/js/registro.js}"></script>

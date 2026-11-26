@@ -137,7 +137,7 @@ public class RecepcionMascotaController {
             ra.addFlashAttribute("mensajeOk", "Peso actualizado.");
         } catch (NumberFormatException e) {
             ra.addFlashAttribute("errorGeneral", "Ingresa un peso mayor que cero");
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             ra.addFlashAttribute("errorGeneral", e.getMessage());
         }
         return "redirect:/recepcion/mascotas/" + id;

@@ -108,9 +108,14 @@ public class MascotaController {
     }
 
     @GetMapping("/{id}/editar")
-    public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String editarForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal, Model model,
+                             RedirectAttributes ra) {
         var mascota = mascotaService.buscarPorId(id);
         verificarPropietario(mascota, principal);
+        if (!mascota.isEditable()) {
+            ra.addFlashAttribute("errorMascota", com.vetlink.mascota.model.Mascota.MENSAJE_SOLO_LECTURA);
+            return "redirect:/mascotas/" + id;
+        }
         MascotaForm form = new MascotaForm();
         form.setIdMascota(mascota.getIdMascota());
         form.setNombre(mascota.getNombre());
@@ -130,9 +135,15 @@ public class MascotaController {
     @PostMapping("/{id}/editar")
     public String actualizar(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
                              @Valid @ModelAttribute("form") MascotaForm form, BindingResult result,
-                             @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model) {
+                             @RequestParam(value = "archivoFoto", required = false) MultipartFile archivoFoto, Model model,
+                             RedirectAttributes ra) {
         var actual = mascotaService.buscarPorId(id);
         verificarPropietario(actual, principal);
+        if (!actual.isEditable()) {
+            // Barrera también ante peticiones directas: no se procesa ningún cambio.
+            ra.addFlashAttribute("errorMascota", com.vetlink.mascota.model.Mascota.MENSAJE_SOLO_LECTURA);
+            return "redirect:/mascotas/" + id;
+        }
         form.setIdMascota(id);
         // DUE-01: especie, género y fecha de nacimiento no se editan: se usan los guardados
         // (lo que llegue en la petición se descarta y sus errores de validación no aplican).

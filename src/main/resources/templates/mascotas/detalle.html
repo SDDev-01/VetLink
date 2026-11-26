@@ -45,6 +45,10 @@
                     <button type="submit" class="vl-btn vl-btn-ghost vl-btn-sm">Cancelar solicitud</button>
                 </form>
             </div>
+            <div class="vl-solo-lectura" th:if="${mascota.fallecida}" role="status">
+                <i class="fas fa-dove" aria-hidden="true"></i>
+                <span th:text="${mascota.nombre} + ' está registrada como fallecida. Su ficha es de solo lectura: puedes consultar su historial clínico, vacunas, citas y documentos, pero ya no se pueden modificar sus datos.'"></span>
+            </div>
             <div class="vl-alert vl-alert-warn" th:if="${mascota.situacionSegura.name() == 'PERDIDA'}"><i class="fas fa-magnifying-glass-location" aria-hidden="true"></i>
                 <span>Reportada como perdida. Cuando aparezca, usa «Gestionar → Reportar encontrada».</span></div>
 
@@ -65,7 +69,7 @@
                         <div class="vl-medcard"><strong>Fecha de nacimiento</strong><span th:text="${@fmt.fecha(mascota.fechaNacimiento)}"></span></div>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <a th:href="@{'/mascotas/' + ${mascota.idMascota} + '/editar'}" class="vl-btn vl-btn-ghost"><i class="fas fa-pen"></i> Editar mascota</a>
+                        <a th:if="${mascota.editable}" th:href="@{'/mascotas/' + ${mascota.idMascota} + '/editar'}" class="vl-btn vl-btn-ghost"><i class="fas fa-pen"></i> Editar mascota</a>
                         <a th:if="${mascota.agendable}" th:href="@{'/citas/agendar/' + ${mascota.idMascota}}" class="vl-btn vl-btn-primary"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agendar cita</a>
                         <a th:href="@{'/historial/mascota/' + ${mascota.idMascota}}" class="vl-btn vl-btn-ghost"><i class="fas fa-folder-open" aria-hidden="true"></i> Expediente</a>
                         <a th:href="@{'/mascotas/' + ${mascota.idMascota} + '/pasaporte'}" class="vl-btn vl-btn-ghost" ><i class="fas fa-qrcode"></i> Compartir historial</a>

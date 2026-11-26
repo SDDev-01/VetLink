@@ -126,14 +126,20 @@ public class DirectorioService {
                 .filter(sv -> !sv.getServicio().isEmergencia())
                 .map(sv -> sv.getServicio().getIdServicio()).toList();
         Cita mejor = null;
+        boolean filtraHora = f.hora() != null && f.fecha() != null;
         for (Integer s : servicios) {
-            for (Cita c : disponibilidad.cuposReservables(idVeterinaria, s, null, desde, hasta, null)) {
-                if (f.hora() != null && f.fecha() != null) {
-                    long dif = Math.abs(java.time.Duration.between(f.hora(), c.getHora()).toMinutes());
-                    if (dif > 60) continue;
-                }
-                if (mejor == null || c.getInicio().isBefore(mejor.getInicio())) mejor = c;
-                break;
+            Optional<Cita> encontrado;
+            if (filtraHora) {
+                // Con hora deseada hay que revisar los cupos del día hasta el primero que cae a ±60 min.
+                encontrado = disponibilidad.cuposReservables(idVeterinaria, s, null, desde, hasta, null).stream()
+                        .filter(c -> Math.abs(java.time.Duration.between(f.hora(), c.getHora()).toMinutes()) <= 60)
+                        .findFirst();
+            } else {
+                // Sin hora: basta el primer cupo reservable (se detiene al encontrarlo).
+                encontrado = disponibilidad.primerCupoReservable(idVeterinaria, s, desde, hasta);
+            }
+            if (encontrado.isPresent() && (mejor == null || encontrado.get().getInicio().isBefore(mejor.getInicio()))) {
+                mejor = encontrado.get();
             }
         }
         return Optional.ofNullable(mejor);

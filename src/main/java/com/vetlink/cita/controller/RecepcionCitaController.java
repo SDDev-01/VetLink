@@ -195,7 +195,11 @@ public class RecepcionCitaController {
             throw new org.springframework.security.access.AccessDeniedException("Esta cita no pertenece a tu veterinaria");
         }
         model.addAttribute("cita", cita);
-        model.addAttribute("cupos", citaService.cuposParaReagendar(id, veterinaria.getIdVeterinaria()));
+        var cupos = citaService.cuposParaReagendar(id, veterinaria.getIdVeterinaria());
+        model.addAttribute("cupos", cupos);
+        // Agrupados por día: primero se elige la fecha y luego la hora disponible.
+        model.addAttribute("cuposPorDia", cupos.stream().collect(java.util.stream.Collectors.groupingBy(
+                com.vetlink.cita.model.Cita::getFecha, java.util.TreeMap::new, java.util.stream.Collectors.toList())));
         return "citas/reagendar";
     }
 
@@ -209,7 +213,7 @@ public class RecepcionCitaController {
             redirectAttributes.addFlashAttribute("errorGeneral", e.getMessage());
             return "redirect:/citas/recepcion/" + id + "/reagendar";
         }
-        redirectAttributes.addFlashAttribute("mensajeOk", "Cita reprogramada. La cita original quedó como «Reprogramada».");
+        redirectAttributes.addFlashAttribute("mensajeOk", "Cita reprogramada. Se notificó al dueño para que confirme, elija otro horario o cancele.");
         return "redirect:/reportes/citas?reagendada";
     }
 

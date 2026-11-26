@@ -243,6 +243,54 @@ public class SolicitudDisponibilidadService {
         return r;
     }
 
+    /**
+     * Levanta un bloqueo de agenda vigente (o futuro) del veterinario. El bloqueo no se borra:
+     * queda como ANULADO con quién y cuándo lo desbloqueó. Después se regeneran los cupos, y la
+     * generación sigue respetando el horario aprobado, las demás ausencias y las citas ocupadas.
+     *
+     * @return cantidad de cupos nuevos generados
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public int desbloquearAgenda(Integer idAusencia, Usuario recepcionista) {
+        Integer clinica = clinicaDe(recepcionista);
+        AusenciaVeterinario a = ausencias.findById(idAusencia)
+                .orElseThrow(() -> new IllegalArgumentException("Bloqueo no encontrado"));
+        Usuario vet = a.getVeterinario();
+        if (vet.getVeterinario() == null || vet.getVeterinario().getVeterinaria() == null
+                || !vet.getVeterinario().getVeterinaria().getIdVeterinaria().equals(clinica)) {
+            throw new AccessDeniedException("El veterinario no pertenece a tu veterinaria");
+        }
+        if (a.getTipo() != TipoAusencia.BLOQUEO) {
+            throw new IllegalStateException("Solo se pueden desbloquear los bloqueos de agenda. Las novedades del veterinario se gestionan en sus solicitudes.");
+        }
+        LocalDateTime ahora = ahora();
+        if (a.getEstado() != EstadoAprobacion.APROBADO || !a.getFin().isAfter(ahora)) {
+            throw new IllegalStateException("Ese bloqueo ya no está vigente.");
+        }
+        a.setEstado(EstadoAprobacion.ANULADO);
+        a.setDesbloqueadaPor(recepcionista);
+        a.setDesbloqueadaEn(ahora);
+        ausencias.saveAndFlush(a);
+        LocalDate hoy = ahora.toLocalDate();
+        int creados = disponibilidad.generarParaVeterinario(vet.getIdUsuario(), hoy, hoy.plusDays(reglas.horizonteAgendaDias()));
+        FormatoVista f = new FormatoVista();
+        notificaciones.notificar(vet.getIdUsuario(), "DISPONIBILIDAD_DESBLOQUEO", "Agenda desbloqueada",
+                "Recepción levantó el bloqueo de tu agenda (" + f.fechaHora(a.getInicio()) + " – " + f.fechaHora(a.getFin())
+                        + "). Ya se pueden agendar citas en tu horario laboral.",
+                "/disponibilidad", "ausencia-" + idAusencia + "-desbloqueo");
+        auditoria.registrar(recepcionista.getIdUsuario(), "AGENDA_DESBLOQUEAR", "ausencia_veterinario", idAusencia,
+                "veterinario=" + vet.getIdUsuario() + " cuposCreados=" + creados);
+        return creados;
+    }
+
+    /** Bloqueos de agenda aprobados que todavía no terminan (vigentes o futuros). */
+    @Transactional(readOnly = true)
+    public List<AusenciaVeterinario> bloqueosVigentes(Integer idVet) {
+        return ausencias.findByVeterinario_IdUsuarioAndFinAfterOrderByInicioAsc(idVet, ahora()).stream()
+                .filter(a -> a.getTipo() == TipoAusencia.BLOQUEO && a.getEstado() == EstadoAprobacion.APROBADO)
+                .toList();
+    }
+
     private ResultadoAprobacion aplicarCambios(SolicitudDisponibilidad s, Usuario recepcionista) {
         Integer idVet = s.getVeterinario().getIdUsuario();
         int retirados = disponibilidad.retirarCuposIncompatibles(idVet);

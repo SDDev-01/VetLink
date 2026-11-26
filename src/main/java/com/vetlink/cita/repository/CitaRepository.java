@@ -30,6 +30,9 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     List<Cita> findByVeterinaria_IdVeterinariaAndEstadoAndFechaGreaterThanEqualOrderByFechaAscHoraAsc(
             Integer idVeterinaria, EstadoCita estado, LocalDate fecha);
 
+    List<Cita> findByVeterinaria_IdVeterinariaAndEstadoInAndFechaGreaterThanEqualOrderByFechaAscHoraAsc(
+            Integer idVeterinaria, Collection<EstadoCita> estados, LocalDate fecha);
+
     Optional<Cita> findByVeterinario_IdUsuarioAndServicio_IdServicioAndFechaAndHoraAndEstado(
             Integer idVeterinario, Integer idServicio, LocalDate fecha, LocalTime hora, EstadoCita estado);
 

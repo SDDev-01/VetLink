@@ -96,4 +96,23 @@ public class Mascota {
     public SituacionMascota getSituacionSegura() {
         return situacion == null ? SituacionMascota.ACTIVA : situacion;
     }
+
+    public static final String MENSAJE_SOLO_LECTURA =
+            "La mascota está registrada como fallecida: su ficha es de solo lectura. Su historial se conserva para consulta.";
+
+    @Transient
+    public boolean isFallecida() {
+        return situacion == SituacionMascota.FALLECIDA;
+    }
+
+    /** ¿Se pueden modificar sus datos? Una mascota fallecida queda en solo lectura. */
+    @Transient
+    public boolean isEditable() {
+        return !isFallecida();
+    }
+
+    /** Barrera del backend: ninguna modificación de datos sobre una mascota fallecida. */
+    public void exigirEditable() {
+        if (isFallecida()) throw new IllegalStateException(MENSAJE_SOLO_LECTURA);
+    }
 }

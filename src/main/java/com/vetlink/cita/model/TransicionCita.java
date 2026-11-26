@@ -18,7 +18,7 @@ import java.util.Set;
  * PENDIENTE   → CANCELADA    TUTOR, RECEPCIONISTA
  * PENDIENTE   → REPROGRAMADA RECEPCIONISTA
  * CONFIRMADA  → CANCELADA    TUTOR, RECEPCIONISTA
- * CONFIRMADA  → REPROGRAMADA RECEPCIONISTA
+ * CONFIRMADA  → REPROGRAMADA RECEPCIONISTA, TUTOR (solo para responder a una reprogramación de la clínica)
  * CONFIRMADA  → EN_ATENCION  VETERINARIO asignado (dentro de la ventana de inicio)
  * CONFIRMADA  → NO_ASISTIO   RECEPCIONISTA, VETERINARIO (vencida la ventana de inicio)
  * EN_ATENCION → ATENDIDA     VETERINARIO asignado (con el registro obligatorio guardado)
@@ -38,7 +38,7 @@ public final class TransicionCita {
         permitir(EstadoCita.PENDIENTE, EstadoCita.CANCELADA, Actor.TUTOR, Actor.RECEPCIONISTA);
         permitir(EstadoCita.PENDIENTE, EstadoCita.REPROGRAMADA, Actor.RECEPCIONISTA);
         permitir(EstadoCita.CONFIRMADA, EstadoCita.CANCELADA, Actor.TUTOR, Actor.RECEPCIONISTA);
-        permitir(EstadoCita.CONFIRMADA, EstadoCita.REPROGRAMADA, Actor.RECEPCIONISTA);
+        permitir(EstadoCita.CONFIRMADA, EstadoCita.REPROGRAMADA, Actor.RECEPCIONISTA, Actor.TUTOR);
         permitir(EstadoCita.CONFIRMADA, EstadoCita.EN_ATENCION, Actor.VETERINARIO);
         permitir(EstadoCita.CONFIRMADA, EstadoCita.NO_ASISTIO, Actor.RECEPCIONISTA, Actor.VETERINARIO);
         permitir(EstadoCita.EN_ATENCION, EstadoCita.ATENDIDA, Actor.VETERINARIO);

@@ -48,6 +48,7 @@ public class CarnetVacunaServiceImpl implements CarnetVacunaService {
                                    String observaciones, Integer idUsuarioQueAplica) {
         Mascota mascota = mascotaRepository.findById(idMascota)
                 .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
+        mascota.exigirEditable();
         Vacuna vacuna = vacunaRepository.findById(idVacuna)
                 .orElseThrow(() -> new IllegalArgumentException("Vacuna no encontrada"));
         LoteVacuna lote = loteVacunaRepository.findById(idLote)

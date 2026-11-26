@@ -62,6 +62,10 @@ echo "[5b/6] Catálogo de razas y trazabilidad de emergencias (V9)..."
 
 mysql_exec < "${DATABASE_DIR}/migrations/V9_mejoras_integrales.sql"
 
+echo "[5c/6] Reprogramación con respuesta del dueño, desbloqueo de agenda y aprobación de veterinarias (V10)..."
+
+mysql_exec < "${DATABASE_DIR}/migrations/V10_reprogramacion_desbloqueo_aprobacion.sql"
+
 echo "[6/6] Creando usuarios y asignando permisos..."
 
 mysql_exec --execute="

@@ -25,15 +25,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        el.innerHTML = delDia.map(c => `
-            <div class="vl-agenda-item">
-                <div>
-                    <strong style="font-size:0.85rem;">${vlLiteEsc(c.horaTexto || vlLiteFormatHora(c.hora))} · ${vlLiteEsc(c.mascota)}</strong><br>
-                    <span style="font-size:0.75rem; color:#64748b;">${vlLiteEsc(c.servicio)}</span>
-                </div>
+        // Hora, mascota, servicio y estado en zonas separadas: el estado nunca tapa el servicio
+        // y la hora no se parte (ver .vl-agenda-item en vl-v10.css).
+        el.innerHTML = '<div class="vl-agenda-lista">' + delDia.map(c => `
+            <a class="vl-agenda-item" href="/citas/${encodeURIComponent(c.idCita)}">
+                <span class="vl-agenda-hora">${vlLiteEsc(c.horaTexto || vlLiteFormatHora(c.hora))}</span>
+                <span class="vl-agenda-main">
+                    <strong>${vlLiteEsc(c.mascota)}</strong>
+                    <span class="vl-agenda-servicio">${vlLiteEsc(c.servicio)}</span>
+                </span>
                 <span class="vl-st ${vlLiteEsc(c.estadoClase)}">${vlLiteEsc(c.estadoEtiqueta || c.estado)}</span>
-            </div>
-        `).join('');
+            </a>
+        `).join('') + '</div>';
     }
 
     VlCalendarLite.render('mini-calendar', {

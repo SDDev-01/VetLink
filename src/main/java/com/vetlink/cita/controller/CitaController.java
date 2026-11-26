@@ -79,22 +79,94 @@ public class CitaController {
     // Listados
     // ------------------------------------------------------------------
 
+    /** Opción de un filtro de «Mis citas» (solo valores que existen en las citas del dueño). */
+    public record OpcionFiltro(String valor, String etiqueta) {}
+
+    /**
+     * «Mis citas» con dos pestañas: las activas (próximas, pendientes y las que piden una
+     * respuesta del dueño) y el historial. Los filtros se aplican en el servidor sobre las
+     * citas del propio dueño; las opciones salen de sus citas reales.
+     */
     @GetMapping("/mias")
-    public String misCitas(@AuthenticationPrincipal VetlinkUserPrincipal principal, Model model) {
+    public String misCitas(@AuthenticationPrincipal VetlinkUserPrincipal principal,
+                           @RequestParam(required = false, defaultValue = "activas") String tab,
+                           @RequestParam(required = false) Integer idMascota,
+                           @RequestParam(required = false) Integer idVeterinaria,
+                           @RequestParam(required = false) Integer idServicio,
+                           @RequestParam(required = false) String estado,
+                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+                           Model model) {
         cargarShell(model, principal);
-        List<Cita> citas = citaService.listarPorTutor(principal.getUsuario().getIdUsuario());
+        List<Cita> citas = citaService.listarPorTutor(principal.getUsuario().getIdUsuario()).stream()
+                .filter(c -> c.getMascota() != null).toList();
         LocalDateTime ahora = LocalDateTime.now(reloj);
-        model.addAttribute("citas", citas);
-        model.addAttribute("proximas", citas.stream()
-                .filter(c -> EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()) || c.getEstado() == EstadoCita.EN_ATENCION)
-                .filter(c -> !c.getFin().isBefore(ahora))
-                .sorted(Comparator.comparing(Cita::getInicio)).toList());
-        model.addAttribute("pasadas", citas.stream()
-                .filter(c -> !(EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()) || c.getEstado() == EstadoCita.EN_ATENCION)
-                        || c.getFin().isBefore(ahora))
-                .toList());
+        java.util.function.Predicate<Cita> activa = c ->
+                (EstadoCita.RESERVAS_VIGENTES.contains(c.getEstado()) || c.getEstado() == EstadoCita.EN_ATENCION)
+                        && !c.getFin().isBefore(ahora);
+        boolean historial = "historial".equals(tab);
+        EstadoCita estadoFiltro = null;
+        if (estado != null && !estado.isBlank()) {
+            try {
+                estadoFiltro = EstadoCita.valueOf(estado.trim());
+            } catch (IllegalArgumentException e) {
+                model.addAttribute("errorGeneral", "El estado seleccionado no es válido");
+            }
+        }
+        if (desde != null && hasta != null && hasta.isBefore(desde)) {
+            model.addAttribute("errorGeneral", "La fecha final no puede ser anterior a la inicial");
+            hasta = null;
+        }
+        final EstadoCita ef = estadoFiltro;
+        final LocalDate d1 = desde, d2 = hasta;
+        java.util.function.Predicate<Cita> pasaFiltros = c ->
+                (idMascota == null || c.getMascota().getIdMascota().equals(idMascota))
+                        && (idVeterinaria == null || c.getVeterinaria().getIdVeterinaria().equals(idVeterinaria))
+                        && (idServicio == null || c.getServicio().getIdServicio().equals(idServicio))
+                        && (ef == null || c.getEstado() == ef)
+                        && (d1 == null || !c.getFecha().isBefore(d1))
+                        && (d2 == null || !c.getFecha().isAfter(d2));
+
+        List<Cita> activas = citas.stream().filter(activa).filter(pasaFiltros)
+                .sorted(Comparator.comparing((Cita c) -> !c.isEsperandoRespuestaDuenio())
+                        .thenComparing(c -> c.getEstado() != EstadoCita.PENDIENTE)
+                        .thenComparing(Cita::getInicio))
+                .toList();
+        List<Cita> pasadas = citas.stream().filter(activa.negate()).filter(pasaFiltros)
+                .sorted(Comparator.comparing(Cita::getInicio).reversed())
+                .toList();
+
+        model.addAttribute("tab", historial ? "historial" : "activas");
+        model.addAttribute("proximas", activas);
+        model.addAttribute("pasadas", pasadas);
+        model.addAttribute("requierenAccion", activas.stream().filter(Cita::isEsperandoRespuestaDuenio).count());
+        // Opciones de filtro tomadas de las citas reales del dueño.
+        List<Cita> base = citas.stream().filter(historial ? activa.negate() : activa).toList();
+        model.addAttribute("opMascotas", opciones(citas, c -> c.getMascota().getIdMascota(), c -> c.getMascota().getNombre()));
+        model.addAttribute("opVeterinarias", opciones(citas, c -> c.getVeterinaria().getIdVeterinaria(), c -> c.getVeterinaria().getNombre()));
+        model.addAttribute("opServicios", opciones(citas, c -> c.getServicio().getIdServicio(), c -> c.getServicio().getNombreServicio()));
+        model.addAttribute("opEstados", base.stream().map(Cita::getEstado).distinct().sorted()
+                .map(e -> new OpcionFiltro(e.name(), e.getEtiqueta())).toList());
+        model.addAttribute("fMascota", idMascota);
+        model.addAttribute("fVeterinaria", idVeterinaria);
+        model.addAttribute("fServicio", idServicio);
+        model.addAttribute("fEstado", ef == null ? null : ef.name());
+        model.addAttribute("fDesde", desde);
+        model.addAttribute("fHasta", hasta);
+        model.addAttribute("hayFiltros", idMascota != null || idVeterinaria != null || idServicio != null || ef != null
+                || desde != null || hasta != null);
         model.addAttribute("citasJson", citas.stream().map(CitaCalendarDTO::de).toList());
         return "citas/mias";
+    }
+
+    private static List<OpcionFiltro> opciones(List<Cita> citas, java.util.function.Function<Cita, Integer> id,
+                                               java.util.function.Function<Cita, String> nombre) {
+        Map<Integer, String> m = new java.util.LinkedHashMap<>();
+        citas.forEach(c -> m.putIfAbsent(id.apply(c), nombre.apply(c)));
+        return m.entrySet().stream()
+                .map(e -> new OpcionFiltro(String.valueOf(e.getKey()), e.getValue()))
+                .sorted(Comparator.comparing(OpcionFiltro::etiqueta, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @GetMapping("/mascota/{idMascota}")
@@ -128,7 +200,10 @@ public class CitaController {
         model.addAttribute("historialEstados", estados.historialDe(id));
         model.addAttribute("puedeCancelar", futura
                 && TransicionCita.permitida(cita.getEstado(), EstadoCita.CANCELADA, TransicionCita.Actor.TUTOR));
-        model.addAttribute("puedeReprogramar", futura && EstadoCita.RESERVAS_VIGENTES.contains(cita.getEstado()));
+        boolean esperaRespuesta = futura && cita.isEsperandoRespuestaDuenio();
+        model.addAttribute("esperaRespuesta", esperaRespuesta);
+        model.addAttribute("citaAnterior", cita.getCitaOrigen());
+        model.addAttribute("puedeReprogramar", futura && !esperaRespuesta && EstadoCita.RESERVAS_VIGENTES.contains(cita.getEstado()));
         model.addAttribute("reprogramadaA", citaRepository.findByCitaOrigen_IdCita(id));
         return "citas/detalle";
     }
@@ -365,6 +440,69 @@ public class CitaController {
             redirect.addFlashAttribute("errorGeneral", e.getMessage());
         }
         return "redirect:/citas/" + id;
+    }
+
+    // ------------------------------------------------------------------
+    // Respuesta del dueño a una reprogramación de la clínica
+    // ------------------------------------------------------------------
+
+    @PostMapping("/{id}/reprogramacion/confirmar")
+    public String confirmarReprogramacion(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                          RedirectAttributes redirect) {
+        exigirTutor(principal);
+        try {
+            citaService.confirmarReprogramacion(id, principal.getUsuario().getIdUsuario());
+            redirect.addFlashAttribute("mensajeOk", "¡Listo! Confirmaste el nuevo horario. La clínica ya recibió tu respuesta.");
+        } catch (SecurityException e) {
+            throw new AccessDeniedException(e.getMessage());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("errorGeneral", e.getMessage());
+        }
+        return "redirect:/citas/" + id;
+    }
+
+    @GetMapping("/{id}/reprogramacion/modificar")
+    public String modificarReprogramacionForm(@PathVariable Integer id, @AuthenticationPrincipal VetlinkUserPrincipal principal,
+                                              Model model, RedirectAttributes redirect) {
+        exigirTutor(principal);
+        Cita cita = citaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cita no encontrada"));
+        List<Cita> cupos;
+        try {
+            cupos = citaService.cuposParaModificarReprogramacion(id, principal.getUsuario().getIdUsuario());
+        } catch (SecurityException e) {
+            throw new AccessDeniedException(e.getMessage());
+        } catch (IllegalStateException e) {
+            redirect.addFlashAttribute("errorGeneral", e.getMessage());
+            return "redirect:/citas/" + id;
+        }
+        cargarShell(model, principal);
+        model.addAttribute("cita", cita);
+        // Agrupados por día para elegir primero la fecha y luego la hora.
+        model.addAttribute("cuposPorDia", cupos.stream().collect(Collectors.groupingBy(Cita::getFecha, TreeMap::new,
+                Collectors.toList())));
+        return "citas/modificar-reprogramacion";
+    }
+
+    @PostMapping("/{id}/reprogramacion/modificar")
+    public String modificarReprogramacion(@PathVariable Integer id, @RequestParam(required = false) Integer idCupoNuevo,
+                                          @AuthenticationPrincipal VetlinkUserPrincipal principal, RedirectAttributes redirect) {
+        exigirTutor(principal);
+        try {
+            Cita nueva = citaService.modificarReprogramacion(id, idCupoNuevo, principal.getUsuario().getIdUsuario());
+            redirect.addFlashAttribute("mensajeOk", "Enviamos el nuevo horario a la clínica. Te avisaremos cuando lo confirme.");
+            return "redirect:/citas/" + nueva.getIdCita();
+        } catch (SecurityException e) {
+            throw new AccessDeniedException(e.getMessage());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("errorGeneral", e.getMessage());
+            return "redirect:/citas/" + id + "/reprogramacion/modificar";
+        }
+    }
+
+    private static void exigirTutor(VetlinkUserPrincipal principal) {
+        if (principal.getUsuario().getRol() != Rol.TUTOR) {
+            throw new AccessDeniedException("Solo el dueño de la mascota puede responder a una reprogramación");
+        }
     }
 
     private static String destino(String origen, Integer idCita, Integer idMascota, String sufijo) {

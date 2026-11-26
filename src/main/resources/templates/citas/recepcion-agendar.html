@@ -50,11 +50,20 @@
                     <input type="hidden" th:field="*{fecha}" id="fechaCupo">
                     <input type="hidden" th:field="*{hora}" id="horaCupo">
 
-                    <div class="vl-form-grid vl-form-grid-auto">
+                    <!-- El dueño encontrado va en su propia tarjeta (antes era un texto dentro de la columna
+                         «Mascota» y desalineaba los demás campos). -->
+                    <div class="vl-owner-card" th:if="${duenioEncontrado} != null" role="status">
+                        <span class="avatar" aria-hidden="true" th:text="${#strings.substring(duenioEncontrado.nombre,0,1)}">A</span>
+                        <div>
+                            <small>Dueño seleccionado</small>
+                            <strong th:text="${duenioEncontrado.nombre} + ' ' + ${duenioEncontrado.apellido}"></strong>
+                        </div>
+                        <span class="vl-small vl-muted" style="margin-left:auto" th:text="${#lists.size(mascotas)} + (${#lists.size(mascotas) == 1} ? ' mascota activa' : ' mascotas activas')"></span>
+                    </div>
+
+                    <div class="vl-form-grid vl-form-grid-alineado">
                         <div class="vl-field">
                             <label for="sel-mascota">2. Mascota *</label>
-                            <p class="vl-small" style="margin:0" th:if="${duenioEncontrado} != null"
-                               th:text="'Dueño: ' + ${duenioEncontrado.nombre} + ' ' + ${duenioEncontrado.apellido}"></p>
                             <select th:field="*{idMascota}" id="sel-mascota" required th:disabled="${duenioEncontrado == null}">
                                 <option value="" th:text="${duenioEncontrado} != null ? 'Selecciona' : 'Busca primero al dueño'">Selecciona</option>
                                 <option th:each="m : ${mascotas}" th:value="${m.idMascota}" th:text="${m.nombre}"></option>
@@ -75,7 +84,6 @@
                             <select id="sel-veterinario" th:attr="data-actual=${form.idVeterinario}" disabled>
                                 <option value="">Elige primero el servicio</option>
                             </select>
-                            <small class="vl-hint">Opcional: sin elegir, se muestran todos los habilitados para el servicio.</small>
                         </div>
                         <div class="vl-field">
                             <label for="sel-fecha">5. Fecha *</label>
@@ -83,6 +91,9 @@
                             <small class="vl-error" th:if="${#fields.hasErrors('fecha')}" th:errors="*{fecha}"></small>
                         </div>
                     </div>
+
+                    <p class="vl-small vl-muted" style="margin:10px 0 0"><i class="fas fa-circle-info" aria-hidden="true"></i>
+                        El veterinario es opcional: si no eliges uno, se muestran los horarios de todos los habilitados para el servicio.</p>
 
                     <fieldset class="vl-field" style="border:none;padding:0;margin:14px 0 0">
                         <legend class="vl-label">6. Horarios disponibles *</legend>

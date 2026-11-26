@@ -79,6 +79,7 @@ public class MascotaServiceImpl implements MascotaService {
     public Mascota actualizar(MascotaForm form, Integer idTutor) {
         Mascota mascota = buscarPorId(form.getIdMascota());
         verificarPropietario(mascota, idTutor);
+        mascota.exigirEditable();
         aplicarEditables(mascota, form);
         return mascotaRepository.save(mascota);
     }
@@ -96,6 +97,7 @@ public class MascotaServiceImpl implements MascotaService {
     @Transactional
     public Mascota actualizarSinVerificarTutor(MascotaForm form) {
         Mascota mascota = buscarPorId(form.getIdMascota());
+        mascota.exigirEditable();
         aplicarEditables(mascota, form);
         return mascotaRepository.save(mascota);
     }

@@ -5,6 +5,8 @@ import com.vetlink.usuario.model.Usuario;
 import com.vetlink.veterinaria.model.Servicio;
 import com.vetlink.veterinaria.model.Veterinaria;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -79,6 +81,17 @@ public class Cita {
     @JoinColumn(name = "idCitaOrigen")
     private Cita citaOrigen;
 
+    /**
+     * Reprogramación hecha por la clínica: la respuesta del dueño (V10). null = la cita no
+     * requiere respuesta. Mientras está PENDIENTE el horario sigue reservado.
+     */
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 20)
+    private RespuestaDuenio respuestaDuenio;
+
+    private LocalDateTime respuestaDuenioEn;
+
     /** true = cupo creado por el generador automático de agenda. */
     @Column(nullable = false)
     private Boolean generadaAuto = false;
@@ -112,5 +125,11 @@ public class Cita {
     /** ¿Se solapa [inicio, fin) con el intervalo dado? */
     public boolean seSolapaCon(LocalDateTime inicio, LocalDateTime fin) {
         return getInicio().isBefore(fin) && inicio.isBefore(getFin());
+    }
+
+    /** ¿La clínica la reprogramó y el dueño todavía no responde? */
+    @Transient
+    public boolean isEsperandoRespuestaDuenio() {
+        return respuestaDuenio == RespuestaDuenio.PENDIENTE && estado == EstadoCita.CONFIRMADA;
     }
 }

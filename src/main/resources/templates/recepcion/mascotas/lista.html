@@ -45,7 +45,7 @@
                         <span><i class="fas fa-user"></i> <span th:text="${m.tutor.nombre} + ' ' + ${m.tutor.apellido}"></span></span>
                     </div>
                     <div class="vl-entity-actions">
-                        <a th:href="@{'/recepcion/mascotas/' + ${m.idMascota}}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-eye" aria-hidden="true"></i> Ver / actualizar peso</a>
+                        <a th:href="@{'/recepcion/mascotas/' + ${m.idMascota}}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-eye" aria-hidden="true"></i> <span th:text="${m.fallecida} ? 'Ver ficha' : 'Ver / actualizar peso'">Ver / actualizar peso</span></a>
                     </div>
                 </div>
             </div>

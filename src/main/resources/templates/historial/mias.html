@@ -77,7 +77,13 @@
                     </ul>
                 </details>
             </div>
-            <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(carpetas)}">
+            <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(carpetas) and usuario.rol.name() == 'TUTOR'}">
+                <i class="fas fa-paw" aria-hidden="true"></i>
+                <strong style="display:block;color:#0f172a;margin-bottom:4px">Aún no tienes mascotas registradas</strong>
+                Cuando registres una mascota, aquí verás su expediente con consultas, vacunas y documentos.
+                <div style="margin-top:12px"><a th:href="@{/mascotas/nueva}" class="vl-btn vl-btn-primary vl-btn-sm"><i class="fas fa-plus" aria-hidden="true"></i> Registrar mascota</a></div>
+            </div>
+            <div class="vl-panel vl-empty-state" th:if="${#lists.isEmpty(carpetas) and usuario.rol.name() != 'TUTOR'}">
                 <i class="fas fa-folder" aria-hidden="true"></i>No hay expedientes para mostrar.
             </div>
         </div>

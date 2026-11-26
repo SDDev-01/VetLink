@@ -310,7 +310,23 @@
                 <form id="alta-servicio" th:if="${esPrincipal}" th:action="@{/veterinarias/admin/servicios}" method="post" hidden class="vl-panel" style="margin-bottom:14px;background:#fbfdff" data-un-envio>
                     <h3><i class="fas fa-plus" aria-hidden="true"></i> Nuevo servicio</h3>
                     <div class="vl-form-grid vl-form-grid-auto">
-                        <div class="vl-field"><label for="sv-nombre">Nombre *</label><input id="sv-nombre" name="nombre" required minlength="3" maxlength="45" placeholder="Ej.: Ecografía"></div>
+                        <!-- Selector del catálogo (base de datos) con buscador; los servicios que la clínica ya
+                             ofrece no se muestran. «Otros» habilita escribir un servicio nuevo. -->
+                        <div class="vl-field vl-full">
+                            <label for="sv-buscar">Servicio *</label>
+                            <div class="vl-svc-combo" id="sv-combo">
+                                <input type="text" id="sv-buscar" class="vl-svc-input" placeholder="Busca y elige un servicio…" autocomplete="off"
+                                       role="combobox" aria-expanded="false" aria-controls="sv-lista" aria-autocomplete="list">
+                                <i class="fas fa-magnifying-glass vl-svc-ico" aria-hidden="true"></i>
+                                <ul class="vl-svc-lista" id="sv-lista" role="listbox" hidden></ul>
+                            </div>
+                            <input type="hidden" name="idServicio" id="sv-id">
+                            <div class="vl-svc-otro" id="sv-otro" hidden>
+                                <input type="text" id="sv-nombre" name="nombre" maxlength="45" placeholder="Nombre del servicio nuevo (ej.: Acupuntura)" disabled>
+                            </div>
+                            <small class="vl-hint" id="sv-elegido" aria-live="polite">Elige un servicio del listado o «Otros».</small>
+                            <small class="vl-error" id="sv-error" role="alert"></small>
+                        </div>
                         <div class="vl-field"><label for="sv-precio">Precio (COP) *</label><input id="sv-precio" name="precio" type="number" min="0" step="100" required></div>
                         <div class="vl-field"><label for="sv-duracion">Duración (min) *</label><input id="sv-duracion" name="duracion" type="number" min="5" max="480" step="5" required value="30"></div>
                         <div class="vl-field"><label for="sv-tipo">Registro al atender</label>
@@ -439,6 +455,99 @@
                 img.src = f && /^image\/(png|jpeg)$/.test(f.type) ? URL.createObjectURL(f) : original;
             });
         }
+    })();
+</script>
+<script th:inline="javascript">
+    /* Selector de servicios de «Mi veterinaria»: catálogo de la base de datos, sin los ya ofrecidos. */
+    (function () {
+        'use strict';
+        var CATALOGO = /*[[${catalogoServicios}]]*/ [];
+        var YA = /*[[${servicios.![servicio.idServicio]}]]*/ [];
+        var form = document.getElementById('alta-servicio');
+        if (!form) return;
+        var input = document.getElementById('sv-buscar'), lista = document.getElementById('sv-lista');
+        var oculto = document.getElementById('sv-id'), otro = document.getElementById('sv-otro');
+        var nombre = document.getElementById('sv-nombre'), elegido = document.getElementById('sv-elegido');
+        var error = document.getElementById('sv-error');
+        var OTROS = '__otros__';
+        function clave(t) { return (t || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+        function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        var ofrecidos = new Set(YA.map(String));
+        var nombresOfrecidos = new Set(CATALOGO.filter(function (c) { return ofrecidos.has(String(c.id)); }).map(function (c) { return clave(c.nombre); }));
+
+        function pintar() {
+            var q = clave(input.value);
+            var ops = CATALOGO.filter(function (c) { return !ofrecidos.has(String(c.id)) && (!q || clave(c.nombre).indexOf(q) !== -1); });
+            var html = ops.map(function (c, i) {
+                return '<li role="option" data-id="' + c.id + '" aria-selected="' + (i === 0 && q ? 'true' : 'false') + '"><i class="fas fa-briefcase-medical" aria-hidden="true"></i>' + esc(c.nombre) + '</li>';
+            }).join('') || '<li class="vacio" aria-disabled="true">Sin coincidencias en el catálogo</li>';
+            html += '<li role="option" class="otros" data-id="' + OTROS + '" aria-selected="false"><i class="fas fa-pen" aria-hidden="true"></i> Otros (escribir un servicio)</li>';
+            lista.innerHTML = html;
+            lista.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+        }
+        function cerrar() { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+        function elegir(id) {
+            error.textContent = '';
+            if (id === OTROS) {
+                oculto.value = '';
+                otro.hidden = false;
+                nombre.disabled = false;
+                nombre.required = true;
+                nombre.value = input.value.trim();
+                elegido.textContent = 'Servicio nuevo: escribe su nombre.';
+                cerrar();
+                nombre.focus();
+                return;
+            }
+            var c = CATALOGO.find(function (x) { return String(x.id) === String(id); });
+            if (!c) return;
+            oculto.value = c.id;
+            input.value = c.nombre;
+            otro.hidden = true;
+            nombre.disabled = true;
+            nombre.required = false;
+            nombre.value = '';
+            elegido.textContent = 'Seleccionado: ' + c.nombre;
+            cerrar();
+        }
+        input.addEventListener('focus', pintar);
+        input.addEventListener('input', function () { oculto.value = ''; elegido.textContent = 'Elige un servicio del listado o «Otros».'; pintar(); });
+        input.addEventListener('keydown', function (e) {
+            var items = Array.prototype.slice.call(lista.querySelectorAll('li[role="option"]'));
+            var i = items.findIndex(function (li) { return li.getAttribute('aria-selected') === 'true'; });
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (lista.hidden) pintar();
+                i = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1);
+                items.forEach(function (li, k) { li.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+                if (items[i]) items[i].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (items[i]) elegir(items[i].dataset.id);
+            } else if (e.key === 'Escape') { cerrar(); }
+        });
+        lista.addEventListener('mousedown', function (e) {
+            var li = e.target.closest('li[role="option"]');
+            if (li) { e.preventDefault(); elegir(li.dataset.id); }
+        });
+        document.addEventListener('click', function (e) { if (!e.target.closest('#sv-combo')) cerrar(); });
+        form.addEventListener('submit', function (e) {
+            var msg = '';
+            if (!oculto.value && otro.hidden) msg = 'Elige un servicio del listado o «Otros».';
+            else if (!oculto.value) {
+                var n = nombre.value.replace(/\s+/g, ' ').trim();
+                if (!n) msg = 'Escribe el nombre del servicio.';
+                else if (n.length < 3 || !/\p{L}/u.test(n)) msg = 'El nombre debe tener entre 3 y 45 caracteres e incluir letras.';
+                else if (nombresOfrecidos.has(clave(n))) msg = 'Ese servicio ya está en el catálogo de tu veterinaria.';
+            }
+            if (msg) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                error.textContent = msg;
+                (oculto.value || otro.hidden ? input : nombre).focus();
+            }
+        }, true);
     })();
 </script>
 <div th:replace="~{layout/dashboard-shell :: scripts}"></div>

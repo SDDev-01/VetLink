@@ -28,6 +28,15 @@ public interface CitaService {
     Cita marcarNoAsistio(Integer idCita, Usuario actor);
     Cita reagendarComoRecepcionista(Integer idCita, Integer idCupoNuevo, Integer idVeterinariaRecepcionista);
     List<Cita> cuposParaReagendar(Integer idCita, Integer idVeterinariaRecepcionista);
+
+    /** El dueño acepta el horario que propuso la clínica al reprogramar. */
+    Cita confirmarReprogramacion(Integer idCita, Integer idTutor);
+
+    /** El dueño elige otro horario del mismo servicio y clínica (queda pendiente de confirmación de la clínica). */
+    Cita modificarReprogramacion(Integer idCita, Integer idCupoNuevo, Integer idTutor);
+
+    /** Horarios a los que el dueño puede mover una cita reprogramada (mismo servicio y clínica). */
+    List<Cita> cuposParaModificarReprogramacion(Integer idCita, Integer idTutor);
     Cita ofertarCupo(OfertarCitaForm form, Integer idVeterinariaRecepcionista);
 
     /* ---- SISTEMA (tareas programadas) ---- */
