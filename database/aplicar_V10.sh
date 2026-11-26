@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # =====================================================================
+# OBSOLETO: usa «bash scripts/migrate.sh». Aplica todas las migraciones pendientes,
+# respalda antes y lleva un historial; este script se conserva solo como referencia.
 # Aplica la migración V10 a una base de VetLink YA EXISTENTE (sin borrar datos).
 # Uso, desde la carpeta del proyecto y con los contenedores encendidos:
 #     bash database/aplicar_V10.sh

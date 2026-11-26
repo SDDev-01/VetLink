@@ -29,7 +29,7 @@
             </div>
 
             <p class="form-message alert-error" th:if="${errorGeneral}" th:text="${errorGeneral}"></p>
-            <p class="form-message alert-error" th:if="${#fields.hasErrors('*')}">
+            <p id="reg-resumen-errores" class="form-message alert-error" th:if="${#fields.hasErrors('*')}">
                 Revisa los datos marcados: hay campos invalidos en el formulario.
             </p>
 

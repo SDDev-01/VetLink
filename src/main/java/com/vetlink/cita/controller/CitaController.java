@@ -12,6 +12,7 @@ import com.vetlink.comun.web.FormatoVista;
 import com.vetlink.disponibilidad.service.DisponibilidadService;
 import com.vetlink.mascota.model.Mascota;
 import com.vetlink.mascota.service.MascotaService;
+import com.vetlink.security.AccesoPacienteService;
 import com.vetlink.security.VetlinkUserPrincipal;
 import com.vetlink.usuario.controller.DashboardController;
 import com.vetlink.usuario.model.Rol;
@@ -174,7 +175,9 @@ public class CitaController {
                                    Model model) {
         cargarShell(model, principal);
         var mascota = mascotaService.buscarPorId(idMascota);
-        verificarAccesoTutor(mascota, principal);
+        if (!AccesoPacienteService.esDuenioVigente(mascota, principal.getUsuario().getIdUsuario())) {
+            throw new AccessDeniedException("No tienes permiso para consultar esta mascota");
+        }
         model.addAttribute("mascota", mascota);
         model.addAttribute("citas", citaService.listarPorMascota(idMascota));
         return "citas/lista";
@@ -188,8 +191,8 @@ public class CitaController {
         if (principal.getUsuario().getRol() != Rol.TUTOR) {
             return "redirect:/agenda/" + id;
         }
-        if (cita.getMascota() == null || !cita.getMascota().getTutor().getIdUsuario()
-                .equals(principal.getUsuario().getIdUsuario())) {
+        // Misma regla que «Mis citas»: solo citas de mascotas propias y vigentes.
+        if (!AccesoPacienteService.esDuenioVigente(cita.getMascota(), principal.getUsuario().getIdUsuario())) {
             throw new AccessDeniedException("No tienes permiso sobre esta cita");
         }
         cargarShell(model, principal);
@@ -405,7 +408,7 @@ public class CitaController {
         if (idMascota == null) return null;
         Mascota m = mascotaService.buscarPorId(idMascota);
         Usuario u = principal.getUsuario();
-        if (u.getRol() == Rol.TUTOR && !m.getTutor().getIdUsuario().equals(u.getIdUsuario())) {
+        if (u.getRol() == Rol.TUTOR && !AccesoPacienteService.esDuenioVigente(m, u.getIdUsuario())) {
             throw new AccessDeniedException("No tienes permiso sobre esta mascota");
         }
         return idMascota;

@@ -14,7 +14,8 @@ import org.springframework.stereotype.Service;
  * Regla única de "quién puede ver qué" sobre una mascota. Se aplica en el backend en cada
  * consulta y descarga, nunca solo ocultando botones:
  * <ul>
- *   <li>TUTOR: solo sus mascotas actuales (tras una transferencia, el anterior dueño pierde el acceso).</li>
+ *   <li>TUTOR: solo sus mascotas actuales y vigentes (tras una transferencia, el anterior dueño pierde el
+ *       acceso; las dadas de baja, estado 0, no se le muestran en ninguna vista).</li>
  *   <li>VETERINARIO: mascotas con una cita confirmada, en atención o atendida con él, o con una
  *       emergencia que tenga asignada.</li>
  *   <li>RECEPCIONISTA: datos básicos de mascotas con cualquier cita en su clínica; historia
@@ -44,7 +45,7 @@ public class AccesoPacienteService {
         Rol rol = usuario.getRol();
         if (rol == null) return false;
         return switch (rol) {
-            case TUTOR -> mascota.getTutor().getIdUsuario().equals(usuario.getIdUsuario());
+            case TUTOR -> esDuenioVigente(mascota, usuario.getIdUsuario());
             case VETERINARIO -> citaRepository.existsByMascota_IdMascotaAndVeterinario_IdUsuarioAndEstadoIn(
                     mascota.getIdMascota(), usuario.getIdUsuario(), EstadoCita.RELACION_CLINICA)
                     || emergenciaRepository.existsByMascota_IdMascotaAndVeterinario_IdUsuario(
@@ -87,9 +88,19 @@ public class AccesoPacienteService {
 
     /** Solo el dueño: para editar la mascota, transferirla o compartir su pasaporte de salud. */
     public void verificarPropietario(Mascota mascota, VetlinkUserPrincipal principal) {
-        if (!mascota.getTutor().getIdUsuario().equals(principal.getUsuario().getIdUsuario())) {
+        if (!esDuenioVigente(mascota, principal.getUsuario().getIdUsuario())) {
             throw new AccessDeniedException("No tienes permiso sobre esta mascota");
         }
+    }
+
+    /**
+     * Regla única del dueño: la mascota es suya y su registro está vigente (estado 1).
+     * Es la misma condición con la que «Mis mascotas» arma su lista, así que ninguna otra
+     * vista ni URL directa le muestra al dueño una mascota que no aparece allí.
+     */
+    public static boolean esDuenioVigente(Mascota mascota, Integer idUsuario) {
+        return mascota != null && mascota.isVigente() && mascota.getTutor() != null
+                && mascota.getTutor().getIdUsuario().equals(idUsuario);
     }
 
     private static Integer clinicaDe(Usuario u) {

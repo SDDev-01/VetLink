@@ -1,7 +1,7 @@
 # Pruebas automáticas en cada Pull Request (y en cada push a main/development).
 #   - spring: ./mvnw test (perfil test con H2, no necesita MySQL ni Python).
 #   - fastapi: pytest dentro de docs-service/, con las pruebas de integración
-#     contra el mismo MySQL 8.4 de compose.yaml (mydb.sql + V2..V7 + usuarios).
+#     contra el mismo MySQL 8.4 de compose.yaml (migraciones de scripts/migrate.sh).
 name: Pruebas
 
 on:
@@ -84,9 +84,14 @@ jobs:
           } > .env
 
       # Solo el servicio mysql, publicado en 127.0.0.1:3307 con compose.debug.yaml.
-      # --wait espera a que el healthcheck esté en verde (scripts de inicio terminados).
-      - name: Levantar MySQL con los scripts de database/
-        run: docker compose -f compose.yaml -f compose.debug.yaml up -d --wait mysql
+      # --wait espera a que el healthcheck esté en verde. Después, el servicio migrate
+      # crea el esquema (database/migraciones.txt), los usuarios y sus permisos. Se ejecuta
+      # dos veces para comprobar que repetir las migraciones no falla ni duplica nada.
+      - name: Levantar MySQL y aplicar las migraciones
+        run: |
+          docker compose -f compose.yaml -f compose.debug.yaml up -d --wait mysql
+          docker compose -f compose.yaml -f compose.debug.yaml run --rm -T migrate
+          docker compose -f compose.yaml -f compose.debug.yaml run --rm -T migrate
 
       - uses: actions/setup-python@v5
         with:
@@ -122,4 +127,4 @@ jobs:
 
       - name: Logs de MySQL si falla
         if: failure()
-        run: docker compose logs mysql
+        run: docker compose logs mysql migrate

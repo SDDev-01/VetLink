@@ -115,7 +115,7 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     public List<Cita> listarPorTutor(Integer idTutor) {
-        return citaRepository.findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(idTutor);
+        return citaRepository.deTutorConMascotaVigente(idTutor);
     }
 
     @Override

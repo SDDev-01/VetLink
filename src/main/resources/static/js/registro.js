@@ -298,6 +298,39 @@ function cargarRazas() {
 }
 
 /* =========================
+   MASCOTA (paso 3 del tutor): mismas reglas que MascotaForm en el servidor.
+   Se usan al enviar y en vivo, para que el aviso desaparezca en cuanto el valor es correcto.
+========================= */
+const CAMPOS_MASCOTA = ['pet-nombre', 'pet-fecha', 'pet-peso'];
+
+function errorMascota(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    const valor = el.value.trim();
+    if (id === 'pet-nombre') {
+        if (valor.length < 2) return "Nombre requerido";
+        if (valor.length > 45) return "El nombre no puede superar 45 caracteres";
+        if (!/^[\p{L}\p{M}]+(?:[ '’.\-]{1,2}[\p{L}\p{M}]+)*\.?$/u.test(valor.replace(/\s+/g, ' '))) return "El nombre no puede tener números ni símbolos";
+    }
+    if (id === 'pet-fecha') {
+        if (!valor) return "Selecciona fecha";
+        if (new Date(valor) > new Date()) return "Fecha inválida";
+    }
+    if (id === 'pet-peso') {
+        const peso = Number(valor);
+        if (!valor || !(peso > 0)) return "Peso inválido";
+        if (peso > 1500) return "Peso no válido";
+    }
+    return '';
+}
+
+function validarMascotaEnVivo(id) {
+    const msg = errorMascota(id);
+    if (msg) showError(id, msg); else markValid(id);
+    return !msg;
+}
+
+/* =========================
    VALIDAR PASO 3
 ========================= */
 function validateStep3() {
@@ -321,13 +354,7 @@ function validateStep3() {
             return;
         }
 
-        if (pNombre.value.trim().length < 2) { showError('pet-nombre', "Nombre requerido"); valid = false; }
-        else if (!/^[\p{L}\p{M}]+(?:[ '’.\-]{1,2}[\p{L}\p{M}]+)*\.?$/u.test(pNombre.value.trim().replace(/\s+/g, ' '))) { showError('pet-nombre', "El nombre no puede tener números ni símbolos"); valid = false; }
-        else clearError('pet-nombre');
-        if (!pFecha.value) { showError('pet-fecha', "Selecciona fecha"); valid = false; }
-        else if (new Date(pFecha.value) > new Date()) { showError('pet-fecha', "Fecha inválida"); valid = false; }
-        else clearError('pet-fecha');
-        if (!pPeso.value || Number(pPeso.value) <= 0) { showError('pet-peso', "Peso inválido"); valid = false; } else clearError('pet-peso');
+        CAMPOS_MASCOTA.forEach(id => { if (!validarMascotaEnVivo(id)) valid = false; });
 
         if (valid) document.getElementById('regForm').submit();
     }
@@ -675,6 +702,19 @@ function validateStep5() {
    LIMPIAR ERRORES EN TIEMPO REAL + RESTAURAR PASO SI HUBO ERRORES DEL SERVIDOR
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    // Errores devueltos por el servidor: el campo queda marcado como inválido para que se
+    // revalide mientras se escribe y el aviso desaparezca en cuanto el valor sea correcto.
+    document.querySelectorAll('.input-box .error-text').forEach(err => {
+        if (!err.textContent.trim()) return;
+        const input = err.closest('.input-box').querySelector('input, select, textarea');
+        if (input) { input.classList.add('is-invalid'); input.setAttribute('aria-invalid', 'true'); }
+    });
+    // El aviso general «revisa los campos» solo sigue visible mientras quede alguno inválido.
+    const resumen = document.getElementById('reg-resumen-errores');
+    if (resumen) {
+        new MutationObserver(() => { resumen.hidden = !document.querySelector('#regForm .is-invalid'); })
+            .observe(document.getElementById('regForm'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
     const enVivo = ['reg-num-doc', 'reg-nombre', 'reg-apellido', 'reg-correo', 'reg-tel', 'reg-pass', 'reg-confirmar-pass',
         'reg-direccion', 'vet-nit', 'vet-nombre', 'vet-tel', 'vet-correo', 'vet-web', 'vet-direccion'];
     enVivo.forEach(id => {
@@ -693,7 +733,16 @@ document.addEventListener('DOMContentLoaded', () => {
             revisarDuplicado(id);
         });
     });
-    document.querySelectorAll('input:not([id^="reg-"]):not([id^="vet-"]), select, textarea').forEach(input => {
+    CAMPOS_MASCOTA.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let tocado = false;
+        el.addEventListener('blur', () => { if (el.value.trim()) { tocado = true; validarMascotaEnVivo(id); } });
+        ['input', 'change'].forEach(ev => el.addEventListener(ev, () => {
+            if (tocado || el.classList.contains('is-invalid')) validarMascotaEnVivo(id);
+        }));
+    });
+    document.querySelectorAll('input:not([id^="reg-"]):not([id^="vet-"]):not([id^="pet-nombre"]):not([id^="pet-fecha"]):not([id^="pet-peso"]), select, textarea').forEach(input => {
         input.addEventListener('input', () => {
             if (input.value.trim() !== "") clearError(input.id);
         });

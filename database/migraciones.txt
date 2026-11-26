@@ -1,0 +1,30 @@
+# =====================================================================
+# Orden de las migraciones de VetLink. Lo lee scripts/migrate.sh.
+#
+# Esta lista es la fuente de verdad del esquema: mydb.sql es la base (V1) y
+# cada archivo posterior la modifica. Hibernate solo VALIDA (ddl-auto=validate).
+#
+# Formato (separado por |):
+#   id | archivo (relativo a database/) | tipo | marcador
+#
+#   id        identificador único y estable. NUNCA se cambia ni se reutiliza.
+#   tipo      esquema = siempre se aplica.
+#             demo    = solo con RUN_DEMO_SEED=true. Deben poder repetirse sin duplicar.
+#   marcador  consulta que devuelve 1 si la migración YA está aplicada. Solo se usa una vez:
+#             al adoptar una base creada antes de existir el historial (00-init.sh antiguo),
+#             para registrar lo que ya tenía sin volver a ejecutarlo.
+#
+# Para agregar una migración nueva: crea database/migrations/V<N>_<descripcion>.sql y
+# añade una línea AL FINAL. No edites archivos ya aplicados: el script avisa si su
+# checksum cambió. V2, V3 y V4 no están porque mydb.sql ya los incluye.
+# =====================================================================
+V1_base             | mydb.sql                                                  | esquema | SELECT COUNT(*) > 0 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mascota'
+V5_correcciones     | migrations/V5_correcciones.sql                            | esquema | SELECT COUNT(*) > 0 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'fk_emergencia_mascota'
+V7_pasaporte        | migrations/V7_pasaporte.sql                               | esquema | SELECT COUNT(*) > 0 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pasaporte'
+V6_datos_demo       | migrations/V6_datos_demo.sql                              | demo    | SELECT COUNT(*) > 0 FROM tutor WHERE idUsuario = 4
+V7_pasaporte_demo   | migrations/V7_pasaporte_demo.sql                          | demo    | SELECT COUNT(*) > 0 FROM pasaporte WHERE token LIKE 'DEMO-%'
+V8_reglas_negocio   | migrations/V8_reglas_negocio.sql                          | esquema | SELECT COUNT(*) > 0 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reporte_generado'
+V9_mejoras          | migrations/V9_mejoras_integrales.sql                      | esquema | SELECT COUNT(*) > 0 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'raza' AND COLUMN_NAME = 'personalizada'
+V10_reprogramacion  | migrations/V10_reprogramacion_desbloqueo_aprobacion.sql   | esquema | SELECT COUNT(*) > 0 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cita' AND COLUMN_NAME = 'respuestaDuenio'
+# Sin marcador: es idempotente y en una base adoptada se ejecuta (solo corrige datos).
+V11_mascotas_baja   | migrations/V11_mascotas_dadas_de_baja.sql                 | esquema |

@@ -86,15 +86,6 @@ public class MascotaServiceImpl implements MascotaService {
 
     @Override
     @Transactional
-    public void eliminar(Integer idMascota, Integer idTutor) {
-        Mascota mascota = buscarPorId(idMascota);
-        verificarPropietario(mascota, idTutor);
-        mascota.setEstado((byte) 0);
-        mascotaRepository.save(mascota);
-    }
-
-    @Override
-    @Transactional
     public Mascota actualizarSinVerificarTutor(MascotaForm form) {
         Mascota mascota = buscarPorId(form.getIdMascota());
         mascota.exigirEditable();

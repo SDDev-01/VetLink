@@ -21,7 +21,16 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
 
     List<Cita> findByMascota_Tutor_IdUsuarioAndEstadoOrderByFechaAscHoraAsc(Integer idTutor, EstadoCita estado);
 
-    List<Cita> findByMascota_Tutor_IdUsuarioOrderByFechaDescHoraDesc(Integer idTutor);
+    /**
+     * Citas del dueño, solo de sus mascotas vigentes (estado 1): la misma condición de
+     * «Mis mascotas». Las de mascotas dadas de baja no se muestran en ninguna vista del dueño.
+     */
+    @Query("""
+           select c from Cita c
+           where c.mascota.tutor.idUsuario = :idTutor and c.mascota.estado = 1
+           order by c.fecha desc, c.hora desc
+           """)
+    List<Cita> deTutorConMascotaVigente(@Param("idTutor") Integer idTutor);
 
     List<Cita> findByVeterinario_IdUsuarioAndFecha(Integer idVeterinario, LocalDate fecha);
 

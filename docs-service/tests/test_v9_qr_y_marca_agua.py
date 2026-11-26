@@ -39,7 +39,7 @@ def test_url_del_qr_usa_la_ip_configurada(monkeypatch):
 # ------------------------------------------------------------------ DUE-05
 
 MASCOTA = {"idMascota": 9, "nombre": "Luna", "genero": "H", "fechaNacimiento": date(2021, 1, 1), "peso": 5.0,
-           "situacion": "ACTIVA", "idTutor": 1, "especie": "Gato", "raza": "Siamés", "tutor": "Ana Ruiz"}
+           "situacion": "ACTIVA", "estado": 1, "idTutor": 1, "especie": "Gato", "raza": "Siamés", "tutor": "Ana Ruiz"}
 
 
 def _registro(n: int) -> dict:

@@ -336,7 +336,7 @@ public class GestionMascotaService {
     }
 
     private static void exigirDuenio(Mascota m, Integer idTutor) {
-        if (!m.getTutor().getIdUsuario().equals(idTutor)) {
+        if (!com.vetlink.security.AccesoPacienteService.esDuenioVigente(m, idTutor)) {
             throw new AccessDeniedException("No tienes permiso sobre esta mascota");
         }
     }

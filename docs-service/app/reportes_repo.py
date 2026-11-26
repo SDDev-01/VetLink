@@ -22,7 +22,7 @@ def mascota(conn, id_mascota: int) -> Fila | None:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT m.idMascota, m.nombre, m.genero, m.fechaNacimiento, m.peso, m.situacion,
+            SELECT m.idMascota, m.nombre, m.genero, m.fechaNacimiento, m.peso, m.situacion, m.estado,
                    m.Tutor_idUsuario AS idTutor, e.nombreEspecie AS especie, r.nombreRaza AS raza,
                    CONCAT(u.nombre, ' ', u.apellido) AS tutor
             FROM mascota m
@@ -41,7 +41,9 @@ def puede_ver_mascota(conn, mascota_fila: Fila, id_usuario: int, rol: str, id_cl
     marcadores = ", ".join(["%s"] * len(ESTADOS_RELACION))
     with conn.cursor() as cur:
         if rol == "TUTOR":
-            return mascota_fila["idTutor"] == id_usuario
+            # Misma regla que Spring (AccesoPacienteService.esDuenioVigente): su mascota y vigente.
+            # Las dadas de baja (estado 0) no se le muestran al dueño en ninguna vista.
+            return mascota_fila["idTutor"] == id_usuario and mascota_fila.get("estado") == 1
         if rol == "VETERINARIO":
             cur.execute(
                 f"""
