@@ -55,28 +55,12 @@
             <div class="form-footer">
                 ¿No tienes una cuenta? <a th:href="@{/registro}">Regístrate aquí</a>
             </div>
-
-            <div class="demo-accounts">
-                <p class="demo-title"><i class="fas fa-circle-info"></i> Cuentas de demostración</p>
-                <div class="demo-grid">
-                    <button type="button" class="demo-chip" data-demo="maria@gmail.com">Dueño</button>
-                    <button type="button" class="demo-chip" data-demo="juan@gmail.com">Veterinario</button>
-                    <button type="button" class="demo-chip" data-demo="laura@gmail.com">Recepcionista</button>
-                </div>
-                <small>Contraseña para las tres: <strong>123456</strong>.</small>
-            </div>
         </div>
     </main>
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         AOS.init();
-        document.querySelectorAll('.demo-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                document.getElementById('correoLogin').value = chip.dataset.demo;
-                document.getElementById('passwordLogin').focus();
-            });
-        });
     </script>
 <script th:src="@{/js/vl-validate.js}"></script>
 </body>

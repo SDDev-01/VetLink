@@ -35,9 +35,22 @@ Direcciones (con el puerto por defecto):
 
 ## 3. Variables de entorno (`.env`)
 
-El `.env` guarda las contraseñas. **No se sube a GitHub** (está en `.gitignore`); cada integrante crea el suyo. Desde la carpeta `VetLink`, en **Git Bash**:
+El `.env` guarda las contraseñas. **No se sube a GitHub** (está en `.gitignore`); cada integrante crea el suyo. Los dos scripts detectan solos la **IPv4 local** del equipo (la del adaptador Wi-Fi/Ethernet con salida a Internet) y la guardan en `IP`. Desde la carpeta `VetLink`, en **Git Bash** (Windows) o en la terminal de **Linux/macOS**:
 
 ```bash
+# IPv4 local: Linux (ip route), Git Bash en Windows (PowerShell) o macOS (ipconfig)
+detectar_ip() {
+    if command -v ip >/dev/null 2>&1; then
+        ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit }}'
+    elif command -v powershell.exe >/dev/null 2>&1; then
+        powershell.exe -NoProfile -Command "Get-NetIPConfiguration | Where-Object { \$_.IPv4DefaultGateway -and \$_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1 -ExpandProperty IPv4Address | Select-Object -First 1 -ExpandProperty IPAddress" | tr -d '\r'
+    elif command -v ipconfig >/dev/null 2>&1; then
+        ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null
+    fi
+}
+IP_LOCAL=$(detectar_ip)
+echo "IPv4 detectada: ${IP_LOCAL:-ninguna (IP quedará vacía)}"
+
 cat > .env <<EOF
 MYSQL_DATABASE=vetlink
 MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)
@@ -48,6 +61,7 @@ PUBLIC_BASE_URL=http://localhost
 NGINX_HTTP_PORT=80
 MYSQL_PORT=3307
 RUN_DEMO_SEED=true
+IP=${IP_LOCAL}
 EOF
 ```
 
@@ -59,6 +73,12 @@ function New-HexSecret([int]$Bytes) {
     try { $b = New-Object byte[] $Bytes; $rng.GetBytes($b); ([System.BitConverter]::ToString($b) -replace '-', '').ToLowerInvariant() }
     finally { $rng.Dispose() }
 }
+# IPv4 local: el adaptador activo con puerta de enlace (descarta los virtuales de Docker/WSL)
+$ipLocal = Get-NetIPConfiguration |
+    Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
+    Select-Object -First 1 -ExpandProperty IPv4Address |
+    Select-Object -First 1 -ExpandProperty IPAddress
+Write-Host "IPv4 detectada: $(if ($ipLocal) { $ipLocal } else { 'ninguna (IP quedará vacía)' })"
 $envContent = @"
 MYSQL_DATABASE=vetlink
 MYSQL_ROOT_PASSWORD=$(New-HexSecret 16)
@@ -69,9 +89,26 @@ PUBLIC_BASE_URL=http://localhost
 NGINX_HTTP_PORT=80
 MYSQL_PORT=3307
 RUN_DEMO_SEED=true
+IP=$ipLocal
 "@
 [System.IO.File]::WriteAllText((Join-Path $PWD ".env"), $envContent, (New-Object System.Text.UTF8Encoding($false)))
 ```
+
+**Si cambias de red** (otra Wi-Fi, otro router), la IPv4 cambia. Actualiza solo la línea `IP` sin volver a generar el `.env`: generar uno nuevo cambia las contraseñas y MySQL ya no aceptaría las de su volumen.
+
+```bash
+# Git Bash o Linux/macOS (define antes la función detectar_ip de arriba)
+sed -i.bak "s/^IP=.*/IP=$(detectar_ip)/" .env && rm -f .env.bak && grep '^IP=' .env
+```
+
+```powershell
+# PowerShell (calcula antes $ipLocal como arriba)
+$lineas = (Get-Content .env) -replace '^IP=.*', "IP=$ipLocal"
+[System.IO.File]::WriteAllLines((Join-Path $PWD ".env"), $lineas, (New-Object System.Text.UTF8Encoding($false)))
+Select-String '^IP=' .env
+```
+
+Después reinicia lo que usa la IP: `docker compose up -d spring fastapi`.
 
 Si prefieres llenarlo a mano, copia `.env.example` como `.env`; ahí está explicada cada variable.
 
@@ -82,7 +119,7 @@ Si prefieres llenarlo a mano, copia `.env.example` como `.env`; ahí está expli
 | `MYSQL_SPRING_PASSWORD`, `MYSQL_FAST_PASSWORD` | Usuarios `vetlink_spring` y `vetlink_fast`. **64 caracteres hexadecimales** (`openssl rand -hex 32`) | Sí |
 | `INTERNAL_TOKEN` | Token interno Spring/Nginx → FastAPI | Sí |
 | `PUBLIC_BASE_URL` | URL pública de los enlaces y del QR (ver [QR accesible desde Internet](#10-qr-accesible-desde-internet)) | Sí |
-| `IP` | IP local del equipo: con `PUBLIC_BASE_URL=http://localhost`, el QR usa `http://IP` | No |
+| `IP` | IPv4 local del equipo (los scripts de arriba la detectan solos): con `PUBLIC_BASE_URL=http://localhost`, el QR y los enlaces usan `http://IP` para abrirse desde otros dispositivos de la misma red | No |
 | `NGINX_HTTP_PORT` | Puerto público (80; con Podman rootless, 8081) | No |
 | `MYSQL_PORT` | Puerto de MySQL en `127.0.0.1` solo con `compose.debug.yaml` (3307) | No |
 | `RUN_DEMO_SEED` | `true` carga los datos de demostración (V6 y pasaportes DEMO) | No (`false`) |

@@ -37,7 +37,6 @@
             <div class="vl-field">
                 <label>Ubicación</label>
                 <div class="vl-row">
-                    <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-ubicacion"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> Usar mi ubicación</button>
                     <button type="button" class="vl-btn vl-btn-ghost vl-btn-sm" id="btn-elegir-mapa" aria-expanded="false" aria-controls="mapa-picker-wrap"><i class="fas fa-map-pin" aria-hidden="true"></i> Elegir en el mapa</button>
                 </div>
                 <span class="vl-geo-estado" id="estado-ubicacion" role="status" aria-live="polite" th:classappend="${f.tieneUbicacion()} ? 'ok' : ''"
@@ -85,7 +84,7 @@
                 </label>
             </div>
         </div>
-        <!-- DUE-06: alternativa cuando el navegador no permite la geolocalización (HTTP por IP, permiso denegado) -->
+        <!-- DUE-06: la ubicación se elige en el mapa (ordena los resultados por distancia) -->
         <div id="mapa-picker-wrap" hidden style="margin:6px 0 14px">
             <p class="vl-small vl-muted" style="margin:0">Haz clic (o toca) en el mapa sobre el lugar desde donde buscas. Puedes mover el marcador.</p>
             <div id="mapa-picker" class="vl-mapa-picker" role="application" aria-label="Mapa para elegir tu ubicación"></div>
@@ -153,7 +152,6 @@
     var estado = document.getElementById('estado-ubicacion');
     var quitar = document.getElementById('btn-quitar-ubicacion');
     var form = document.getElementById('form-busqueda');
-    var btnUbicacion = document.getElementById('btn-ubicacion');
     var btnMapa = document.getElementById('btn-elegir-mapa');
     var pickerWrap = document.getElementById('mapa-picker-wrap');
     var picker = null, pickerMarca = null;
@@ -202,121 +200,8 @@
         else { pickerWrap.hidden = true; btnMapa.setAttribute('aria-expanded', 'false'); }
     });
 
-    /* Geolocalización (V10):
-       - El navegador no inicia su «timeout» mientras el aviso de permiso está abierto; si la persona
-         lo ignora, la petición quedaba esperando para siempre. Ahora hay un límite propio de 12 s.
-       - Primero se pide precisión normal (red/Wi-Fi: rápida) y se acepta una posición de hasta
-         10 minutos; la alta precisión (GPS) solo se intenta si la normal falla por disponibilidad.
-       - La última ubicación se guarda en la sesión del navegador para no volver a pedirla.
-       - Si el permiso ya está bloqueado, se informa de inmediato y se abre el mapa manual. */
-    var CLAVE_UBICACION = 'vl-ubicacion-directorio';
-    var LIMITE_MS = 12000;
-    var solicitando = false;
-
-    function mostrarEstado(texto, tipo) {
-        estado.textContent = texto;
-        estado.className = 'vl-geo-estado' + (tipo ? ' ' + tipo : '');
-    }
-
-    function guardarEnSesion(la, ln) {
-        try { sessionStorage.setItem(CLAVE_UBICACION, JSON.stringify({ lat: la, lng: ln, t: Date.now() })); } catch (e) { /* almacenamiento no disponible */ }
-    }
-
-    function leerDeSesion() {
-        try {
-            var v = JSON.parse(sessionStorage.getItem(CLAVE_UBICACION) || 'null');
-            if (v && Date.now() - v.t < 10 * 60 * 1000 && isFinite(v.lat) && isFinite(v.lng)) return v;
-        } catch (e) { /* sin datos */ }
-        return null;
-    }
-
-    function terminar() {
-        solicitando = false;
-        btnUbicacion.disabled = false;
-        btnUbicacion.removeAttribute('aria-busy');
-    }
-
-    function falloUbicacion(mensaje) {
-        terminar();
-        mostrarEstado(mensaje, 'error');
-        abrirPicker();
-    }
-
-    function pedirPosicion(altaPrecision, exito, error) {
-        navigator.geolocation.getCurrentPosition(exito, error,
-            { enableHighAccuracy: altaPrecision, timeout: altaPrecision ? 10000 : 8000, maximumAge: 10 * 60 * 1000 });
-    }
-
-    btnUbicacion.addEventListener('click', function () {
-        if (solicitando) return; // evita peticiones repetidas mientras se espera la respuesta
-        // Los navegadores solo entregan la ubicación en HTTPS o en localhost (contexto seguro).
-        if (!window.isSecureContext) {
-            falloUbicacion('Tu navegador solo permite la ubicación automática con HTTPS o en localhost. Elige tu ubicación en el mapa o busca por ciudad.');
-            return;
-        }
-        if (!navigator.geolocation) {
-            falloUbicacion('Tu navegador no permite geolocalización. Elige tu ubicación en el mapa o busca por ciudad.');
-            return;
-        }
-        var guardada = leerDeSesion();
-        if (guardada) {
-            usarUbicacion(guardada.lat, guardada.lng, 'Ubicación reciente en uso.');
-            estado.classList.add('ok');
-            return;
-        }
-        solicitando = true;
-        btnUbicacion.disabled = true;
-        btnUbicacion.setAttribute('aria-busy', 'true');
-        mostrarEstado('Obteniendo tu ubicación… (acepta el permiso del navegador)', 'cargando');
-
-        var resuelto = false;
-        var vigilante = setTimeout(function () {
-            if (resuelto) return;
-            resuelto = true;
-            falloUbicacion('No recibimos tu ubicación a tiempo (¿quedó sin responder el permiso?). Puedes reintentar, elegirla en el mapa o buscar por ciudad.');
-        }, LIMITE_MS);
-
-        function exito(pos) {
-            if (resuelto) return;
-            resuelto = true;
-            clearTimeout(vigilante);
-            terminar();
-            guardarEnSesion(pos.coords.latitude, pos.coords.longitude);
-            usarUbicacion(pos.coords.latitude, pos.coords.longitude,
-                'Ubicación actual en uso (precisión aprox. ' + Math.round(pos.coords.accuracy) + ' m).');
-            estado.classList.add('ok');
-        }
-
-        function error(err, yaReintento) {
-            if (resuelto) return;
-            if (err && err.code === 2 && !yaReintento) {
-                // Posición no disponible con la red: se intenta una vez con GPS.
-                pedirPosicion(true, exito, function (e2) { error(e2, true); });
-                return;
-            }
-            resuelto = true;
-            clearTimeout(vigilante);
-            var motivos = {
-                1: 'Bloqueaste el permiso de ubicación. Actívalo en la configuración del navegador o elige tu ubicación en el mapa.',
-                2: 'No se pudo determinar tu ubicación (GPS o red no disponibles). Elige tu ubicación en el mapa o busca por ciudad.',
-                3: 'La ubicación tardó demasiado en responder. Inténtalo de nuevo, elígela en el mapa o busca por ciudad.'
-            };
-            falloUbicacion(motivos[err && err.code] || 'No se pudo obtener tu ubicación. Elígela en el mapa o busca por ciudad.');
-        }
-
-        // Si el permiso ya está denegado no se espera: se informa enseguida.
-        if (navigator.permissions && navigator.permissions.query) {
-            navigator.permissions.query({ name: 'geolocation' }).then(function (r) {
-                if (r.state === 'denied') { error({ code: 1 }, true); }
-                else pedirPosicion(false, exito, function (e) { error(e, false); });
-            }).catch(function () { pedirPosicion(false, exito, function (e) { error(e, false); }); });
-        } else {
-            pedirPosicion(false, exito, function (e) { error(e, false); });
-        }
-    });
     quitar.addEventListener('click', function () {
         lat.value = ''; lng.value = ''; estado.textContent = ''; estado.className = 'vl-geo-estado'; quitar.hidden = true;
-        try { sessionStorage.removeItem(CLAVE_UBICACION); } catch (e) { /* sin almacenamiento */ }
         if (pickerMarca && picker) { picker.removeLayer(pickerMarca); pickerMarca = null; }
     });
 
