@@ -29,3 +29,5 @@ V10_reprogramacion  | migrations/V10_reprogramacion_desbloqueo_aprobacion.sql   
 # Sin marcador: es idempotente y en una base adoptada se ejecuta (solo corrige datos).
 V11_mascotas_baja   | migrations/V11_mascotas_dadas_de_baja.sql                 | esquema |
 V12_raza_otra       | migrations/V12_raza_otra_por_especie.sql                  | esquema |
+# Datos demo: 20 veterinarias más para el directorio (Bogotá y otras ciudades). Idempotente.
+V13_veterinarias     | migrations/V13_veterinarias_directorio.sql               | demo    | SELECT COUNT(*) > 0 FROM veterinaria WHERE nit = '901612345-8'
