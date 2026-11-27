@@ -124,7 +124,7 @@ Si prefieres llenarlo a mano, copia `.env.example` como `.env`; ahí está expli
 | `IP` | IPv4 local del equipo (los scripts de arriba la detectan solos): con `PUBLIC_BASE_URL=http://localhost`, el QR y los enlaces usan `http://IP` para abrirse desde otros dispositivos de la misma red | No |
 | `NGINX_HTTP_PORT` | Puerto público (80; con Podman rootless, 8081) | No |
 | `MYSQL_PORT` | Puerto de MySQL en `127.0.0.1` solo con `compose.debug.yaml` (3307) | No |
-| `RUN_DEMO_SEED` | `true` carga los datos de demostración (V6 y pasaportes DEMO) | No (`false`) |
+| `RUN_DEMO_SEED` | `true` carga los datos de demostración (V6, pasaportes DEMO y las 20 veterinarias de V13) | No (`false`) |
 | `VETLINK_ENTORNO` | `desarrollo` o `produccion` (exige HTTPS en la URL pública) | No |
 | `PASAPORTE_DETALLE_CLINICO` | `true` muestra diagnósticos en el pasaporte público | No (`false`) |
 
@@ -186,8 +186,19 @@ El script se puede ejecutar todas las veces que quieras: una segunda ejecución 
 
 ### Datos iniciales (seeds)
 
-- `mydb.sql` trae los catálogos (especies, razas, servicios, ubicaciones…) y los datos base del proyecto.
-- Con `RUN_DEMO_SEED=true` se aplican además las migraciones de tipo `demo` (`V6_datos_demo.sql` y `V7_pasaporte_demo.sql`). Se registran en el historial como las demás; si después cambias a `true`, se aplican en la siguiente ejecución. Están escritas para no duplicar filas.
+- `mydb.sql` trae los catálogos (especies, razas, servicios, ubicaciones…) y los datos base del proyecto, con estas cuentas (contraseña **`123456`**):
+
+  | Rol | Correo |
+  |---|---|
+  | Dueño | `maria@gmail.com` |
+  | Veterinario | `juan@gmail.com` |
+  | Recepcionista | `laura@gmail.com` |
+
+- Con `RUN_DEMO_SEED=true` se aplican además las migraciones de tipo `demo`. Se registran en el historial como las demás; si después cambias a `true`, se aplican en la siguiente ejecución. Están escritas para no duplicar filas:
+  - `V6_datos_demo.sql`: corrige textos de los datos base para la demostración.
+  - `V7_pasaporte_demo.sql`: pasaportes de ejemplo (tokens `DEMO-…`).
+  - `V13_veterinarias_directorio.sql`: **20 veterinarias más** para el directorio (12 en Bogotá; las demás en Medellín, Cali, Barranquilla, Bucaramanga, Cartagena y Pereira), cada una con ubicación en el mapa, teléfono, correo, horario y servicios con precio. No traen personal, así que aparecen con "Sin cupos publicados por ahora". Busca ciudades, barrios y servicios por nombre, por eso funciona en cualquier base del equipo.
+- Los **datos de prueba de 500 registros** (32 cuentas) no son una migración: se cargan a mano con `scripts/semilla-pruebas.sh` (ver [Datos de prueba](#datos-de-prueba-500-registros)).
 
 ### Agregar una migración nueva
 
@@ -230,6 +241,43 @@ El script:
 Opciones: `--si` (sin preguntar), `--incluir-uploads` (borra también las fotos y adjuntos subidos; por defecto se conservan), `--sin-respaldo` y `--sin-levantar`. Se niega a correr si `.env` tiene `VETLINK_ENTORNO=produccion`.
 
 Evita `docker compose down -v`: borra a la vez la base **y** las fotos y adjuntos (`vetlink_uploads`), sin respaldo.
+
+### Datos de prueba (500 registros)
+
+`scripts/semilla-pruebas.sh` deja la base de desarrollo con **exactamente 500 registros** realistas (contexto colombiano, mayoría en Bogotá) repartidos entre todas las tablas, con 32 cuentas de prueba. **No es una migración**: cada integrante que quiera estos datos debe ejecutarlo en su computador. Si levantas el proyecto en otra máquina, esa base solo tiene las cuentas de `mydb.sql` (sección 5) hasta que corras el script.
+
+> **Destructivo:** vacía **todas** las tablas de la base (también las 20 veterinarias de V13, que no se vuelven a crear solas). No cambia la estructura ni el historial de migraciones. Respalda antes en `respaldos/` y se niega a correr con `VETLINK_ENTORNO=produccion`.
+
+Ejecútalo en **Git Bash** (no en PowerShell ni dentro de un contenedor), con Docker Desktop encendido y desde la carpeta del proyecto:
+
+```bash
+bash scripts/semilla-pruebas.sh              # vacía las tablas y carga los 500 registros (pide escribir BORRAR)
+bash scripts/semilla-pruebas.sh --si         # igual, sin preguntar
+bash scripts/semilla-pruebas.sh --reset --si # además recrea la base desde cero con reset-db.sh (borra el volumen de MySQL)
+bash scripts/semilla-pruebas.sh --verificar  # solo comprueba, no cambia nada
+```
+
+Al terminar muestra el conteo por tabla y debe decir `OK: exactamente 500`. El script levanta los servicios solo; espera a que Spring muestre "Started VetlinkApplication" (~1 minuto) y entra.
+
+Cuentas de prueba (contraseña **`123456V`**, con V mayúscula):
+
+| Rol | Correos | Cantidad |
+|---|---|---|
+| Dueño | `1@gmail.com` … `10@gmail.com` | 10 |
+| Veterinario | `100@gmail.com` … `110@gmail.com` | 11 |
+| Recepcionista | `1000@gmail.com` … `1010@gmail.com` | 11 |
+
+Qué hace, en orden:
+
+1. (Con `--reset`) respalda y recrea la base con `scripts/reset-db.sh` y aplica las migraciones.
+2. Detiene Spring y FastAPI para que sus tareas programadas no escriban durante la carga.
+3. Vacía las tablas (los ID vuelven a empezar en 1) y carga los datos que genera `database/pruebas/semilla_500.py`. Corre en un contenedor `python:3.12-slim`: no hace falta Python en el equipo.
+4. Copia al volumen de uploads los PDF adjuntos de las historias clínicas.
+5. Levanta los servicios y ejecuta las comprobaciones de `database/pruebas/verificar_semilla_500.sql`: total exacto, ID desde 1, roles, mascotas con `estado = 1`, relaciones e integridad.
+
+Los datos incluyen 4 clínicas (3 en Bogotá, 1 en Medellín), 16 mascotas, citas pasadas, presentes y futuras (atendidas, confirmadas, pendientes, canceladas…), historias clínicas con diagnóstico y tratamiento, vacunas, emergencias, chat, reseñas, pasaportes y reportes. Las fechas se calculan desde el momento en que corres el script.
+
+El total de 500 es el estado justo después de cargar. La aplicación lo cambia con el uso normal: cada noche genera los cupos del nuevo día de la agenda, las reservas pendientes vencen a las ~24 h, y navegar o generar PDF agrega registros (auditoría, reportes). Para volver a 500, ejecuta el script otra vez.
 
 ## 8. Respaldos
 
@@ -328,6 +376,8 @@ MSYS_NO_PATHCONV=1 docker run --rm --network vetlink_vetlink_net --env-file .env
 | Aviso «el archivo cambió después de aplicarse» | Alguien editó una migración ya aplicada. No se vuelve a ejecutar; si el cambio era de esquema, hay que crear una migración nueva |
 | Spring se reinicia con `Schema-validation` | Falta una migración para una columna nueva de una entidad. Créala (sección 5) |
 | `mysql` nunca queda `healthy` | `docker compose logs mysql`. Revisa `MYSQL_ROOT_PASSWORD` y el espacio en disco |
+| En otra computadora no puedo entrar con `1@gmail.com` / `123456V` | Esas cuentas solo existen donde se corrió `scripts/semilla-pruebas.sh`. Entra con las de `mydb.sql` (`maria@`, `juan@`, `laura@gmail.com`, contraseña `123456`) o ejecuta el script en esa computadora ([Datos de prueba](#datos-de-prueba-500-registros)) |
+| Ya no aparecen las 20 veterinarias nuevas | Se corrió `scripts/semilla-pruebas.sh`, que vacía todas las tablas. V13 ya está registrada y no se vuelve a aplicar sola |
 | **502 Bad Gateway** | Spring o FastAPI todavía están arrancando. Espera y recarga; si sigue, `docker compose logs spring` |
 | "El servicio de pasaportes no está disponible" | FastAPI está caído: `docker compose logs fastapi`. El resto de la aplicación sigue funcionando |
 | `the input device is not a TTY` en Git Bash | Agrega `-T` a `docker compose run`/`exec` (los scripts ya lo hacen) |
@@ -339,12 +389,15 @@ MSYS_NO_PATHCONV=1 docker run --rm --network vetlink_vetlink_net --env-file .env
 src/                          Aplicación Spring Boot (y sus pruebas en src/test)
 docs-service/                 Servicio FastAPI: pasaporte, QR y reportes PDF
 database/mydb.sql             Esquema base y datos iniciales (V1)
-database/migrations/          Migraciones V5…V11 y datos demo
+database/migrations/          Migraciones V5…V13 y datos demo (V13: 20 veterinarias)
 database/migraciones.txt      Orden de las migraciones (fuente de verdad)
 database/permisos_fastapi.sql Permisos mínimos de vetlink_fast
 database/verificar_consistencia.sql  Comprobaciones de integridad (solo lectura)
+database/pruebas/             Generador y comprobaciones de los datos de prueba (500 registros)
 scripts/migrate.sh            Crea o actualiza la base (lo usa el servicio migrate)
 scripts/reset-db.sh           Reinicio destructivo de la base de desarrollo
+scripts/semilla-pruebas.sh    Carga los datos de prueba (destructivo)
+scripts/actualizar-ip.sh/.ps1 Pone en .env la IPv4 actual (QR del pasaporte)
 nginx/                        Configuración del proxy inverso
 docs/                         Contrato entre Spring y FastAPI
 compose.yaml                  Los servicios
