@@ -94,21 +94,23 @@ IP=$ipLocal
 [System.IO.File]::WriteAllText((Join-Path $PWD ".env"), $envContent, (New-Object System.Text.UTF8Encoding($false)))
 ```
 
-**Si cambias de red** (otra Wi-Fi, otro router), la IPv4 cambia. Actualiza solo la línea `IP` sin volver a generar el `.env`: generar uno nuevo cambia las contraseñas y MySQL ya no aceptaría las de su volumen.
+**Si cambias de red** (otra Wi-Fi, el punto de acceso del celular, otro router), la IPv4 cambia y los QR dejan de abrir desde el celular. Actualiza solo la línea `IP` con el script (detecta la IP, cambia esa línea y reinicia Spring y FastAPI). **No vuelvas a generar el `.env`**: uno nuevo cambia las contraseñas y MySQL ya no aceptaría las de su volumen.
 
 ```bash
-# Git Bash o Linux/macOS (define antes la función detectar_ip de arriba)
-sed -i.bak "s/^IP=.*/IP=$(detectar_ip)/" .env && rm -f .env.bak && grep '^IP=' .env
+bash scripts/actualizar-ip.sh                 # Git Bash (Windows), Linux o macOS
+bash scripts/actualizar-ip.sh 192.168.1.50    # si quieres forzar una IP concreta
 ```
 
 ```powershell
-# PowerShell (calcula antes $ipLocal como arriba)
-$lineas = (Get-Content .env) -replace '^IP=.*', "IP=$ipLocal"
-[System.IO.File]::WriteAllLines((Join-Path $PWD ".env"), $lineas, (New-Object System.Text.UTF8Encoding($false)))
-Select-String '^IP=' .env
+powershell -ExecutionPolicy Bypass -File scripts\actualizar-ip.ps1                  # PowerShell
+powershell -ExecutionPolicy Bypass -File scripts\actualizar-ip.ps1 -Ip 192.168.1.50 # IP concreta
 ```
 
-Después reinicia lo que usa la IP: `docker compose up -d spring fastapi`.
+Los pasaportes creados antes del cambio conservan la URL anterior en su QR: genera uno nuevo. Si el celular sigue sin abrirlo:
+
+- El celular y el computador deben estar en la **misma red** (los dos conectados al mismo punto de acceso o Wi-Fi). Prueba primero en el navegador del celular `http://IP/login` con la IP que mostró el script.
+- Si **el computador comparte su propio punto de acceso** (Zona con cobertura inalámbrica móvil de Windows) y el celular se conecta a él, el celular llega al computador por `192.168.137.1`: `bash scripts/actualizar-ip.sh 192.168.137.1`.
+- Algunos puntos de acceso tienen activado el "aislamiento de clientes" y no dejan que los dispositivos se vean entre sí; en ese caso usa el túnel público ([QR accesible desde Internet](#10-qr-accesible-desde-internet)).
 
 Si prefieres llenarlo a mano, copia `.env.example` como `.env`; ahí está explicada cada variable.
 
