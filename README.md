@@ -424,3 +424,4 @@ En GitHub, abre el Pull Request con **base: `development`**. Otra persona lo rev
 - **Nunca subas el `.env`** ni contraseñas.
 - Ramas pequeñas, una por tarea, con mensajes de commit claros.
 - Si Git te da un error que no entiendes, pregunta en el grupo antes de forzar algo (`--force`, `reset --hard`).
+- (hola gente, es solo para poder subir el commit :v)
